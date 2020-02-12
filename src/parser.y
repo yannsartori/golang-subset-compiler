@@ -2,122 +2,95 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "ast.h"
-#include "to_string.h"
-#include "symbol_check.h"
 
 int yylex();
 extern int yylineno;
-extern int characterOnLine;
-extern char curLine[500];
-extern Stmt * root;
 
-void yyerror (char const *s) {
-	printErrorStmt(yylineno, characterOnLine, s, curLine);
- }
 %}
 
 %define parse.error verbose
-
-%code requires
-{
-	#include "ast.h"
-}
-
+//need to implement their builtins
 %union {
 	int intval;
 	int boolval;
 	double floatval;
+	char runeval;
 	char *stringval;
 	char *identifier;
-	VariableType type;
-	struct Exp *exp;
-	struct Stmt *stmt;
 }
-%token tVAR tFLOAT tINT tSTRING tBOOL tIF tELSE tWHILE tREAD tPRINT
-%token tEQ tNEQ tGEQ tLEQ tLOGICAND tLOGICOR 
+%token tLOGICOR tLOGICAND tEQ tNEQ tGEQ tLEQ tBShiftLeft tBShiftRight tAndNot tLENGTH tCAP tAPPEND 
 %token <intval>	   tINTLIT
 %token <floatval>  tFLOATLIT
-%token <stringval> tSTRINGLIT
+%token <runeval> tRUNELIT
+%token <stringval> tRAWSTRINGLIT tINTERPRETEDSTRINGLIT
 %token <boolval> tBOOLVAL
 %token <identifier> tIDENTIFIER
-%type <exp> expression
-%type <stmt> statements bracketStatements bracketStatement semiStatements semiStatement optionalElseIf 
-%type <type> optionalType;
 %left tLOGICOR
 %left tLOGICAND
-%left tEQ tNEQ
-%left tGEQ tLEQ '>' '<'
-%left '+' '-'
-%left '*' '/'
-%left '!' UNARYMINUS
+%left tEQ tNEQ tGEQ tLEQ '>' '<'
+%left '+' '-' '|' '^'
+%left '*' '/' '%' tBShiftLeft tBShiftRight '&' tAndNot
+%left '!' UNARY
 
 
 
-%start program
+%start expression
 
 %%
-program: statements {root = $1;}
-statements:		  semiStatements {$$ = $1; augmentStmtWithError($$, yylineno, characterOnLine, curLine); }
-				| bracketStatements {$$ = $1; augmentStmtWithError($$, yylineno, characterOnLine, curLine); }
-				| { $$ = NULL; }
-				;	
-bracketStatements:statements bracketStatement {$$ = $2; $$->next = $1; augmentStmtWithError($$, yylineno, characterOnLine, curLine);  };
-bracketStatement: tIF '(' expression ')' '{' statements '}' optionalElseIf {$$ = makeStmtIf($3, $6, $8); augmentStmtWithError($$, yylineno, characterOnLine, curLine); }
-				| tWHILE '(' expression ')' '{' statements '}' {$$ = makeStmtWhile($3, $6); augmentStmtWithError($$, yylineno, characterOnLine, curLine);  }
-				;
-semiStatements:	  statements semiStatement ';' {$$ = $2; $$->next = $1; augmentStmtWithError($$, yylineno, characterOnLine, curLine); };
-semiStatement:	  tREAD '(' tIDENTIFIER ')' { 
-					Exp * id = makeExpIdentifier($3, typeInference); 
-					augmentExpWithError(id, yylineno, characterOnLine, curLine); 
-					$$ = makeStmtRead(id); 
-					augmentStmtWithError($$, yylineno, characterOnLine, curLine);} 
-				| tPRINT '(' expression ')' { $$ = makeStmtPrint($3); augmentStmtWithError($$, yylineno, characterOnLine, curLine);  augmentExpWithError($3, yylineno, characterOnLine, curLine);}
-				| tVAR tIDENTIFIER optionalType '=' expression {
-					Exp * id = makeExpIdentifier($2, typeInference); 
-					augmentExpWithError(id, yylineno, characterOnLine, curLine); 
-					$$ = makeStmtAssignment(id, $5, 1); 
-					augmentStmtWithError($$, yylineno, characterOnLine, curLine); }
-				| tIDENTIFIER '=' expression {
-					Exp * id = makeExpIdentifier($1, typeInference); 
-					augmentExpWithError(id, yylineno, characterOnLine, curLine); 
-					$$ = makeStmtAssignment(id, $3, 0); 
-					augmentStmtWithError($$, yylineno, characterOnLine, curLine); } 
-				;
-optionalElseIf:	  tELSE tIF '(' expression ')' '{' statements '}' optionalElseIf { $$ = makeStmtIf($4, $7, $9); augmentStmtWithError($$, yylineno, characterOnLine, curLine);  } 
-				| tELSE '{' statements '}' { $$ = $3; }
-				| { $$ = NULL; }
-				;
-optionalType:	  ':' tFLOAT {$$ = typeFloat;} 
-				| ':' tINT {$$ = typeInt;}
-				| ':' tBOOL {$$ = typeBool;} 
-				| ':' tSTRING {$$ = typeString;}
-				| {$$ = typeInference;} 
-				;
-expression:		  expression '+' expression { $$ = makeExpAddition($1, $3); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| expression '-' expression { $$ = makeExpSubtraction($1, $3); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| expression '/' expression { $$ = makeExpDivision($1, $3); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| expression '*' expression { $$ = makeExpMultiplication($1, $3); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| expression '>' expression { $$ = makeExpGreater($1, $3); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| expression '<' expression { $$ = makeExpLess($1, $3); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| expression tLEQ expression { $$ = makeExpLEQ($1, $3); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| expression tGEQ expression { $$ = makeExpGEQ($1, $3); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| expression tNEQ expression { $$ = makeExpNEQ($1, $3); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| expression tEQ expression {$$ = makeExpEQ($1, $3); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| expression tLOGICOR expression {$$ = makeExpLogicOr($1, $3); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| expression tLOGICAND expression {$$ = makeExpLogicAnd($1, $3); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| '!' expression { $$ = makeExpLogicNot($2); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| '-' expression %prec UNARYMINUS { $$ = makeExpUnaryMinus($2); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| '(' expression ')' {$$ = $2; augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| tIDENTIFIER { $$ = makeExpIdentifier($1, typeInference); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| tINTLIT { $$ = makeExpIntLit($1); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| tFLOATLIT { $$ = makeExpFloatLit($1); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| tSTRINGLIT { $$ = makeExpStringLit($1); augmentExpWithError($$, yylineno, characterOnLine, curLine);  }
-				| tBOOLVAL { $$ = makeExpBoolLit($1); augmentExpWithError($$, yylineno, characterOnLine, curLine); }
-				;
+expression: 
+			  primaryExpression /* unrolled https://golang.org/ref/spec#Expression with precdence directives*/
+			| expression '*' expression /*2.9.5*/
+			| expression '/' expression
+			| expression '%' expression
+			| expression tBShiftLeft expression
+			| expression tBShiftRight expression	
+			| expression '&' expression	
+			| expression tAndNot expression	
+			| expression '+' expression	
+			| expression '-' expression	
+			| expression '|' expression	
+			| expression '^' expression	
+			| expression tEQ expression	
+			| expression tNEQ expression	
+			| expression '<' expression	
+			| expression tLEQ expression	
+			| expression '>' expression	
+			| expression tGEQ expression	
+			| expression tLOGICAND expression	
+			| expression tLOGICOR expression	
+			| '+' expression %prec UNARY /*2.9.4*/
+			| '-' expression %prec UNARY
+			| '!' expression 
+			| '^' expression %prec UNARY
+			;
+expressionList: expression | expression ',' expressionList; //maybe Neil provided this?
+primaryExpression: 
+			  operand 
+			| conversion 
+			| primaryExpression selector 
+			| primaryExpression index 
+			| primaryExpression arguments /*2.9.6*/ 
+			| appendExpression 
+			| lengthExpression 
+			| capExpression; //ommitting method expression, slice indexing, type assertion
+operand: 
+			  literal /*2.9.3*/ 
+			| tIDENTIFIER /*2.9.2*/ 
+			| '(' expression ')'; /*2.9.1*/ //ommitting qualified lit, composite lit, function lit
+literal:	tINTLIT | tFLOATLIT | tRUNELIT | tRAWSTRINGLIT | tINTERPRETEDSTRINGLIT /*2.9.3*/;
+conversion: 
+			  type '(' expression ',' ')' 
+			| type '(' expression ')'; /*2.9.10*/ //see if lists are actually supported types also provided by Denali
+index: '[' expression ']' /*2.9.7*/
+arguments: 
+			  '(' expressionList ')' 
+			| '(' type ',' expressionList ')' 
+			| '(' type ')' 
+			| '(' ')' /*2.9.6... ask about the type ones!*/
+selector: '.' tIDENTIFIER ; /*2.9.8-- Should we weed this ? "must not be the blank identifier" Also we should make sure we can do selector assignment e.g. a.b = c*/
+appendExpression: tAPPEND '(' expression ',' expression ')'; /*2.9.9*/
+lengthExpression: tLENGTH '(' expression ')'; /*2.9.9*/
+capExpression: tCAP '(' expression ')'; /*2.9.9*/
 
-
-
-
-
+type: 'b';//placeholder
 
