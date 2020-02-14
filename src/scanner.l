@@ -1,117 +1,167 @@
 %{
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include "parser.tab.h"
-#include "main.h"
-int characterOnLine = 0;
-char curLine[500];
-void incrementCharacter() { 
-	characterOnLine += strlen(yytext); 
-	strcat(curLine, yytext);	
-}
-void clearLine() {
-	characterOnLine = 0;
-	strcpy(curLine, "");
-}
-void error(char *code)
-{
-	fprintf(stderr, "Error: %s (line %d, %d-%zu)\n", code, yylineno, characterOnLine, characterOnLine + strlen(yytext));
-	fprintf(stderr, "%s%s\n", curLine, yytext);
-	for ( int i = 0; i < characterOnLine - 1; i++ )
-	{
-		fputc(' ', stderr);
-	}
-	for ( int i = characterOnLine - 1; i < characterOnLine + strlen(yytext); i++ )
-	{
-		fputc('^', stderr);
-	}
-	fputc('\n', stderr);
-	exit(1);
-}
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include "tree.h"
+    #include "minil.tab.h"
 %}
 
 %option yylineno
 
 %%
 
-[ \t\r]+		 incrementCharacter();
-#.*\n|\n		 clearLine();
-"var"			{incrementCharacter();  if (printTokens) printf("tVAR\n");		return tVAR;		}
-"float"			{incrementCharacter();  if (printTokens) printf("tFLOAT\n");	return tFLOAT;		}
-"int"			{incrementCharacter();  if (printTokens) printf("tINT\n");		return tINT;		}
-"string"		{incrementCharacter();  if (printTokens) printf("tSTRING\n");	return tSTRING;		}
-"bool"			{incrementCharacter();  if (printTokens) printf("tBOOL\n");		return tBOOL;		}
-"if"			{incrementCharacter();  if (printTokens) printf("tIF\n");		return tIF;			}
-"else"			{incrementCharacter();  if (printTokens) printf("tELSE\n");		return tELSE;		}
-"while"			{incrementCharacter();  if (printTokens) printf("tWHILE\n");	return tWHILE;		}
-"read"			{incrementCharacter();  if (printTokens) printf("tREAD\n");		return tREAD;		}
-"print"			{incrementCharacter();  if (printTokens) printf("tPRINT\n");	return tPRINT;		}
-"True"			{
-	incrementCharacter();  
-	yylval.boolval = 1;
-	if (printTokens) printf("tBOOL(True)\n"); 
-	return tBOOLVAL;   
+[ \t\r\n]+
+
+"break"				return tBreak;
+"default"			return tDefault;
+"func"				return tFunc;
+"interface"			return tInterface;
+"select"			return tSelect;
+"case"				return tCase;
+"defer"				return tDefer;
+"go"				return tGo;
+"map"				return tMap;
+"struct"			return tStruct;
+"chan"				return tChan;
+"else"				return tElse;
+"goto"				return tGoto;
+"package"			return tPackage;
+"switch"			return tSwitch;
+"const"				return tConst;
+"fallthrough"		return tFallthrough;
+"if"				return tIf;
+"range"				return tRange;
+"type"				return tType;
+"continue"			return tContinue;
+"for"				return tFor;
+"import"			return tImport;
+"return"			return tReturn;
+"var"				return tVar;
+
+"print"				return tPrint;
+"println"			return tPrintln;
+"append"			return tAPPEND;
+"len"				return tLENGTH;
+"cap"				return tCAP;
+
+"+"  				return '+';
+"&"					return '&';
+"+="				return tPlusEq;
+"&="				return tAndEq;
+"&&"				return tLOGICAND;
+"=="				return tEQ;
+"!="				return tNEQ;
+"("  				return '(';
+")"					return ')';
+"-"					return '-';
+"|"					return '|';
+"-="				return tMinusEquals;
+"|="				return tOrEquals;
+"||"				return tLOGICOR;
+"<"					return '<';
+"<="				return tLEQ;
+"["					return '[';
+"]"					return ']';
+"*"					return '*';
+"ˆ"					return '^';
+"*="				return tTimesEquals;
+"ˆ="				return tHatEquals;
+"<-"				return tLessMinus;
+">"					return '>';
+">="				return tGEQ;
+"{"					return '{';
+"}"					return '}';
+"/"					return '/';
+"<<"				return tBShiftLeft;
+"/="				return tDivideEquals;
+"<<="				return tLShiftEquals;
+"++"				return tIncrement;
+"="					return '=';
+":="				return tDefined;
+","					return ',';
+";"					return ';';
+"%"					return '%';
+">>"				return tBShiftRight;
+"%="				return tModEquals;
+">>="				return tRShiftEquals;
+"--"				return tDecrement;
+"!"					return '!';
+"..."				return tElipses;
+"."					return '.';
+":"					return ':';
+"&ˆ"				return tAndNot;
+"&ˆ="				return tAndHatEquals;
+
+"//"[^\n]*				/* Comments */
+"/*"([^*]|*[^/])*"*/"	/* Comments */
+
+"/*" {
+	fprintf(stderr, "Error: comment never closed on line %d\n", yylineno);
+	exit(1);
 }
-"False"			{
-	incrementCharacter();  
-	yylval.boolval = 0;
-	if (printTokens) printf("tBOOL(False)\n"); 
-	return tBOOLVAL;  
+
+
+"'"("\\"[abfnrtv\\\'])"'" {
+	yylval.runeval = strdup(yytext);
+	return tRUNELIT;
 }
-0|[1-9][0-9]*	{
-	incrementCharacter();
-	yylval.intval = atoi(yytext);
-	if (printTokens) printf("tINTLIT(%s)\n", yytext); 
-	return tINTLIT;
+
+
+"'"[^\'\\]"'" {
+	yylval.runeval = strdup(yytext);
+	return tRUNELIT;
 }
-0\.[0-9]+|[1-9][0-9]*\.[0-9]+	{
-	incrementCharacter();
-	yylval.floatval = atof(yytext);
-	if (printTokens) printf("tFLOATLIT(%s)\n", yytext); 
-	return tFLOATLIT;
+
+
+
+\"([^"]|(\\\"))*\" {
+    yylval.stringval = strdup(yytext);
+    return tINTERPRETEDSTRINGLIT;
 }
-[0-9]*\.|\.[0-9]*  {
-	error("Both sides of decimal must have digits.");
+
+\" {
+    fprintf(stderr, "Error: unmatched quote found on line %d\n", yylineno);
+    exit(1);
 }
-[0-9]*\.[0-9]*|[0-9]* {
-	error("Leading zeroes not permitted.");
+
+`[^`]` {
+	yylval.stringval = strdup(yytext);
+	return tRAWSTRINGLIT;
 }
-\"[^"]*\"		{
-	incrementCharacter();
-	char * stringVal = (char *) malloc(sizeof(char) * strlen(yytext));
-	memcpy(stringVal, (yytext + 1), strlen(yytext) - 2);
-	yylval.stringval = stringVal;
-	if (printTokens) printf("tSTRINGLIT(%s)\n", yytext); 
-	return tSTRINGLIT;
+
+
+0|([1-9][0-9]*) {
+    yylval.intval = atoi(yytext); 
+    return tINTLIT;
 }
-"+"  | 
-"-"	 |
-"/"  |
-"*"	 |
-"="	 |
-"!"  |
-"("  |
-")"  |
-"{"  |
-"}"  |
-"<"  |
-">"  |
-"#"  |
-":"  |
-";"		{incrementCharacter(); if (printTokens) printf("t%c\n", yytext[0]);	return yytext[0];	}
-"=="	{incrementCharacter(); if (printTokens) printf("tEQ\n");			return tEQ;			}
-"!="	{incrementCharacter(); if (printTokens) printf("tNEQ\n");			return tNEQ;		}	
-">="	{incrementCharacter(); if (printTokens) printf("tGEQ\n");			return tGEQ;		}
-"<="	{incrementCharacter(); if (printTokens) printf("tLEQ\n");			return tLEQ;		}	
-"&&"	{incrementCharacter(); if (printTokens) printf("tLOGICAND\n");		return tLOGICAND;	}
-"||"	{incrementCharacter(); if (printTokens) printf("tLOGICOR\n");		return tLOGICOR;	}
-[a-zA-Z_][a-zA-Z0-9_]*	{
-	incrementCharacter();
-	yylval.identifier = strdup(yytext);
-	if (printTokens) printf("tIDENTIFIER(%s)\n", yytext); 
-	return tIDENTIFIER;
+
+0[oO]([1-7][0-7]*) {
+	char* ptr;
+    yylval.intval = strtol(yytext + 2, &ptr, 8); 
+    return tINTLIT;
 }
+
+0[xX]([1-9a-fA-F][0-9a-fA-F]*) {
+	char* ptr;
+    yylval.intval = strtol(yytext + 2, &ptr, 16); 
+    return tINTLIT;
+}
+
+([0-9]+"."[0-9]*)|"."[0-9]+ {
+    yylval.floatval = atof(yytext);
+    return tFLOATLIT;
+}
+
+
+[a-zA-Z_][a-zA-Z0-9_]* {
+    yylval.identifier = strdup(yytext); 
+    return tIDENTIFIER;
+}
+
+              
+
 . {
-	error("Unexpected character.");
+    fprintf(stderr, "Error: bad character found: %s, line: %d\n", yytext, yylineno); 
+    exit(1);
 }
+
+%%
