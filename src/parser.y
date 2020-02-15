@@ -94,3 +94,100 @@ capExpression: tCAP '(' expression ')'; /*2.9.9*/
 
 type: 'b';//placeholder
 
+
+
+
+
+// My Work (Neil) + goLang definitions, structure
+
+
+
+
+statement: 
+			simpleStatement
+			| block
+
+			/* TODO Declarations */
+			/* TODO assignments += , *=. &= ... */
+			
+			
+			| tPrint '(' expressionList ')' ';' // 2.8.8 Blank identifier in expressionList
+			| tPrintln '(' expressionList ')' ';' // 2.8.8 Blank identifier in expressionList
+			| tReturn ';' // 2.8.9 
+			| toReturn expression ';' // 2.8.9 Blank Identifier
+			| ifStatement //2.8.10
+			| loop //2.8.12
+			| tBreak ';' //2.8.13 Caught at weeding 
+			| tFallthrough ':' // Weeding (present only in switch statement last line, in all but last switch case)
+			| tContinue ';' //2.8.13 Caught at weeder
+			| switch //2.8.11
+
+
+
+
+
+//2.8.11 Check usage for AST
+switch:
+		tSwitch statementList ';' expression '{' expressionCaseClauseList '}'
+		| tSwitch expression '{' expressionCaseClauseList '}'
+		| tSwitch statementList ';' '{' expressionCaseClauseList '}'
+		| tSwitch '{' expressionCaseClauseList '}'
+		
+
+
+
+expressionCaseClauseList = %empty | expressionCaseClause expressionCaseClauseList
+expressionCaseClause = expressionSwitchCase ":" statementList 
+expressionSwitchCase = tCase expressionList | tDefault
+
+
+
+simpleStatement: 
+			%empty /*2.8.1*/
+			| expression ';' /* 2.8.3 sketchy, (needs to be a function call)*/ 
+			| tIDENTIFIER tIncrement ';' // 2.8.7 , Blank identifier
+			| tIDENTIFIER tDecrement ';'// 2.8.7 , Blank identifier
+			| expressionList '=' expressionList ';' /*2.8.4 Parser needs to check that length(LHS) == length(RHS), 
+													weeder probably needs to check that we can assign into LHS 
+													Blank identifier RHS*/
+			
+			| identifierList tDefined expressionList ';'   /*2.8.6 (Short declaration) Parser needs to check that length(LHS) == length(RHS), 
+													weeder probably needs to check that we can assign into LHS
+													 */
+ 
+
+
+block : '{' statementList '}' /* 2.8.2 */
+
+
+// 2.8.10
+ifStatement : 
+			tIf expression block
+			| tIf expression block tElse ifStatement
+			| tIf expression block tElse block
+			| tIf simpleStatement ';' expression block
+			| tIf simpleStatement ';' expression block tElse ifStatement
+			| tIf simpleStatement ';' expression block tElse block
+
+//2.8.12
+loop : 
+		tFor block 
+		| tFor expression block
+		| tFor simpleStatement ';' expression ';' simpleStatement block
+		
+
+
+
+
+
+
+
+
+statementList : %empty | statement statementList
+
+identifierList : tIDENTIFIER | tIDENTIFIER ',' identifierList
+
+
+
+
+
