@@ -34,13 +34,13 @@
 	}
 }
 
-"break"				RETURN( tBreak )
+"break"			RETURN( tBreak )
 "default"			RETURN( tDefault )
 "func"				RETURN( tFunc )
 "interface"			RETURN( tInterface )
 "select"			RETURN( tSelect )
 "case"				RETURN( tCase )
-"defer"				RETURN( tDefer )
+"defer"			RETURN( tDefer )
 "go"				RETURN( tGo )
 "map"				RETURN( tMap )
 "struct"			RETURN( tStruct )
@@ -49,9 +49,9 @@
 "goto"				RETURN( tGoto )
 "package"			RETURN( tPackage )
 "switch"			RETURN( tSwitch )
-"const"				RETURN( tConst )
+"const"			RETURN( tConst )
 "if"				RETURN( tIf )
-"range"				RETURN( tRange )
+"range"			RETURN( tRange )
 "type"				RETURN( tType )
 "continue"			RETURN( tContinue )
 "for"				RETURN( tFor )
@@ -59,7 +59,7 @@
 "return"			RETURN( tReturn )
 "var"				RETURN( tVar )
 
-"print"				RETURN( tPrint )
+"print"			RETURN( tPrint )
 "println"			RETURN( tPrintln )
 "append"			RETURN( tAPPEND )
 "len"				RETURN( tLENGTH )
@@ -72,9 +72,9 @@
 "=="				RETURN( tEQ )
 "!="				RETURN( tNEQ )
 "("  				RETURN( '(' )
-")"					RETURN( ')' )
-"-"					RETURN( '-' )
-"|"					RETURN( '|' )
+")"				RETURN( ')' )
+"-"				RETURN( '-' )
+"|"				RETURN( '|' )
 "-="				RETURN( tMinusEquals )
 "|="				RETURN( tOrEquals )
 "||"				RETURN( tLOGICOR )
@@ -96,27 +96,27 @@
 "&^"				RETURN( tAndNot )
 "&^="				RETURN( tAndHatEquals )
 "+"  				RETURN( '+' )
-"&"					RETURN( '&' )
-"."					RETURN( '.' )
-":"					RETURN( ':' )
-"!"					RETURN( '!' )
-","					RETURN( ',' )
-";"					RETURN( ';' )
-"%"					RETURN( '%' )
-"="					RETURN( '=' )
-"{"					RETURN( '{' )
-"}"					RETURN( '}' )
-"/"					RETURN( '/' )
-">"					RETURN( '>' )
-"["					RETURN( '[' )
-"]"					RETURN( ']' )
-"*"					RETURN( '*' )
-"^"					RETURN( '^' )
-"<"					RETURN( '<' )
+"&"				RETURN( '&' )
+"."				RETURN( '.' )
+":"				RETURN( ':' )
+"!"				RETURN( '!' )
+","				RETURN( ',' )
+";"				RETURN( ';' )
+"%"				RETURN( '%' )
+"="				RETURN( '=' )
+"{"				RETURN( '{' )
+"}"				RETURN( '}' )
+"/"				RETURN( '/' )
+">"				RETURN( '>' )
+"["				RETURN( '[' )
+"]"				RETURN( ']' )
+"*"				RETURN( '*' )
+"^"				RETURN( '^' )
+"<"				RETURN( '<' )
 
 
 "//"[^\n]*				printf("sing-comm\n ");
-"/*"([^\*]|\*[^/]|\n)*"*/"				printf("multi-comm\n" );
+"/*"([^\*]|\*[^/]|\n)*"*/"		printf("multi-comm\n" );
 
 
 "/*" {
@@ -140,60 +140,60 @@
 
 \"([^\"]|(\\\"))*\" {
 	yylval.stringval = strdup(yytext); 
-    RETURN( tINTERPRETEDSTRINGLIT )
+	RETURN( tINTERPRETEDSTRINGLIT )
 }
 
 \" {
-    fprintf(stderr, "Error: unmatched quote found on line %d\n", yylineno);
-    exit(1);
+	fprintf(stderr, "Error: unmatched quote found on line %d\n", yylineno);
+	exit(1);
 }
 
 "`"[^\`]*"`" {
- 	yylval.stringval = strdup(yytext); 
+	yylval.stringval = strdup(yytext); 
 	RETURN( tRAWSTRINGLIT)
 }
 
 
 0|([1-9][0-9]*) {
 	yylval.intval = atoi(yytext);  
-    RETURN( tINTLIT )
+	RETURN( tINTLIT )
 }
 
 0[oO]([1-7][0-7]*) {
 	char* ptr;
 	yylval.intval = strtol(yytext + 2, &ptr, 8);  
-    RETURN( tINTLIT )
+	RETURN( tINTLIT )
 }
 
 0([1-7][0-7])* {
 	char* ptr;
 	yylval.intval = strtol(yytext + 2, &ptr, 8);  
-    RETURN( tINTLIT )
+	RETURN( tINTLIT )
 }
 
 0[xX]([1-9a-fA-F][0-9a-fA-F]*) {
 	char* ptr;
-     yylval.intval = strtol(yytext + 2, &ptr, 16);  
-    RETURN( tINTLIT )
+	yylval.intval = strtol(yytext + 2, &ptr, 16);  
+	RETURN( tINTLIT )
 }
 
 ([0-9]+"."[0-9]*)|"."[0-9]+ {
 	yylval.floatval = atof(yytext); 
-    RETURN( tFLOATLIT )
+	RETURN( tFLOATLIT )
 }
 
 
 [a-zA-Z_][a-zA-Z0-9_]* {
-     yylval.identifier = strdup(yytext);  
-    RETURN( tIDENTIFIER )
+	yylval.identifier = strdup(yytext);  
+	RETURN( tIDENTIFIER )
     
 }
 
               
 
 . {
-    fprintf(stderr, "Error: bad character found: %s, line: %d\n", yytext, yylineno); 
-    exit(1);
+	fprintf(stderr, "Error: bad character found: %s, line: %d\n", yytext, yylineno); 
+	exit(1);
 }
 
 %%
