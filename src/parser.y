@@ -26,7 +26,7 @@ void yyerror(char const *s) {
 %union {
 	int intval;
 	double floatval;
-	char runeval;
+	char *runeval;
 	char *stringval;
 	char *identifier;
 	struct Exp *exp;
