@@ -3,6 +3,19 @@
 #include "globalEnum.h"
 typedef struct Exp Exp;
 typedef struct ExpList ExpList; // for arguments
+typedef struct rootNode rootNode;
+typedef struct topDeclarationNode topDeclarationNode;
+struct rootNode  {
+	char* packageName;
+	topDeclarationNode startDecls;
+};
+
+struct topDeclarationNode {
+	char* type;
+	topDeclarationNode* nextTopDecl;
+	varDecl* 
+};
+
 struct ExpList { //Will be reversed because of left recursion!
 	Exp * cur;
 	ExpList *next;

@@ -3,7 +3,7 @@
     #include <stdlib.h>
     #include "parser.tab.h"
     
-    #define RETURN(token) lastToken = token; return token;
+    #define RETURN(token) {lastToken = token; printf("%s\n", #token);}
     
     int lastToken = 0;
     
@@ -14,9 +14,13 @@
 		lastToken == tRUNELIT ||
 		lastToken == tINTERPRETEDSTRINGLIT ||
 		lastToken == tRAWSTRINGLIT ||
-		lastToken == ']' ||
+		lastToken == tBreak ||
+		lastToken == tContinue ||
+		lastToken == tFallthrough ||
+		lastToken == tReturn ||
 		lastToken == tIncrement ||
 		lastToken == tDecrement ||
+		lastToken == ']' ||
 		lastToken == '}' ||
 		lastToken == ')';
 	}
@@ -50,6 +54,7 @@
 "package"			RETURN( tPackage )
 "switch"			RETURN( tSwitch )
 "const"			RETURN( tConst )
+"fallthrough"			RETURN( tFallthrough )
 "if"				RETURN( tIf )
 "range"			RETURN( tRange )
 "type"				RETURN( tType )
@@ -126,13 +131,13 @@
 
 
 "'\\"[abfnrtv\\\']"'" {
-	yylval.runeval = strdup(yytext);
+//	yylval.runeval = strdup(yytext);
 	RETURN( tRUNELIT )
 }
 
 
 "'"[^\'\\]"'" {
- 	yylval.runeval = strdup(yytext); 
+//	yylval.runeval = strdup(yytext); 
 	RETURN( tRUNELIT )
 }
 

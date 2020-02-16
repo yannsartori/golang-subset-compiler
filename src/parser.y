@@ -41,6 +41,7 @@ void yyerror(char const *s) {
 %token <identifier> tIDENTIFIER
 %type <exp> expression operand literal conversion index selector appendExpression lengthExpression capExpression type primaryExpression 
 %type <explist> expressionList arguments
+%type <rootNode> root
 %left tLOGICOR
 %left tLOGICAND
 %left tEQ tNEQ tGEQ tLEQ '>' '<'
@@ -50,9 +51,63 @@ void yyerror(char const *s) {
 
 
 
-%start expression
+%start root
 
 %%
+
+root			: tPackage tIDENTIFIER ';' topDeclarationList {$$ = NULL}
+;
+
+topDeclarationList	: 
+			| variableDecl topDeclarationList
+			| typeDecl topDeclarationList
+			| functionDecl topDeclarationList
+;
+
+variableDecl		: tVar varDeclsWithExps ';'
+			| tVar varDeclsNoExps ';'
+			| tVar '(' innerVarDecls ')' ';'
+			| tVar '(' ')' ';'
+;
+
+innerVarDecls		: varDeclsNoExps
+			| varDeclsWithExps
+			| varDeclsNoExps ';' innerVarDecls
+			| varDeclsWithExps ';' innerVarDecls
+;
+
+varDeclsNoExps	: tIDENTIFIER ',' varDeclsNoExps
+			| tIDENTIFIER type
+;
+
+varDeclsWithExps	: tIDENTIFIER ',' varDeclsWithExps ',' expression
+			| tIDENTIFIER type '=' expression
+			| tIDENTIFIER '=' expression
+;
+
+typeDecl		: tType '(' innerTypeDecls ')' ';'
+			| tType '(' ')' ';'
+			| tType singleTypeDecl ';'
+;
+
+innerTypeDecls	: singleTypeDecl
+			| singleTypeDecl ';' innerTypeDecls
+;
+
+singleTypeDecl	: tIDENTIFIER type
+			| tIDENTIFIER ',' singleTypeDecl
+;
+
+functionDecl		: tFunc tIDENTIFIER '(' funcArgDecls ')' type block
+			| tFunc tIDENTIFIER '(' ')' type block
+			| tFunc tIDENTIFIER '(' funcArgDecls ')' block
+			| tFunc tIDENTIFIER '(' ')' block
+;
+
+funcArgDecls		: varDeclsNoExps
+			| varDeclsNoExps ',' funcArgDecls
+;
+
 expression: /* unrolled https://golang.org/ref/spec#Expression with precdence directives*/
 			  primaryExpression { $$ = $1; }
 			| expression '*' expression { $$ = makeExpBinary($1, $3, expKindMultiplication); } /*2.9.5*/
@@ -118,5 +173,6 @@ selector: '.' tIDENTIFIER { $$ = makeExpIdentifier($2); }; /*2.9.8-- Should we w
 appendExpression: tAPPEND '(' expression ',' expression ')' { $$ = makeExpAppend($3, $5); }; /*2.9.9*/
 lengthExpression: tLENGTH '(' expression ')' { $$ = makeExpBuiltInBody($3, expKindLength); }; /*2.9.9*/
 capExpression: tCAP '(' expression ')' { $$ = makeExpBuiltInBody($3, expKindCapacity); }; /*2.9.9*/
-type: 'b' { $$ = makeExpIdentifier("b"); }; //placeholder
+typeForCasting: 			'b' { $$ = makeExpIdentifier("b"); }; //placeholder
+block: 		'{' '}' //placeholder
 
