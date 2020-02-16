@@ -13,7 +13,7 @@ struct Exp {
 		char *id;
 		int intLit;
 		double floatLit;
-		char runeLit;
+		char *runeLit;
 		char *stringLit;
 		struct { Exp *left; Exp *right; } binary;
 		Exp * unary;
@@ -27,7 +27,7 @@ ExpList *addArgument(ExpList * args, Exp * argument);
 ExpList *createArgumentList(Exp *argument);
 Exp *makeExpIdentifier(char *identifier); //How should we handle types?
 Exp *makeExpIntLit(int intLit);
-Exp *makeExpRuneLit(char runeLit);
+Exp *makeExpRuneLit(char *runeLit);
 Exp *makeExpFloatLit(double floatLit);
 Exp *makeExpStringLit(ExpressionKind kind, char *stringLit);
 Exp *makeExpBinary(Exp *left, Exp *right, ExpressionKind kind);

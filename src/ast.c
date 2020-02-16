@@ -30,7 +30,7 @@ Exp *makeExpStringLit(ExpressionKind kind, char *stringLit)
 	e->val.stringLit = stringLit;
 	return e;
 }
-Exp *makeExpRuneLit(char runeLit)
+Exp *makeExpRuneLit(char *runeLit)
 {
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = expKindRuneLit;
