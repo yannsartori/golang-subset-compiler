@@ -1,96 +1,122 @@
 %{
     #include <stdio.h>
     #include <stdlib.h>
-	#include "parser.tab.h"
+    #include "parser.tab.h"
+    
+    #define RETURN(token) lastToken = token; return token;
+    
+    int lastToken = 0;
+    
+    int needsSemiColon() {
+		return lastToken == tIDENTIFIER ||
+		lastToken == tINTLIT ||
+		lastToken == tFLOATLIT ||
+		lastToken == tRUNELIT ||
+		lastToken == tINTERPRETEDSTRINGLIT ||
+		lastToken == tRAWSTRINGLIT ||
+		lastToken == ']' ||
+		lastToken == tIncrement ||
+		lastToken == tDecrement ||
+		lastToken == '}' ||
+		lastToken == ')';
+	}
 %}
 
 %option yylineno
 
 %%
 
-[ \t\r\n]+
+[ \t\r]+
 
-"break"				return tBreak;
-"default"			return tDefault;
-"func"				return tFunc;
-"interface"			return tInterface;
-"select"			return tSelect;
-"case"				return tCase;
-"defer"				return tDefer;
-"go"				return tGo;
-"map"				return tMap;
-"struct"			return tStruct;
-"chan"				return tChan;
-"else"				return tElse;
-"goto"				return tGoto;
-"package"			return tPackage;
-"switch"			return tSwitch;
-"const"				return tConst;
-"fallthrough"		return tFallthrough;
-"if"				return tIf;
-"range"				return tRange;
-"type"				return tType;
-"continue"			return tContinue;
-"for"				return tFor;
-"import"			return tImport;
-"return"			return tReturn;
-"var"				return tVar;
+\n {
+	if (needsSemiColon()) {
+		RETURN( ';' )
+	}
+}
 
-"print"				return tPrint;
-"println"			return tPrintln;
-"append"			return tAPPEND;
-"len"				return tLENGTH;
-"cap"				return tCAP;
+"break"			RETURN( tBreak )
+"default"			RETURN( tDefault )
+"func"				RETURN( tFunc )
+"interface"			RETURN( tInterface )
+"select"			RETURN( tSelect )
+"case"				RETURN( tCase )
+"defer"			RETURN( tDefer )
+"go"				RETURN( tGo )
+"map"				RETURN( tMap )
+"struct"			RETURN( tStruct )
+"chan"				RETURN( tChan )
+"else"				RETURN( tElse )
+"goto"				RETURN( tGoto )
+"package"			RETURN( tPackage )
+"switch"			RETURN( tSwitch )
+"const"			RETURN( tConst )
+"if"				RETURN( tIf )
+"range"			RETURN( tRange )
+"type"				RETURN( tType )
+"continue"			RETURN( tContinue )
+"for"				RETURN( tFor )
+"import"			RETURN( tImport )
+"return"			RETURN( tReturn )
+"var"				RETURN( tVar )
 
-"+"  				return '+';
-"&"					return '&';
-"+="				return tPlusEq;
-"&="				return tAndEq;
-"&&"				return tLOGICAND;
-"=="				return tEQ;
-"!="				return tNEQ;
-"("  				return '(';
-")"					return ')';
-"-"					return '-';
-"|"					return '|';
-"-="				return tMinusEquals;
-"|="				return tOrEquals;
-"||"				return tLOGICOR;
-"<"					return '<';
-"<="				return tLEQ;
-"["					return '[';
-"]"					return ']';
-"*"					return '*';
-"ˆ"					return '^';
-"*="				return tTimesEquals;
-"ˆ="				return tHatEquals;
-"<-"				return tLessMinus;
-">"					return '>';
-">="				return tGEQ;
-"{"					return '{';
-"}"					return '}';
-"/"					return '/';
-"<<"				return tBShiftLeft;
-"/="				return tDivideEquals;
-"<<="				return tLShiftEquals;
-"++"				return tIncrement;
-"="					return '=';
-":="				return tDefined;
-","					return ',';
-";"					return ';';
-"%"					return '%';
-">>"				return tBShiftRight;
-"%="				return tModEquals;
-">>="				return tRShiftEquals;
-"--"				return tDecrement;
-"!"					return '!';
-"..."				return tElipses;
-"."					return '.';
-":"					return ':';
-"&ˆ"				return tAndNot;
-"&ˆ="				return tAndHatEquals;
+"print"			RETURN( tPrint )
+"println"			RETURN( tPrintln )
+"append"			RETURN( tAPPEND )
+"len"				RETURN( tLENGTH )
+"cap"				RETURN( tCAP )
 
-"//"[^\n]*				// Comments "/*"([^*]|*[^/])*"*/"	<-- This line caused errors-- I commented out to compile
+
+"+="				RETURN( tPlusEq )
+"&="				RETURN( tAndEq )
+"&&"				RETURN( tLOGICAND )
+"=="				RETURN( tEQ )
+"!="				RETURN( tNEQ )
+"("  				RETURN( '(' )
+")"				RETURN( ')' )
+"-"				RETURN( '-' )
+"|"				RETURN( '|' )
+"-="				RETURN( tMinusEquals )
+"|="				RETURN( tOrEquals )
+"||"				RETURN( tLOGICOR )
+"<="				RETURN( tLEQ )
+"*="				RETURN( tTimesEquals )
+"^="				RETURN( tHatEquals )
+"<-"				RETURN( tLessMinus )
+">="				RETURN( tGEQ )
+"<<"				RETURN( tBShiftLeft )
+"/="				RETURN( tDivideEquals )
+"<<="				RETURN( tLShiftEquals )
+"++"				RETURN( tIncrement )
+":="				RETURN( tDefined )
+">>"				RETURN( tBShiftRight )
+"%="				RETURN( tModEquals )
+">>="				RETURN( tRShiftEquals )
+"--"				RETURN( tDecrement )
+"..."				RETURN( tElipses )
+"&^"				RETURN( tAndNot )
+"&^="				RETURN( tAndHatEquals )
+"+"  				RETURN( '+' )
+"&"				RETURN( '&' )
+"."				RETURN( '.' )
+":"				RETURN( ':' )
+"!"				RETURN( '!' )
+","				RETURN( ',' )
+";"				RETURN( ';' )
+"%"				RETURN( '%' )
+"="				RETURN( '=' )
+"{"				RETURN( '{' )
+"}"				RETURN( '}' )
+"/"				RETURN( '/' )
+">"				RETURN( '>' )
+"["				RETURN( '[' )
+"]"				RETURN( ']' )
+"*"				RETURN( '*' )
+"^"				RETURN( '^' )
+"<"				RETURN( '<' )
+
+
+"//"[^\n]*				printf("sing-comm\n ");
+"/*"([^\*]|\*[^/]|\n)*"*/"		printf("multi-comm\n" );
 
 
 "/*" {
@@ -99,68 +125,80 @@
 }
 
 
-"'"("\\"[abfnrtv\\\'])"'" {
-	yylval.runeval = strdup(yytext)[0]; //Made it so it worked with chars
-	return tRUNELIT;
+"'\\"[abfnrtv\\\']"'" {
+	yylval.runeval = strdup(yytext);
+	RETURN( tRUNELIT )
 }
 
 
 "'"[^\'\\]"'" {
-	yylval.runeval = strdup(yytext)[0]; //Made it so it worked with chars
-	return tRUNELIT;
+ 	yylval.runeval = strdup(yytext); 
+	RETURN( tRUNELIT )
 }
 
 
 
-\"([^"]|(\\\"))*\" {
-    yylval.stringval = strdup(yytext);
-    return tINTERPRETEDSTRINGLIT;
+\"([^\"]|(\\\"))*\" {
+	yylval.stringval = strdup(yytext); 
+	RETURN( tINTERPRETEDSTRINGLIT )
 }
 
 \" {
-    fprintf(stderr, "Error: unmatched quote found on line %d\n", yylineno);
-    exit(1);
+	fprintf(stderr, "Error: unmatched quote found on line %d\n", yylineno);
+	exit(1);
 }
 
-`[^`]` {
-	yylval.stringval = strdup(yytext);
-	return tRAWSTRINGLIT;
+"`"[^\`]*"`" {
+	yylval.stringval = strdup(yytext); 
+	RETURN( tRAWSTRINGLIT)
 }
 
 
 0|([1-9][0-9]*) {
-    yylval.intval = atoi(yytext); 
-    return tINTLIT;
+	yylval.intval = atoi(yytext);  
+	RETURN( tINTLIT )
 }
 
 0[oO]([1-7][0-7]*) {
 	char* ptr;
-    yylval.intval = strtol(yytext + 2, &ptr, 8); 
-    return tINTLIT;
+	yylval.intval = strtol(yytext + 2, &ptr, 8);  
+	RETURN( tINTLIT )
+}
+
+0([1-7][0-7])* {
+	char* ptr;
+	yylval.intval = strtol(yytext + 2, &ptr, 8);  
+	RETURN( tINTLIT )
 }
 
 0[xX]([1-9a-fA-F][0-9a-fA-F]*) {
 	char* ptr;
-    yylval.intval = strtol(yytext + 2, &ptr, 16); 
-    return tINTLIT;
+	yylval.intval = strtol(yytext + 2, &ptr, 16);  
+	RETURN( tINTLIT )
 }
 
 ([0-9]+"."[0-9]*)|"."[0-9]+ {
-    yylval.floatval = atof(yytext);
-    return tFLOATLIT;
+	yylval.floatval = atof(yytext); 
+	RETURN( tFLOATLIT )
 }
 
 
 [a-zA-Z_][a-zA-Z0-9_]* {
-    yylval.identifier = strdup(yytext); 
-    return tIDENTIFIER;
+	yylval.identifier = strdup(yytext);  
+	RETURN( tIDENTIFIER )
+    
 }
 
               
 
 . {
-    fprintf(stderr, "Error: bad character found: %s, line: %d\n", yytext, yylineno); 
-    exit(1);
+	fprintf(stderr, "Error: bad character found: %s, line: %d\n", yytext, yylineno); 
+	exit(1);
 }
 
 %%
+
+int main(){
+	yylex();
+	return 1;
+}

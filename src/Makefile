@@ -6,4 +6,4 @@ parser.tab.c parser.tab.h: parser.y
 lex.yy.c: scanner.l parser.tab.h
 	flex scanner.l
 clean:
-	rm parser.tab.*; rm lex.yy.*; rm *.o;
+	rm parser.tab.*; rm lex.yy.*; rm *.o; rm test;
