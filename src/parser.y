@@ -40,7 +40,7 @@ extern int yylineno;
 %left tEQ tNEQ tGEQ tLEQ '>' '<'
 %left '+' '-' '|' '^'
 %left '*' '/' '%' tBShiftLeft tBShiftRight '&' tAndNot
-%left '!' UNARY
+%left '!' UNARY 
 
 
 
@@ -69,11 +69,12 @@ expression:
 			| expression tLOGICAND expression	
 			| expression tLOGICOR expression	
 			| '+' expression %prec UNARY /*2.9.4*/
-			| '-' expression %prec UNARY
-			| '!' expression 
+			| '-' expression 
+			| '!' expression %prec UNARY
 			| '^' expression %prec UNARY
 			;
-expressionList: expression | expression ',' expressionList; //maybe Neil provided this?
+
+expressionList: expression  |  expression ',' expressionList //maybe Neil provided this?
 primaryExpression: 
 			  operand 
 			| conversion 
@@ -104,16 +105,16 @@ capExpression: tCAP '(' expression ')'; /*2.9.9*/
 
 
 
-type : "b"
+type : "placeholder"
+
+
+
 
 	/* TODO Declarations */
 
 
 statement: 
 		
-
-		
-			
 	
 			tPrint '(' expressionList ')' ';' // 2.8.8 Blank identifier in expressionList
 			| tPrintln '(' expressionList ')' ';' // 2.8.8 Blank identifier in expressionList
@@ -122,14 +123,10 @@ statement:
 			| tBreak ';' //2.8.13 Caught at weeding 
 			| tFallthrough ':' // Weeding (present only in switch statement last line, in all but last switch case)
 			| tContinue ';' //2.8.13 Caught at weeder
-			
-			|simpleStatement
-					
-			|block
-			
+			| simpleStatement ';'		
+			| block
 			| switch //2.8.11
 			| ifStatement //2.8.10
-
 			| loop //2.8.12
 
 
@@ -141,35 +138,35 @@ block : '{' statementList '}' // 2.8.2
 
 
 simpleStatement: 
-			//%empty /*2.8.1*/ //(Pandora's box)'
-			 expression ';' /* 2.8.3 sketchy, (needs to be a function call)*/ 
-			| tIDENTIFIER tIncrement ';' // 2.8.7 , Blank identifier
-			| tIDENTIFIER tDecrement ';'// 2.8.7 , Blank identifier
+			%empty /*2.8.1*/ //(Pandora's box)'
+			|expression  /* 2.8.3 sketchy, (needs to be a function call)*/ 
+			| tIDENTIFIER tIncrement  // 2.8.7 , Blank identifier
+			| tIDENTIFIER tDecrement // 2.8.7 , Blank identifier
 			| assignmentStatement //2.8.4
-			| expressionList tDefined expressionList ';'   /*2.8.6 Hacky Fix, LHS needs to be an identifier list
+			| expressionList tDefined expressionList    /*2.8.6 Hacky Fix, LHS needs to be an identifier list
 													(Short declaration) Parser needs to check that length(LHS) == length(RHS), 
 													weeder probably needs to check that we can assign into LHS
 													 */
  
 assignmentStatement : 	
-							expressionList '=' expressionList ';' 
+							expressionList '=' expressionList 
 							/*2.8.4 Parser needs to check that length(LHS) == length(RHS), 
 													weeder probably needs to check that we can assign into LHS 
 													Blank identifier RHS*/
 													
 							//AVOID BLANK IDENTIFIER LHS AND RHS
 					
-							expression tPlusEq expression ';'
-							|expression tAndEq expression ';'
-							|expression tMinusEquals expression ';'
-							|expression tOrEquals expression ';'
-							|expression tTimesEquals expression ';'
-							|expression tHatEquals expression ';'
-							|expression tLShiftEquals expression ';'
-							|expression tRShiftEquals expression ';'
-							|expression tAndHatEquals expression ';' 
-							|expression tModEquals expression ';'
-							|expression tDivideEquals expression ';'
+							|expression tPlusEq expression 
+							|expression tAndEq expression 
+							|expression tMinusEquals expression 
+							|expression tOrEquals expression 
+							|expression tTimesEquals expression 
+							|expression tHatEquals expression 
+							|expression tLShiftEquals expression 
+							|expression tRShiftEquals expression 
+							|expression tAndHatEquals expression 
+							|expression tModEquals expression 
+							|expression tDivideEquals expression 
 						
 							
 
@@ -179,9 +176,9 @@ ifStatement :
 			tIf expression block
 			| tIf expression block tElse ifStatement
 			| tIf expression block tElse block
-			| tIf simpleStatement ';' expression block
-			| tIf simpleStatement ';' expression block tElse ifStatement
-			| tIf simpleStatement ';' expression block tElse block
+			| tIf simpleStatement  ';' expression block
+			| tIf simpleStatement ';'  expression block tElse ifStatement
+			| tIf simpleStatement  ';' expression block tElse block
 
 
 
@@ -202,11 +199,11 @@ loop :
 
 
 
-simpleStatementList : %empty | simpleStatement ';' simpleStatementList
+simpleStatementList : simpleStatement ';' | simpleStatementList simpleStatement ';' 
 
 //2.8.11 Check usage for AST
 switch:
-		tSwitch simpleStatement expression '{' expressionCaseClauseList '}'
+		tSwitch simpleStatementList expression '{' expressionCaseClauseList '}'
 		| tSwitch expression '{' expressionCaseClauseList '}'
 		| tSwitch simpleStatementList '{' expressionCaseClauseList '}'
 		| tSwitch '{' expressionCaseClauseList '}'
