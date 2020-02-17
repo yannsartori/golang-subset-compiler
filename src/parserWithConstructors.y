@@ -189,7 +189,7 @@ type: 'b' { $$ = makeExpIdentifier("b"); }; //placeholder
 
 
 
-statementList :	 statementList statement {$$ = $1;$$->next = $2;}
+statementList :	 statementList statement {$$ = $2;$2->next = $1;}
 				 | %empty {$$ = NULL;}
 				
 block : '{' statementList '}'  {$$ = makeBlockStmt(reverseStmtList($2));}// 2.8.2 
@@ -315,7 +315,7 @@ switch:
 
 expressionCaseClauseList : %empty {$$ = NULL;}
 						| expressionCaseClause expressionCaseClauseList {$$ = $1; $1->next  = $2;}
-expressionCaseClause : expressionSwitchCase ":" statementList {$$ = makeSwitchCaseClause($1,$3);}
+expressionCaseClause : expressionSwitchCase ":" statementList {$$ = makeSwitchCaseClause($1, reverseStmtList($3));}
 
 expressionSwitchCase : tCase expressionList {$$ = $2;}
 					| tDefault {$$ = NULL;}
