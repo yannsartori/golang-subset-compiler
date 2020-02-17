@@ -131,14 +131,14 @@ statement:
 
 
 
-statementList : %empty | statement statementList
+statementList : %empty | statementList statement 
 block : '{' statementList '}' // 2.8.2 
 
 
 
 
 simpleStatement: 
-			%empty /*2.8.1*/ //(Pandora's box)'
+			%empty /*2.8.1*/ 
 			|expression  /* 2.8.3 sketchy, (needs to be a function call)*/ 
 			| tIDENTIFIER tIncrement  // 2.8.7 , Blank identifier
 			| tIDENTIFIER tDecrement // 2.8.7 , Blank identifier
@@ -199,13 +199,12 @@ loop :
 
 
 
-simpleStatementList : simpleStatement ';' | simpleStatementList simpleStatement ';' 
 
 //2.8.11 Check usage for AST
 switch:
-		tSwitch simpleStatementList expression '{' expressionCaseClauseList '}'
+		tSwitch simpleStatement ';' expression '{' expressionCaseClauseList '}'
 		| tSwitch expression '{' expressionCaseClauseList '}'
-		| tSwitch simpleStatementList '{' expressionCaseClauseList '}'
+		| tSwitch simpleStatement ';' '{' expressionCaseClauseList '}'
 		| tSwitch '{' expressionCaseClauseList '}'
 
 
