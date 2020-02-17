@@ -87,11 +87,26 @@ ExpList *createArgumentList(Exp *argument)
 	l->cur = argument;
 	return l;
 }
+void reverseArgumentList(ExpList **list)
+{
+	ExpList *prev = NULL; 
+    ExpList *current = *list; 
+    ExpList *next = NULL; 
+    while ( current != NULL ) 
+	{ 
+        next = current->next; 
+        current->next = prev; 
+        prev = current; 
+        current = next; 
+    } 
+    *list = prev; 
+}
 Exp *makeExpFuncCall(Exp *base, ExpList *arguments, ExpressionKind kind)
 {
 	Exp * e = (Exp *) malloc (sizeof(Exp));
 	e->kind = kind;
 	e->val.funcCall.base = base;
+	reverseArgumentList(&arguments);
 	e->val.funcCall.arguments = arguments;
 	return e;
 }

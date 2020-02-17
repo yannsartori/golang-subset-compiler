@@ -126,7 +126,7 @@ void prettyExp(Exp * exp)
 					break;
 				case expKindMod:
 					prettyExp(exp->val.binary.left);
-					printf(" % " );
+					fputs(" % ", stdout);
 					prettyExp(exp->val.binary.right);
 					break;
 				case expKindBitAnd:
@@ -186,10 +186,10 @@ void prettyExp(Exp * exp)
 void prettyExpList(ExpList *list)
 {
 	if ( list == NULL || list->cur == NULL ) return;
-	prettyExpList(list->next);
 	prettyExp(list->cur);
 	if ( list->next != NULL )
 	{
 		printf(", ");
+		prettyExpList(list->next);
 	}
 }
