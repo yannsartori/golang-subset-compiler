@@ -24,8 +24,10 @@ Stmt* makeAssignmentStmt(ExpList* lhs, ExpList* rhs);
 Stmt* makePrintStmt(ExpList* list);
 Stmt* makePrintlnStmt(ExpList* list);
 Stmt* makeReturnStmt(Exp* expr);
-Stmt* makeIfStmt(Stmt* statement, Exp* expression, Stmt* block);
+Stmt* makeIfStmt(Stmt* statement, Exp* expression, Stmt* block,Stmt* elseBlock);
+Stmt* makeElseStmt(Stmt* block);
 Stmt* makeWhileLoopStmt(Exp* condition, Stmt* block);
+Stmt* makeInfLoopStmt(Stmt* block);
 Stmt* makeThreePartLoopStmt(Stmt* init, Exp* condition, Stmt* inc, Stmt* block);
 Stmt* makeSwitchStmt(Stmt* statement, Exp* expression, switchCaseClause* clauseList);
 switchCaseClause* makeSwitchCaseClause(ExpList* expressionList, Stmt* statementList);
@@ -70,7 +72,7 @@ struct Stmt{
 
         struct {Exp* returnVal;} returnVal;
         
-        struct {Stmt* statement; Exp* expression; Stmt* block;} ifStmt; // Statement is added to the scope of if statement and else, and expression may be null to represent variants of if
+        struct {Stmt* statement; Exp* expression; Stmt* block;Stmt* elseBlock;} ifStmt; // Statement is added to the scope of if statement and else, and expression may be null to represent variants of if
         struct {Stmt* block;} elseStmt;
 
 

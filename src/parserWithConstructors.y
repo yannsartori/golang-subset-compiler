@@ -232,8 +232,8 @@ simpleStatement:
 			| expression  {if (isFuncCall($1)) {$$ = makeExpressionStmt($1); } else {expressionStmtError();}     } /* 2.8.3 sketchy, (needs to be a function call)*/ 
 
 
-			| tIDENTIFIER tIncrement  // 2.8.7 , Blank identifier, not _
-			| tIDENTIFIER tDecrement // 2.8.7 , Blank identifier, not _ 
+			| tIDENTIFIER tIncrement {$$ = compoundOperator(makeExpIdentifier($1),makeExpIntLit(1),expKindAddition);} // 2.8.7 , Blank identifier, not _
+			| tIDENTIFIER tDecrement {$$ = compoundOperator(makeExpIdentifier($1),makeExpIntLit(1),expKindSubtraction);}// 2.8.7 , Blank identifier, not _ 
 
 
 
@@ -281,13 +281,12 @@ assignmentStatement :
 
 // 2.8.10
 ifStatement : 
-			tIf expression block
-			| tIf expression block tElse ifStatement
-			| tIf expression block tElse block
-			| tIf simpleStatement  ';' expression block
-			| tIf simpleStatement ';'  expression block tElse ifStatement
-			| tIf simpleStatement  ';' expression block tElse block
-
+			tIf expression block {$$ = makeIfStmt(NULL,$2,$3,NULL); }
+			| tIf expression block tElse ifStatement {$$ = makeIfStmt(NULL,$2,$3,makeElseStmt(makeBlockStmt($5))); }
+			| tIf expression block tElse block {$$ = makeIfStmt(NULL,$2,$3,makeElseStmt($5)); }
+			| tIf simpleStatement  ';' expression block {$$ = makeIfStmt($2,$4,$5,NULL); }
+			| tIf simpleStatement ';'  expression block tElse ifStatement {$$ = makeIfStmt($2,$4,$5,makeElseStmt(makeBlockStmt($7))); } //Blockify
+			| tIf simpleStatement  ';' expression block tElse block {$$ = makeIfStmt($2,$4,$5,makeElseStmt($7));}
 
 
 
@@ -295,9 +294,9 @@ ifStatement :
 
 //2.8.12
 loop : 
-		tFor block 
-		| tFor expression block
-		| tFor simpleStatement ';' expression ';' simpleStatement block
+		tFor block {$$ = makeInfLoopStmt($2);}
+		| tFor expression block {$$ = makeWhileLoopStmt($2,$3);}
+		| tFor simpleStatement ';' expression ';' simpleStatement block {$$ = makeThreePartLoopStmt($2,$4,$6,$7);}
 
 
 
@@ -306,10 +305,10 @@ loop :
 
 //2.8.11 Check usage for AST
 switch:
-		tSwitch simpleStatement ';' expression '{' expressionCaseClauseList '}'
-		| tSwitch expression '{' expressionCaseClauseList '}'
-		| tSwitch simpleStatement ';' '{' expressionCaseClauseList '}'
-		| tSwitch '{' expressionCaseClauseList '}'
+		tSwitch simpleStatement ';' expression '{' expressionCaseClauseList '}' {$$ = makeSwitchStmt($2,$4,$6); }
+		| tSwitch expression '{' expressionCaseClauseList '}' {$$ = makeSwitchStmt(NULL,$2,$4); }
+		| tSwitch simpleStatement ';' '{' expressionCaseClauseList '}' {$$ = makeSwitchStmt($2,NULL,$5); }
+		| tSwitch '{' expressionCaseClauseList '}'  {$$ = makeSwitchStmt(NULL,NULL,$3); }
 
 
 

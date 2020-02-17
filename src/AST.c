@@ -80,7 +80,7 @@ Stmt* makeReturnStmt(Exp* expr){
     return ptr;
 }
 
-Stmt* makeIfStmt(Stmt* statement, Exp* expression, Stmt* block){
+Stmt* makeIfStmt(Stmt* statement, Exp* expression, Stmt* block,Stmt* elseBlock){
     Stmt* ptr = malloc(sizeof(Stmt));
     if (ptr == NULL){
         return NULL;
@@ -90,6 +90,7 @@ Stmt* makeIfStmt(Stmt* statement, Exp* expression, Stmt* block){
     ptr->val.ifStmt.statement = statement;
     ptr->val.ifStmt.expression= expression;
     ptr->val.ifStmt.block = block;
+    ptr->val.ifStmt.elseBlock = elseBlock;
 
     return ptr;
 }
@@ -316,7 +317,6 @@ int isFuncCall(Exp* expression){
 
     return 0;
 }
-
 
 
 
