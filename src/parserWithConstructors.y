@@ -189,7 +189,7 @@ type: 'b' { $$ = makeExpIdentifier("b"); }; //placeholder
 
 
 
-statementList :	 statementList statement {$$ = $2;$2->next = $1;}
+statementList :	 statementList statement {$$ = cons($2,$1);}
 				 | %empty {$$ = NULL;}
 				
 block : '{' statementList '}'  {$$ = makeBlockStmt(reverseStmtList($2));}// 2.8.2 

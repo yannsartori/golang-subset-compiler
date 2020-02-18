@@ -318,6 +318,16 @@ int isFuncCall(Exp* expression){
     return 0;
 }
 
+Stmt* cons(Stmt* head,Stmt* tail){
+    if (head == NULL){
+        return tail;
+    }else if(tail == NULL){
+        return head;
+    }else{
+        head->next = tail;
+        return head;
+    }
+}
 
 
 

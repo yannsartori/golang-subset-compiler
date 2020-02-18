@@ -12,4 +12,4 @@ main.o : main.c
 	$(CC) -c main.c
 
 clean:
-	rm parser.tab.*; rm lex.yy.*; rm *.o;
+	rm parser.tab.*; rm lex.yy.*; rm *.o; rm test

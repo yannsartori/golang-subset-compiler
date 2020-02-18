@@ -17,7 +17,7 @@ Stmt* makeBreakStmt();
 Stmt* makeContinueStmt();
 Stmt* makeFallthroughStmt();
 
-
+Stmt* cons(Stmt* head,Stmt* tail);
 Stmt* makeBlockStmt(Stmt* stmt);
 Stmt* makeExpressionStmt(Exp* expression);
 Stmt* makeAssignmentStmt(ExpList* lhs, ExpList* rhs);
