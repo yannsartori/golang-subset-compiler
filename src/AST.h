@@ -60,11 +60,12 @@ struct Stmt{
     StatementKind kind;
     struct Stmt* next;
 
+    int lineno;
+
     union {
         struct {Stmt* stmt;} block;
         struct {Exp* expr;} expression;
         struct {ExpList* lhs; ExpList* rhs;} assignment;
-        // TODO Declaration, short declaration
 
 
         struct {ExpList* list;} print;
@@ -84,8 +85,11 @@ struct Stmt{
 
         struct {Stmt* statement; Exp* expression; switchCaseClause* clauseList;} switchStmt; //Different variants are encodes using NULL
 
-
         //Break and continue are encoded in kind
+
+
+
+        // TODO Declaration, short declaration
 
     }val;
 

@@ -6,10 +6,14 @@
 #include "AST.h"
 
 
-Stmt* root;
+
 
 int yylex();
 extern int yylineno;
+extern Stmt* root;
+
+
+
 
 void yyerror(char const *s) {
 	fprintf(stderr, "Error: %s on line %d\n", s, yylineno);
@@ -72,6 +76,7 @@ Stmt* compoundOperator(Exp* left,Exp* right,ExpressionKind kind){
 %code requires
 {
 	#include "AST.h"
+	extern Stmt* root;
 }
 //need to implement their builtins
 //denali provided
@@ -189,7 +194,7 @@ type: 'b' { $$ = makeExpIdentifier("b"); }; //placeholder
 
 
 
-statementList :	 statementList statement {$$ = cons($2,$1);}
+statementList :	 statementList statement {cons($2,$1);}
 				 | %empty {$$ = NULL;}
 				
 block : '{' statementList '}'  {$$ = makeBlockStmt(reverseStmtList($2));}// 2.8.2 
@@ -232,8 +237,8 @@ simpleStatement:
 			| expression  {if (isFuncCall($1)) {$$ = makeExpressionStmt($1); } else {expressionStmtError();}     } /* 2.8.3 sketchy, (needs to be a function call)*/ 
 
 
-			| tIDENTIFIER tIncrement {$$ = compoundOperator(makeExpIdentifier($1),makeExpIntLit(1),expKindAddition);} // 2.8.7 , Blank identifier, not _
-			| tIDENTIFIER tDecrement {$$ = compoundOperator(makeExpIdentifier($1),makeExpIntLit(1),expKindSubtraction);}// 2.8.7 , Blank identifier, not _ 
+			| expression tIncrement {$$ = compoundOperator($1,makeExpIntLit(1),expKindAddition);} // 2.8.7 , Blank identifier, not _
+			| expression tDecrement {$$ = compoundOperator($1,makeExpIntLit(1),expKindSubtraction);}// 2.8.7 , Blank identifier, not _ 
 
 
 
@@ -253,8 +258,9 @@ assignmentStatement :
 																	if (containsBlank($3)){
 																		blankAssignmentError();
 																	}
+																	
 																	$$ = makeAssignmentStmt(reverseList($1),reverseList($3));
-
+																	
 
 																 }
 																else {lengthError(left,right);}    }
@@ -315,7 +321,12 @@ switch:
 
 expressionCaseClauseList : %empty {$$ = NULL;}
 						| expressionCaseClause expressionCaseClauseList {$$ = $1; $1->next  = $2;}
-expressionCaseClause : expressionSwitchCase ":" statementList {$$ = makeSwitchCaseClause($1, reverseStmtList($3));}
+expressionCaseClause : expressionSwitchCase ":" statementList {$$ = makeSwitchCaseClause($1,reverseStmtList($3));}
 
 expressionSwitchCase : tCase expressionList {$$ = $2;}
 					| tDefault {$$ = NULL;}
+
+
+
+
+

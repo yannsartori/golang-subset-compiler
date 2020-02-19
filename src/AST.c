@@ -1,6 +1,10 @@
 #include <stdlib.h>
 #include "globalEnum.h"
+#include <stdio.h>
 #include "AST.h"
+
+int yylineno;
+
 
 
 
@@ -12,6 +16,9 @@ Stmt* makeBlockStmt(Stmt* stmt){
 
     ptr->kind = StmtKindBlock;
     ptr->val.block.stmt = stmt;
+
+    ptr->lineno = yylineno;
+
     return ptr;
 }
 
@@ -24,6 +31,9 @@ Stmt* makeExpressionStmt(Exp* expression){
 
     ptr->kind = StmtKindExpression;
     ptr->val.expression.expr = expression;
+
+    ptr->lineno = yylineno;
+
     return ptr;
 }
 
@@ -36,6 +46,8 @@ Stmt* makeAssignmentStmt(ExpList* lhs, ExpList* rhs){
     ptr->kind = StmtKindAssignment;
     ptr->val.assignment.lhs = lhs;
      ptr->val.assignment.rhs = rhs;
+
+     ptr->lineno = yylineno;
 
     return ptr;
 }
@@ -51,6 +63,8 @@ Stmt* makePrintStmt(ExpList* list){
     ptr->kind = StmtKindPrint;
     ptr->val.print.list = list;
 
+    ptr->lineno = yylineno;
+
     return ptr;
 }
 
@@ -62,6 +76,8 @@ Stmt* makePrintlnStmt(ExpList* list){
 
     ptr->kind = StmtKindPrintln;
     ptr->val.print.list = list;
+
+    ptr->lineno = yylineno;
 
     return ptr;
 }
@@ -76,6 +92,8 @@ Stmt* makeReturnStmt(Exp* expr){
 
     ptr->kind = StmtKindReturn;
     ptr->val.returnVal.returnVal = expr;
+
+    ptr->lineno = yylineno;
 
     return ptr;
 }
@@ -92,6 +110,9 @@ Stmt* makeIfStmt(Stmt* statement, Exp* expression, Stmt* block,Stmt* elseBlock){
     ptr->val.ifStmt.block = block;
     ptr->val.ifStmt.elseBlock = elseBlock;
 
+
+    ptr->lineno = yylineno;
+
     return ptr;
 }
 
@@ -104,6 +125,8 @@ Stmt* makeElseStmt(Stmt* block){
     ptr->kind = StmtKindElse;
     ptr->val.elseStmt.block = block;
 
+    ptr->lineno = yylineno;
+
     return ptr;
 }
 
@@ -115,6 +138,8 @@ Stmt* makeInfLoopStmt(Stmt* block){
 
     ptr->kind = StmtKindInfLoop;
     ptr->val.infLoop.block = block;
+
+    ptr->lineno = yylineno;
 
     return ptr;
 }
@@ -130,6 +155,8 @@ Stmt* makeWhileLoopStmt(Exp* condition, Stmt* block){
     ptr->kind = StmtKindWhileLoop;
     ptr->val.whileLoop.block = block;
     ptr->val.whileLoop.conditon = condition;
+
+    ptr->lineno = yylineno;
 
     return ptr;
 }
@@ -148,6 +175,9 @@ Stmt* makeThreePartLoopStmt(Stmt* init, Exp* condition, Stmt* inc, Stmt* block){
     ptr->val.forLoop.inc = inc;
     ptr->val.forLoop.block = block;
 
+
+    ptr->lineno = yylineno;
+
     return ptr;
 }
 
@@ -163,6 +193,9 @@ Stmt* makeSwitchStmt(Stmt* statement, Exp* expression, switchCaseClause* clauseL
     ptr->val.switchStmt.expression = expression;
     ptr->val.switchStmt.clauseList = clauseList;
 
+
+    ptr->lineno = yylineno;
+
     return ptr;
 }
 
@@ -174,6 +207,9 @@ Stmt* makeBreakStmt(){
     }
 
     ptr->kind = StmtKindBreak;
+
+    ptr->lineno = yylineno;
+
     return ptr;
 
 }
@@ -186,6 +222,9 @@ Stmt* makeContinueStmt(){
     }
 
     ptr->kind = StmtKindContinue;
+
+    ptr->lineno = yylineno;
+
     return ptr;
 
 }
@@ -197,6 +236,8 @@ Stmt* makeFallthroughStmt(){
     }
 
     ptr->kind = StmtKindFallthrough;
+
+    ptr->lineno = yylineno;
     return ptr;
 
 }
