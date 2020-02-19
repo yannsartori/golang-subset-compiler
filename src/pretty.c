@@ -171,7 +171,7 @@ void printSwitchStmt(Stmt* stmt,int indentLevel){
 
     if (simpleStatement != NULL){
         printSimpleStatement(simpleStatement);
-        printf(";");
+        
     }
 
     if (expr != NULL){
@@ -240,6 +240,7 @@ void printSwitchCaseClause(switchCaseClause* clause,int indentLevel){
     }
 
     printStmt(clause->statementList,indentLevel + 1);
+	printf("\n");
     printSwitchCaseClause(clause->next,indentLevel);
 
 

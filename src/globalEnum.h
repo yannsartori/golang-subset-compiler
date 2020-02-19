@@ -30,6 +30,15 @@ typedef enum {
 
 
 
+typedef enum{
+    inLoop,
+    inSwitchStatement,
+    inFunction,
+    outside
+}State;
+
+
+
 //Yann's defintion
 
 typedef enum {

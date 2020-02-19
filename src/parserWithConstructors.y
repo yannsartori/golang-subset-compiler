@@ -58,6 +58,17 @@ void compoundOperatorError(Exp* left,Exp* right){
 	}
 }
 
+
+void blankSwitchExprError(){
+	fprintf(stderr, "Error: (line %d) switch statement condition may not contain the blank identifier \n", yylineno);
+	exit(1);
+}
+
+void blankSwitchCaseClauseError(){
+	fprintf(stderr, "Error: (line %d)  switch clause may not contain the blank identifier \n", yylineno);
+	exit(1);
+}
+
 Stmt* compoundOperator(Exp* left,Exp* right,ExpressionKind kind){
 	compoundOperatorError(left,right);
 	return makeAssignmentStmt(createArgumentList(left) ,createArgumentList(makeExpBinary(left,right,kind) ) );
@@ -97,7 +108,7 @@ Stmt* compoundOperator(Exp* left,Exp* right,ExpressionKind kind){
 %token <boolval> tBOOLVAL
 %token <identifier> tIDENTIFIER
 %type <exp>  expression operand literal conversion index selector appendExpression lengthExpression capExpression type primaryExpression 
-%type <explist> expressionList arguments expressionSwitchCase
+%type <explist> expressionList arguments expressionSwitchCase maybeEmptyExpressionList
 %left tLOGICOR
 %left tLOGICAND
 %left tEQ tNEQ tGEQ tLEQ '>' '<'
@@ -146,6 +157,9 @@ expression: /* unrolled https://golang.org/ref/spec#Expression with precdence di
 expressionList: 
 			  expression { $$ = createArgumentList($1); }
 			| expressionList ',' expression { $$ = addArgument($1, $3); } /*Reversed!!!*/
+
+maybeEmptyExpressionList : %empty {$$ = NULL;}
+						| expressionList {$$ = $1;};
 			; //maybe Neil provided this?
 primaryExpression: 
 			  operand { $$ = $1; }
@@ -203,13 +217,13 @@ block : '{' statementList '}'  {$$ = makeBlockStmt(reverseStmtList($2));}// 2.8.
 statement: 
 		
 	
-			tPrint '(' expressionList ')' ';' {if (containsBlank($3)) { printBlankError(); } else {$$ = makePrintStmt(reverseList($3));}  
+			tPrint '(' maybeEmptyExpressionList ')' ';' {if (containsBlank($3)) { printBlankError(); } else {$$ = makePrintStmt(reverseList($3));}  
 												
 												} // 2.8.8 Blank identifier in expressionList
 
 
 
-			| tPrintln '(' expressionList ')' ';' {if (containsBlank($3)) { printBlankError(); } else {$$ = makePrintlnStmt(reverseList($3));}  
+			| tPrintln '(' maybeEmptyExpressionList ')' ';' {if (containsBlank($3)) { printBlankError(); } else {$$ = makePrintlnStmt(reverseList($3));}  
 												
 												}// 2.8.8 Blank identifier in expressionList
 			| tReturn ';' {$$ = makeReturnStmt(NULL);}// 2.8.9 
@@ -306,10 +320,10 @@ loop :
 
 
 
-//2.8.11 Check usage for AST
+//2.8.11 Check usage for AST, check usage of the blank identifier in the switch case clause
 switch:
-		tSwitch simpleStatement ';' expression '{' expressionCaseClauseList '}' {$$ = makeSwitchStmt($2,$4,$6); }
-		| tSwitch expression '{' expressionCaseClauseList '}' {$$ = makeSwitchStmt(NULL,$2,$4); }
+		tSwitch simpleStatement ';' expression '{' expressionCaseClauseList '}' { if (isBlank($4)) { blankSwitchExprError(); }   ;  $$ = makeSwitchStmt($2,$4,$6); }
+		| tSwitch expression '{' expressionCaseClauseList '}' {if (isBlank($2)) { blankSwitchExprError(); }   ;$$ = makeSwitchStmt(NULL,$2,$4); }
 		| tSwitch simpleStatement ';' '{' expressionCaseClauseList '}' {$$ = makeSwitchStmt($2,NULL,$5); }
 		| tSwitch '{' expressionCaseClauseList '}'  {$$ = makeSwitchStmt(NULL,NULL,$3); }
 
@@ -320,5 +334,5 @@ expressionCaseClauseList : %empty {$$ = NULL;}
 						| expressionCaseClause expressionCaseClauseList {$$ = $1; $1->next  = $2;}
 expressionCaseClause : expressionSwitchCase ':' statementList {$$ = makeSwitchCaseClause($1, reverseStmtList($3));}
 
-expressionSwitchCase : tCase expressionList {$$ = $2;}
+expressionSwitchCase : tCase expressionList {if (containsBlank($2)) {blankSwitchCaseClauseError();} ;$$ = $2;}
 					| tDefault {$$ = NULL;}
