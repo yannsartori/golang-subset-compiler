@@ -1,6 +1,6 @@
 CC = gcc
-all: parser.tab.o lex.yy.o AST.o AST.c main.o
-	$(CC) -Wall -g lex.yy.o parser.tab.o AST.o main.o -o test -lfl
+all: parser.tab.o lex.yy.o AST.o AST.c main.o  pretty.o
+	$(CC) -Wall -g lex.yy.o parser.tab.o AST.o main.o  pretty.o -o test -lfl
 parser.tab.c parser.tab.h: parserWithConstructors.y
 	bison -Wno-yacc --defines=parser.tab.c --output=parser.tab.h parserWithConstructors.y
 lex.yy.c: scanner.l parser.tab.h
@@ -10,6 +10,9 @@ AST.o:  AST.c
 
 main.o : main.c
 	$(CC) -c main.c
+
+pretty.o : pretty.c
+	$(CC) -c pretty.c
 
 clean:
 	rm parser.tab.*; rm lex.yy.*; rm *.o; rm test

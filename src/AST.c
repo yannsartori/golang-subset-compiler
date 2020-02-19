@@ -6,8 +6,6 @@
 int yylineno;
 
 
-
-
 Stmt* makeBlockStmt(Stmt* stmt){
     Stmt* ptr = malloc(sizeof(Stmt));
     if (ptr == NULL){
@@ -103,6 +101,8 @@ Stmt* makeIfStmt(Stmt* statement, Exp* expression, Stmt* block,Stmt* elseBlock){
     if (ptr == NULL){
         return NULL;
     }
+
+ 
 
     ptr->kind = StmtKindIf;
     ptr->val.ifStmt.statement = statement;
@@ -410,6 +410,8 @@ Exp *makeExpIdentifier(char *identifier) //How should we handle types?
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = expKindIdentifier;
 	e->val.id = identifier;
+
+    e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpIntLit(int intLit)
@@ -417,6 +419,8 @@ Exp *makeExpIntLit(int intLit)
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = expKindIntLit;
 	e->val.intLit = intLit;
+
+    e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpFloatLit(double floatLit)
@@ -424,6 +428,8 @@ Exp *makeExpFloatLit(double floatLit)
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = expKindFloatLit;
 	e->val.floatLit = floatLit;
+
+    e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpStringLit(ExpressionKind kind, char *stringLit)
@@ -431,6 +437,8 @@ Exp *makeExpStringLit(ExpressionKind kind, char *stringLit)
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = kind;
 	e->val.stringLit = stringLit;
+
+    e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpRuneLit(char* runeLit)
@@ -438,6 +446,8 @@ Exp *makeExpRuneLit(char* runeLit)
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = expKindRuneLit;
 	e->val.runeLit = runeLit;
+
+    e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpBinary(Exp *left,  Exp *right, ExpressionKind kind)
@@ -446,6 +456,8 @@ Exp *makeExpBinary(Exp *left,  Exp *right, ExpressionKind kind)
 	e->kind = kind;
 	e->val.binary.left = left;
 	e->val.binary.right = right;
+
+    e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpUnary(Exp *unary, ExpressionKind kind )
@@ -453,6 +465,8 @@ Exp *makeExpUnary(Exp *unary, ExpressionKind kind )
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = kind;
 	e->val.unary = unary;
+
+    e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpAppend(Exp *list, Exp *elem)
@@ -461,6 +475,8 @@ Exp *makeExpAppend(Exp *list, Exp *elem)
 	e->kind = expKindAppend;
 	e->val.append.list = list;
 	e->val.append.elem = elem;
+
+    e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpBuiltInBody(Exp *builtInBody, ExpressionKind kind)
@@ -468,6 +484,8 @@ Exp *makeExpBuiltInBody(Exp *builtInBody, ExpressionKind kind)
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = kind;
 	e->val.builtInBody = builtInBody;
+
+    e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpAccess(Exp *base, Exp * accessor, ExpressionKind kind)
@@ -476,18 +494,24 @@ Exp *makeExpAccess(Exp *base, Exp * accessor, ExpressionKind kind)
 	e->kind = kind;
 	e->val.access.base = base;
 	e->val.access.accessor = accessor;
+
+    e->isBracketed = 0;
 	return e;
 }
 ExpList *addArgument(ExpList * args, Exp * argument)
 {
 	ExpList *newNode = createArgumentList(argument);
 	newNode->next = args;
+    
+
 	return newNode;
 }
 ExpList *createArgumentList(Exp *argument)
 {
 	ExpList *l = (ExpList *) malloc(sizeof(ExpList));
 	l->cur = argument;
+
+    
 	return l;
 }
 Exp *makeExpFuncCall(Exp *base, ExpList *arguments, ExpressionKind kind)
@@ -496,5 +520,7 @@ Exp *makeExpFuncCall(Exp *base, ExpList *arguments, ExpressionKind kind)
 	e->kind = kind;
 	e->val.funcCall.base = base;
 	e->val.funcCall.arguments = arguments;
+
+    e->isBracketed = 0;
 	return e;
 }

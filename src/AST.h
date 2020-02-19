@@ -109,9 +109,6 @@ struct switchCaseClause {
 
 
 
-
-
-
 // Yann's definitions 
 
 
@@ -122,6 +119,7 @@ struct ExpList { //Will be reversed because of left recursion!
 };
 struct Exp {
 	ExpressionKind kind;
+    int isBracketed;
 	union {
 		char *id;
 		int intLit;

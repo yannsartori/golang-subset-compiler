@@ -2,10 +2,14 @@
     #include <stdio.h>
     #include <stdlib.h>
     #include "parser.tab.h"
+	#include "AST.h"
+	
 
     extern int yylineno;
+
+
     
-    #define RETURN(token) {lastToken = token;/* printf("%s\n", #token);}*/ return token;}
+    #define RETURN(token) {lastToken = token; printf("%s\n", #token); return token;}
     
     int lastToken = 0;
     

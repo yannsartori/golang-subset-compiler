@@ -25,38 +25,52 @@ void printStmt(Stmt* stmt, int indentLevel){
         return;
     }
 
-    indent(indentLevel);
+    
 
     switch (stmt->kind){
-        case StmtKindBlock :    printf("{\n");
+        case StmtKindBlock :    indent(indentLevel);
+								printf("{\n");
                                 printStmt(stmt->val.block.stmt,indentLevel + 1);
                                 indent(indentLevel);
                                 printf("}\n");
                                 break;
 
-        case StmtKindExpression : printSimpleStatement(stmt);
+        case StmtKindExpression : 	indent(indentLevel);
+									printSimpleStatement(stmt);
                                     printf("\n");
                                     break;
                                     
-        case StmtKindAssignment : printSimpleStatement(stmt);
+        case StmtKindAssignment : indent(indentLevel);
+									printSimpleStatement(stmt);
                                     printf("\n");
                                     break;
     
-        case StmtKindPrint : printf("print(");
+        case StmtKindPrint : 	indent(indentLevel);
+								printf("print(");
                                 prettyExpList(stmt->val.print.list);
                                 printf(");\n");
                                 break;
 
-        case StmtKindPrintln : printf("println(");
+        case StmtKindPrintln : indent(indentLevel);
+								printf("println(");
                                 prettyExpList(stmt->val.println.list);
                                 printf(");\n");
                                 break;
-        case StmtKindIf :   printIfStmt(stmt,indentLevel);
+        case StmtKindIf :   indent(indentLevel);
+							printIfStmt(stmt,indentLevel);
                             break;
         case StmtKindElse: printf("else");
-                            printStmt(stmt->val.elseStmt.block,indentLevel+1);
+
+							Stmt* blockStmt = stmt->val.elseStmt.block;
+
+							printf("{\n\n");
+	
+                            printStmt(blockStmt->val.block.stmt,indentLevel+1);
+							indent(indentLevel);
+							printf("}\n\n");
                             break;
         case StmtKindReturn: 
+							indent(indentLevel);
                             printf("return ");
                             if (stmt->val.returnVal.returnVal != NULL){
                                 prettyExp(stmt->val.returnVal.returnVal);
@@ -64,17 +78,22 @@ void printStmt(Stmt* stmt, int indentLevel){
                             printf(";\n");
                             break;
 
-        case StmtKindSwitch: printSwitchStmt(stmt,indentLevel);
+        case StmtKindSwitch: 	indent(indentLevel);
+								printSwitchStmt(stmt,indentLevel);
+								break;
 
-        case StmtKindInfLoop:   printf("for ");
+        case StmtKindInfLoop:   indent(indentLevel);
+								printf("for ");
                                 printStmt(stmt->val.infLoop.block,indentLevel);
                                 break;
 
-        case StmtKindWhileLoop: printf("for ");
+        case StmtKindWhileLoop: indent(indentLevel);
+								printf("for ");
                                 prettyExp(stmt->val.whileLoop.conditon);
                                 printStmt(stmt->val.whileLoop.block,indentLevel);
                                 break;
-        case StmtKindThreePartLoop:  printf("for ");
+        case StmtKindThreePartLoop:  indent(indentLevel);
+									printf("for ");
                                     printSimpleStatement(stmt->val.forLoop.init);
                                     printf(";");
                                     prettyExp(stmt->val.forLoop.condition);
@@ -85,11 +104,14 @@ void printStmt(Stmt* stmt, int indentLevel){
 
                                     break;
 
-        case StmtKindBreak:     printf("break;");
+        case StmtKindBreak:     indent(indentLevel);
+								printf("break;");
                                 break;
-        case StmtKindContinue: printf("continue;");
+        case StmtKindContinue: indent(indentLevel);
+								printf("continue;");
                                 break;
         case StmtKindFallthrough: 
+								indent(indentLevel);
                                 printf("fallthrough;");
                                 break;
     }
@@ -104,20 +126,34 @@ void printIfStmt(Stmt* stmt,int indentLevel){
     Exp* expr = stmt->val.ifStmt.expression;
     Stmt* block = stmt->val.ifStmt.block;
 
-    printf("if ");
+	
 
+   
+	printf("if ");
 
 
     if (simpleStmt != NULL){
-        printSimpleStatement(stmt);
+		
+        printSimpleStatement(simpleStmt);
     }
 
+
+	
     if (expr != NULL){
         prettyExp(expr);
-        printf(";");
+        
     }
 
-    printStmt(block,indentLevel);
+	printf("{\n\n");
+
+    printStmt(block->val.block.stmt,indentLevel+1);
+	printf("\n");
+	indent(indentLevel);
+	printf("}");
+
+	if (stmt->val.ifStmt.elseBlock == NULL){
+		printf("\n\n");
+	}
 
     printStmt(stmt->val.ifStmt.elseBlock,indentLevel);
 }
@@ -164,10 +200,14 @@ void printSimpleStatement(Stmt* stmt){
     if (stmt == NULL){
         return;
     }
+	
+
+	
 
     switch (stmt->kind){
 
         case StmtKindExpression : prettyExp(stmt->val.expression.expr);
+									
                                     printf(";");
                                     break;
                                     
