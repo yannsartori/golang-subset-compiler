@@ -23,6 +23,11 @@ struct Exp {
 		Exp *builtInBody;
 	} val;
 };
+//Below are Neil provided functions
+int isBlank(Exp* expression);
+int containsBlank(ExpList* list);
+
+//Below are Yann provided functions
 ExpList *addArgument(ExpList * args, Exp * argument);
 ExpList *createArgumentList(Exp *argument);
 Exp *makeExpIdentifier(char *identifier); //How should we handle types?
@@ -34,6 +39,6 @@ Exp *makeExpBinary(Exp *left, Exp *right, ExpressionKind kind);
 Exp *makeExpUnary(Exp *unary, ExpressionKind kind );
 Exp *makeExpAppend(Exp *list, Exp *elem);
 Exp *makeExpAccess(Exp *base, Exp * accessor, ExpressionKind kind);
-Exp *makeExpFuncCall(Exp *base, ExpList *arguments, ExpressionKind kind);
+Exp *makeExpFuncCall(Exp *base, ExpList *arguments);
 Exp *makeExpBuiltInBody(Exp *builtInBody, ExpressionKind kind);
 #endif

@@ -37,6 +37,5 @@ typedef enum {
 	expKindAppend,
 	expKindLength,
 	expKindCapacity,
-	expKindTypeCast
 } ExpressionKind;
 #endif
