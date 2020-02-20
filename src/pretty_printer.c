@@ -26,7 +26,6 @@ void prettyExp(Exp * exp)
 		case expKindInterpretedStringLit:
 			printf("%s", exp->val.stringLit);
 			break;
-		case expKindTypeCast:
 		case expKindFuncCall:
 			prettyExp(exp->val.funcCall.base);
 			printf("(");

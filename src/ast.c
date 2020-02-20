@@ -1,8 +1,28 @@
 #include <stdlib.h>
+#include <string.h>
 #include "globalEnum.h"
 #include "ast.h"
+//Neil provided
+int isBlank(Exp* expression){
+    if (expression == NULL){
+        return 0;
+    }
+    return (expression->kind == expKindIdentifier && (strcmp(expression->val.id,"_") == 0));
+}
+int containsBlank(ExpList* list){
+    if (list == NULL){
+        return 0;
+    }else{
+        if (isBlank(list->cur)){
+            return 1;
+        }else{
+            return containsBlank(list->next);
+        }
+    }
+}
 
-Exp *makeExpIdentifier(char *identifier) //How should we handle types?
+//Yann Provided
+Exp *makeExpIdentifier(char *identifier)
 {
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = expKindIdentifier;
@@ -101,10 +121,10 @@ void reverseArgumentList(ExpList **list)
     } 
     *list = prev; 
 }
-Exp *makeExpFuncCall(Exp *base, ExpList *arguments, ExpressionKind kind)
+Exp *makeExpFuncCall(Exp *base, ExpList *arguments)
 {
 	Exp * e = (Exp *) malloc (sizeof(Exp));
-	e->kind = kind;
+	e->kind = expKindFuncCall;
 	e->val.funcCall.base = base;
 	reverseArgumentList(&arguments);
 	e->val.funcCall.arguments = arguments;
