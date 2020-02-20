@@ -10,38 +10,39 @@ typedef struct varDeclNode varDeclNode;
 typedef struct typeDeclNode typeDeclNode;
 typedef struct funcDeclNode funcDeclNode;
 
-struct rootNode  {
+struct RootNode  {
 	char* packageName;
 	topDeclarationNode startDecls;
 };
 
-struct topDeclarationNode {
-	topDeclarationNode* nextTopDecl;
-	char* typeForDecls;
+RootNode* makeRootNode(char* packName, topDeclarationNode* firstDecl);
+
+struct TopDeclarationNode {
+	TopDeclarationNode* nextTopDecl;
 	int multiDecl;
-	topDeclarationType declType
+	TopDeclarationType declType
 	union {
-		varDeclNode* varDecl;
-		typeDeclNode* typeDecl;
-		funcDeclNode* funcDecl;
+		VarDeclNode* varDecl;
+		TypeDeclNode* typeDecl;
+		FuncDeclNode* funcDecl;
 	} actualRealDeclaration;
 };
 
-struct varDeclNode {
+struct VarDeclNode {
 	char* identifier;
 	Exp* value;
 	int arrayLength;
-	varDeclNode* nextDecl;
+	VarDeclNode* nextDecl;
 }
 
-struct typeDeclNode {
+struct TypeDeclNode {
 	char* identifier;
-	typeDeclNode* nextDecl;
+	TypeDeclNode* nextDecl;
 }
 
-struct funcDeclNode {
+struct FuncDeclNode {
 	char* identifier;
-	typeDeclNode* argsDecls;
+	TypeDeclNode* argsDecls;
 }
 
 struct ExpList { //Will be reversed because of left recursion!

@@ -31,6 +31,8 @@ void yyerror(char const *s) {
 	char *identifier;
 	struct Exp *exp;
 	struct ExpList *explist;
+	RootNode* rootNode;
+	TopDeclarationNode* topDeclNode;
 }
 %token tLOGICOR tLOGICAND tEQ tNEQ tGEQ tLEQ tBShiftLeft tBShiftRight tAndNot tLENGTH tCAP tAPPEND tBreak tDefault tFunc tInterface tSelect tCase tDefer tGo tMap tStruct tChan tElse tGoto tPackage tSwitch tConst tFallthrough tIf tRange tType tContinue tFor tImport tReturn tVar tPrint tPrintln tPlusEq tAndEq tMinusEquals tOrEquals tTimesEquals tHatEquals tLessMinus tDivideEquals tLShiftEquals tIncrement tDefined tModEquals tRShiftEquals tDecrement tElipses tAndHatEquals 
 %token <intval>	   tINTLIT
@@ -42,6 +44,7 @@ void yyerror(char const *s) {
 %type <exp> expression operand literal conversion index selector appendExpression lengthExpression capExpression simpleType primaryExpression 
 %type <explist> expressionList arguments
 %type <rootNode> root
+%type <topDeclNode> variableDecl typeDecl funcDecl topDeclarationList
 %left tLOGICOR
 %left tLOGICAND
 %left tEQ tNEQ tGEQ tLEQ '>' '<'
@@ -55,27 +58,28 @@ void yyerror(char const *s) {
 
 %%
 
-root			: tPackage tIDENTIFIER ';' topDeclarationList {$$ = NULL}
+root			: tPackage tIDENTIFIER ';' topDeclarationList {$$ = makeRootNode($2, $4);}
 ;
 
-topDeclarationList	: 
-			| variableDecl topDeclarationList
-			| typeDecl topDeclarationList
-			| funcDecl topDeclarationList
+topDeclarationList	: 					{$$ = NULL;}
+			| variableDecl topDeclarationList	
+			| typeDecl topDeclarationList	
+			| funcDecl topDeclarationList	
 ;
 
-variableDecl		: tVar singleVarDecl ';'
-			| tVar '(' innerVarDecls ')' ';'
-			| tVar '(' ')' ';'
+variableDecl		: tVar singleVarDecl ';'		
+			| tVar '(' innerVarDecls ')' ';'	
+			| tVar '(' ')' ';'			
 ;
 
 innerVarDecls		: singleVarDecl
+			| singleVarDecl ';'
 			| singleVarDecl ';' innerVarDecls
 ;
 
-singleVarDecl		: expressionList declType '=' expressionList
-			| expressionList '=' expressionList
-			| expressionList declType
+singleVarDecl		: identifierList declType '=' expressionList
+			| identifierList '=' expressionList
+			| identifierList declType
 ;
 
 typeDecl		: tType singleTypeDecl ';'
@@ -84,10 +88,11 @@ typeDecl		: tType singleTypeDecl ';'
 ;
 
 innerTypeDecls	: singleTypeDecl
+			| singleTypeDecl ';'
 			| singleTypeDecl ';' innerTypeDecls
 ;
 
-singleTypeDecl	: expressionList declType
+singleTypeDecl	: identifierList declType
 ;
 
 funcDecl		: tFunc tIDENTIFIER '(' funcArgDecls ')' declType block
@@ -96,9 +101,8 @@ funcDecl		: tFunc tIDENTIFIER '(' funcArgDecls ')' declType block
 			| tFunc tIDENTIFIER '(' ')' block
 ;
 
-funcArgDecls		: tIDENTIFIER ',' funcArgDecls
-			| tIDENTIFIER declType funcArgDecls
-			| tIDENTIFIER declType
+funcArgDecls		: identifierList declType funcArgDecls
+			| identifierList declType
 ;
 
 declType		: tIDENTIFIER
@@ -108,9 +112,13 @@ declType		: tIDENTIFIER
 ;
 
 sliceDeclType		: '[' ']' tIDENTIFIER;
-arrayDeclType		: '[' expression ']' tIDENTIFIER;
+arrayDeclType		: index tIDENTIFIER;
 structDeclType	: tStruct '{' innerTypeDecls '}' ';'
 			| tStruct '{' '}' ';'
+;
+
+identifierList	: tIDENTIFIER
+			| tIDENTIFIER ',' identifierList
 ;
 
 expression: /* unrolled https://golang.org/ref/spec#Expression with precdence directives*/
@@ -178,6 +186,6 @@ selector: '.' tIDENTIFIER { $$ = makeExpIdentifier($2); }; /*2.9.8-- Should we w
 appendExpression: tAPPEND '(' expression ',' expression ')' { $$ = makeExpAppend($3, $5); }; /*2.9.9*/
 lengthExpression: tLENGTH '(' expression ')' { $$ = makeExpBuiltInBody($3, expKindLength); }; /*2.9.9*/
 capExpression: tCAP '(' expression ')' { $$ = makeExpBuiltInBody($3, expKindCapacity); }; /*2.9.9*/
-simpleType: 		tIDENTIFIER { $$ = makeExpIdentifier("b"); }; //placeholder
+simpleType: 		'b' { $$ = makeExpIdentifier("b"); }; //placeholder
 block: 		'{' '}' //placeholder
 

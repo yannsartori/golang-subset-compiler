@@ -2,12 +2,21 @@
 #include "globalEnum.h"
 #include "ast.h"
 
-rootNode* makeRootNode(char* packName, topDeclarationNode* startDecls) {
+RootNode* makeRootNode(char* packName, TopDeclarationNode* firstDecl) {
 	rootNode* r = malloc(sizeof(rootNode));
 	r -> packageName = packname;
-	r -> 
+	r -> startDecls = firstDecl;
+	return r;
 }
 
+TopDeclarationNode* makeTopVarDecl(VarDeclNode* varDecl, TopDeclarationNode* nextTopDecl, int multiDecl) {
+	TopDeclarationNode* v = malloc(sizeof(TopDeclarationNode*));
+	v -> TopDeclarationType = variDeclType;
+	v -> multiDecl = multiDecl;
+	v -> nextTopDecl = nextTopDecl;
+	v -> actualRealDeclaration.varDecl = varDecl;
+	return v;
+}
 
 Exp *makeExpIdentifier(char *identifier) //How should we handle types?
 {

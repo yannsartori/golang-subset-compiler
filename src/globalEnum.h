@@ -44,5 +44,6 @@ typedef enum {
 	funcDeclType,
 	typeDeclType,
 	variDeclType
-} topDeclarationType;
+} TopDeclarationType;
+
 #endif
