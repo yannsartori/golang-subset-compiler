@@ -1,6 +1,6 @@
 #ifndef GLOBAL_ENUM
 #define GLOBAL_ENUM
-
+extern int printTokens;
 typedef enum {
 	expKindIdentifier,
 	expKindIntLit,
@@ -37,7 +37,6 @@ typedef enum {
 	expKindAppend,
 	expKindLength,
 	expKindCapacity,
-	expKindTypeCast
 } ExpressionKind;
 
 typedef enum {

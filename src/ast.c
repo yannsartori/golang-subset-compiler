@@ -1,6 +1,25 @@
 #include <stdlib.h>
+#include <string.h>
 #include "globalEnum.h"
 #include "ast.h"
+//Neil provided
+int isBlank(Exp* expression){
+    if (expression == NULL){
+        return 0;
+    }
+    return (expression->kind == expKindIdentifier && (strcmp(expression->val.id,"_") == 0));
+}
+int containsBlank(ExpList* list){
+    if (list == NULL){
+        return 0;
+    }else{
+        if (isBlank(list->cur)){
+            return 1;
+        }else{
+            return containsBlank(list->next);
+        }
+    }
+}
 
 RootNode* makeRootNode(char* packName, TopDeclarationNode* firstDecl) {
 	rootNode* r = malloc(sizeof(rootNode));
@@ -46,7 +65,7 @@ Exp *makeExpStringLit(ExpressionKind kind, char *stringLit)
 	e->val.stringLit = stringLit;
 	return e;
 }
-Exp *makeExpRuneLit(char runeLit)
+Exp *makeExpRuneLit(char *runeLit)
 {
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = expKindRuneLit;
@@ -103,11 +122,26 @@ ExpList *createArgumentList(Exp *argument)
 	l->cur = argument;
 	return l;
 }
-Exp *makeExpFuncCall(Exp *base, ExpList *arguments, ExpressionKind kind)
+void reverseArgumentList(ExpList **list)
+{
+	ExpList *prev = NULL; 
+    ExpList *current = *list; 
+    ExpList *next = NULL; 
+    while ( current != NULL ) 
+	{ 
+        next = current->next; 
+        current->next = prev; 
+        prev = current; 
+        current = next; 
+    } 
+    *list = prev; 
+}
+Exp *makeExpFuncCall(Exp *base, ExpList *arguments)
 {
 	Exp * e = (Exp *) malloc (sizeof(Exp));
-	e->kind = kind;
+	e->kind = expKindFuncCall;
 	e->val.funcCall.base = base;
+	reverseArgumentList(&arguments);
 	e->val.funcCall.arguments = arguments;
 	return e;
 }

@@ -1,10 +1,12 @@
 %{
     #include <stdio.h>
     #include <stdlib.h>
+	#include "globalEnum.h"
     #include "parser.tab.h"
     
-    #define RETURN(token) {lastToken = token; return token;}
-    
+    #define RETURN(token) if ( printTokens ) puts(#token); lastToken = token; return token;
+    #define RETURN_NO_PRINT(token) lastToken = token; return token;
+	
     int lastToken = 0;
     
     int needsSemiColon() {
@@ -34,9 +36,10 @@
 
 \n {
 	if (needsSemiColon()) {
-		RETURN( ';' )
+		puts(";"); RETURN( ';' )
 	}
 }
+
 
 "break"			RETURN( tBreak )
 "default"			RETURN( tDefault )
@@ -63,6 +66,7 @@
 "import"			RETURN( tImport )
 "return"			RETURN( tReturn )
 "var"				RETURN( tVar )
+
 
 "print"			RETURN( tPrint )
 "println"			RETURN( tPrintln )
@@ -119,9 +123,8 @@
 "^"				RETURN( '^' )
 "<"				RETURN( '<' )
 
-
-"//"[^\n]*				printf("sing-comm\n ");
-"/*"([^\*]|\*[^/]|\n)*"*/"		printf("multi-comm\n" );
+"//"[^\n]*				{if ( printTokens ) printf("sing-comm\n"); }
+"/*"([^\*]|\*[^/]|\n)*"*/"		{if ( printTokens ) printf("multi-comm\n" ); }
 
 
 "/*" {
@@ -131,21 +134,24 @@
 
 
 "'\\"[abfnrtv\\\']"'" {
-//	yylval.runeval = strdup(yytext);
-	RETURN( tRUNELIT )
+	yylval.runeval = strdup(yytext);
+	if ( printTokens ) printf("tRuneLit(%s)\n", yytext);
+	RETURN_NO_PRINT ( tRUNELIT )
 }
 
 
 "'"[^\'\\]"'" {
-//	yylval.runeval = strdup(yytext); 
-	RETURN( tRUNELIT )
+ 	yylval.runeval = strdup(yytext); 
+	if ( printTokens ) printf("tRuneLit(%s)\n", yytext);
+	RETURN_NO_PRINT( tRUNELIT )
 }
 
 
 
 \"([^\"]|(\\\"))*\" {
 	yylval.stringval = strdup(yytext); 
-	RETURN( tINTERPRETEDSTRINGLIT )
+	if ( printTokens ) printf("tInterpretedStringLit(%s)\n", yytext);
+	RETURN_NO_PRINT( tINTERPRETEDSTRINGLIT )
 }
 
 \" {
@@ -155,42 +161,49 @@
 
 "`"[^\`]*"`" {
 	yylval.stringval = strdup(yytext); 
-	RETURN( tRAWSTRINGLIT)
+	if ( printTokens ) printf("tRawStringLit(%s)\n", yytext);
+	RETURN_NO_PRINT( tRAWSTRINGLIT)
 }
 
 
 0|([1-9][0-9]*) {
 	yylval.intval = atoi(yytext);  
-	RETURN( tINTLIT )
+	if ( printTokens ) printf("tIntLit(%s)\n", yytext);
+	RETURN_NO_PRINT( tINTLIT )
 }
 
 0[oO]([1-7][0-7]*) {
 	char* ptr;
 	yylval.intval = strtol(yytext + 2, &ptr, 8);  
-	RETURN( tINTLIT )
+	if ( printTokens ) printf("tIntLit(%s)\n", yytext);
+	RETURN_NO_PRINT( tINTLIT )
 }
 
 0([1-7][0-7])* {
 	char* ptr;
 	yylval.intval = strtol(yytext + 2, &ptr, 8);  
-	RETURN( tINTLIT )
+	if ( printTokens ) printf("tIntLit(%s)\n", yytext);
+	RETURN_NO_PRINT( tINTLIT )
 }
 
 0[xX]([1-9a-fA-F][0-9a-fA-F]*) {
 	char* ptr;
 	yylval.intval = strtol(yytext + 2, &ptr, 16);  
-	RETURN( tINTLIT )
+	if ( printTokens ) printf("tIntLit(%s)\n", yytext);
+	RETURN_NO_PRINT( tINTLIT )
 }
 
 ([0-9]+"."[0-9]*)|"."[0-9]+ {
 	yylval.floatval = atof(yytext); 
-	RETURN( tFLOATLIT )
+	if ( printTokens ) printf("tFloatLit(%s)\n", yytext);
+	RETURN_NO_PRINT( tFLOATLIT )
 }
 
 
 [a-zA-Z_][a-zA-Z0-9_]* {
 	yylval.identifier = strdup(yytext);  
-	RETURN( tIDENTIFIER )
+	if ( printTokens ) printf("tIdentifier(%s)\n", yytext);
+	RETURN_NO_PRINT( tIDENTIFIER )
     
 }
 
@@ -203,7 +216,3 @@
 
 %%
 
-int main(){
-	yylex();
-	return 1;
-}
