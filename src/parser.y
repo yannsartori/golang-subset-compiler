@@ -39,7 +39,7 @@ void yyerror(char const *s) {
 %token <stringval> tRAWSTRINGLIT tINTERPRETEDSTRINGLIT
 %token <boolval> tBOOLVAL
 %token <identifier> tIDENTIFIER
-%type <exp> expression operand literal conversion index selector appendExpression lengthExpression capExpression type primaryExpression 
+%type <exp> expression operand literal conversion index selector appendExpression lengthExpression capExpression simpleType primaryExpression 
 %type <explist> expressionList arguments
 %type <rootNode> root
 %left tLOGICOR
@@ -61,51 +61,56 @@ root			: tPackage tIDENTIFIER ';' topDeclarationList {$$ = NULL}
 topDeclarationList	: 
 			| variableDecl topDeclarationList
 			| typeDecl topDeclarationList
-			| functionDecl topDeclarationList
+			| funcDecl topDeclarationList
 ;
 
-variableDecl		: tVar varDeclsWithExps ';'
-			| tVar varDeclsNoExps ';'
+variableDecl		: tVar singleVarDecl ';'
 			| tVar '(' innerVarDecls ')' ';'
 			| tVar '(' ')' ';'
 ;
 
-innerVarDecls		: varDeclsNoExps
-			| varDeclsWithExps
-			| varDeclsNoExps ';' innerVarDecls
-			| varDeclsWithExps ';' innerVarDecls
+innerVarDecls		: singleVarDecl
+			| singleVarDecl ';' innerVarDecls
 ;
 
-varDeclsNoExps	: tIDENTIFIER ',' varDeclsNoExps
-			| tIDENTIFIER type
+singleVarDecl		: expressionList declType '=' expressionList
+			| expressionList '=' expressionList
+			| expressionList declType
 ;
 
-varDeclsWithExps	: tIDENTIFIER ',' varDeclsWithExps ',' expression
-			| tIDENTIFIER type '=' expression
-			| tIDENTIFIER '=' expression
-;
-
-typeDecl		: tType '(' innerTypeDecls ')' ';'
+typeDecl		: tType singleTypeDecl ';'
+			| tType '(' innerTypeDecls ')' ';'
 			| tType '(' ')' ';'
-			| tType singleTypeDecl ';'
 ;
 
 innerTypeDecls	: singleTypeDecl
 			| singleTypeDecl ';' innerTypeDecls
 ;
 
-singleTypeDecl	: tIDENTIFIER type
-			| tIDENTIFIER ',' singleTypeDecl
+singleTypeDecl	: expressionList declType
 ;
 
-functionDecl		: tFunc tIDENTIFIER '(' funcArgDecls ')' type block
-			| tFunc tIDENTIFIER '(' ')' type block
+funcDecl		: tFunc tIDENTIFIER '(' funcArgDecls ')' declType block
+			| tFunc tIDENTIFIER '(' ')' declType block
 			| tFunc tIDENTIFIER '(' funcArgDecls ')' block
 			| tFunc tIDENTIFIER '(' ')' block
 ;
 
-funcArgDecls		: varDeclsNoExps
-			| varDeclsNoExps ',' funcArgDecls
+funcArgDecls		: tIDENTIFIER ',' funcArgDecls
+			| tIDENTIFIER declType funcArgDecls
+			| tIDENTIFIER declType
+;
+
+declType		: tIDENTIFIER
+			| sliceDeclType
+			| arrayDeclType
+			| structDeclType
+;
+
+sliceDeclType		: '[' ']' tIDENTIFIER;
+arrayDeclType		: '[' expression ']' tIDENTIFIER;
+structDeclType	: tStruct '{' innerTypeDecls '}' ';'
+			| tStruct '{' '}' ';'
 ;
 
 expression: /* unrolled https://golang.org/ref/spec#Expression with precdence directives*/
@@ -162,7 +167,7 @@ literal:
 			| tINTERPRETEDSTRINGLIT { $$ = makeExpStringLit(expKindInterpretedStringLit, $1); }  /*2.9.3*/
 			;
 conversion: /* I ommitted the trailing ',' */
-			type '(' expression ')' { $$ = makeExpFuncCall($1, createArgumentList($3), expKindTypeCast); } /*also fix type pls */
+			simpleType '(' expression ')' { $$ = makeExpFuncCall($1, createArgumentList($3), expKindTypeCast); } /*also fix type pls */
 			; /*2.9.10*/ //types also provided by Denali
 index: '[' expression ']' { $$ = $2; }/*2.9.7*/
 arguments: 
@@ -173,6 +178,6 @@ selector: '.' tIDENTIFIER { $$ = makeExpIdentifier($2); }; /*2.9.8-- Should we w
 appendExpression: tAPPEND '(' expression ',' expression ')' { $$ = makeExpAppend($3, $5); }; /*2.9.9*/
 lengthExpression: tLENGTH '(' expression ')' { $$ = makeExpBuiltInBody($3, expKindLength); }; /*2.9.9*/
 capExpression: tCAP '(' expression ')' { $$ = makeExpBuiltInBody($3, expKindCapacity); }; /*2.9.9*/
-typeForCasting: 			'b' { $$ = makeExpIdentifier("b"); }; //placeholder
+simpleType: 		tIDENTIFIER { $$ = makeExpIdentifier("b"); }; //placeholder
 block: 		'{' '}' //placeholder
 

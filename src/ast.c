@@ -2,6 +2,13 @@
 #include "globalEnum.h"
 #include "ast.h"
 
+rootNode* makeRootNode(char* packName, topDeclarationNode* startDecls) {
+	rootNode* r = malloc(sizeof(rootNode));
+	r -> packageName = packname;
+	r -> 
+}
+
+
 Exp *makeExpIdentifier(char *identifier) //How should we handle types?
 {
 	Exp *e = (Exp *) malloc(sizeof(Exp));

@@ -3,7 +3,7 @@
     #include <stdlib.h>
     #include "parser.tab.h"
     
-    #define RETURN(token) {lastToken = token; printf("%s\n", #token);}
+    #define RETURN(token) {lastToken = token; return token;}
     
     int lastToken = 0;
     

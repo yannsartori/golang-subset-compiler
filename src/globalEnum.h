@@ -39,4 +39,10 @@ typedef enum {
 	expKindCapacity,
 	expKindTypeCast
 } ExpressionKind;
+
+typedef enum {
+	funcDeclType,
+	typeDeclType,
+	variDeclType
+} topDeclarationType;
 #endif
