@@ -80,6 +80,10 @@ typedef enum {
 	expKindTypeCast
 } ExpressionKind;
 
-
+typedef enum {
+	funcDeclType,
+	typeDeclType,
+	variDeclType
+} TopDeclarationType;
 
 #endif

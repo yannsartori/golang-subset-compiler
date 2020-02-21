@@ -144,4 +144,51 @@ struct Exp {
 
 
 
+
+typedef struct RootNode RootNode;
+typedef struct TopDeclarationNode TopDeclarationNode;
+typedef struct VarDeclNode VarDeclNode;
+typedef struct TypeDeclNode TypeDeclNode;
+typedef struct FuncDeclNode FuncDeclNode;
+
+
+
+RootNode* makeRootNode(char* packName, TopDeclarationNode* firstDecl);
+
+struct RootNode  {
+	char* packageName;
+	TopDeclarationNode* startDecls;
+};
+
+struct TopDeclarationNode {
+	TopDeclarationNode* nextTopDecl;
+	int multiDecl;
+	TopDeclarationType declType;
+	union {
+		VarDeclNode* varDecl;
+		TypeDeclNode* typeDecl;
+		FuncDeclNode* funcDecl;
+	} actualRealDeclaration;
+};
+
+
+
+struct VarDeclNode {
+	char* identifier;
+	Exp* value;
+	int arrayLength;
+	VarDeclNode* nextDecl;
+};
+
+struct TypeDeclNode {
+	char* identifier;
+	TypeDeclNode* nextDecl;
+};
+
+struct FuncDeclNode {
+	char* identifier;
+	TypeDeclNode* argsDecls;
+};
+
+
 #endif

@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "globalEnum.h"
 #include <stdio.h>
-#include "AST.h"
+#include "ast.h"
 
 int yylineno;
 int weedSwitchClause(switchCaseClause* clauseList, State loopState, State switchState, State functionState);
@@ -605,4 +605,24 @@ Exp *makeExpFuncCall(Exp *base, ExpList *arguments, ExpressionKind kind)
 
     e->isBracketed = 0;
 	return e;
+}
+
+
+//Denali's functions
+
+
+RootNode* makeRootNode(char* packName, TopDeclarationNode* firstDecl) {
+	RootNode* r = malloc(sizeof(struct RootNode));
+	r -> packageName = packName;
+	r -> startDecls = firstDecl;
+	return r;
+}
+
+TopDeclarationNode* makeTopVarDecl(VarDeclNode* varDecl, TopDeclarationNode* nextTopDecl, int multiDecl) {
+	TopDeclarationNode* v = malloc(sizeof(TopDeclarationNode*));
+	v -> declType = variDeclType;
+	v -> multiDecl = multiDecl;
+	v -> nextTopDecl = nextTopDecl;
+	v -> actualRealDeclaration.varDecl = varDecl;
+	return v;
 }

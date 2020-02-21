@@ -1,7 +1,7 @@
 #include <stdio.h>
 
-#include "AST.h"
-#include "pretty.h"
+#include "ast.h"
+#include "pretty_printer.h"
 
 
 Stmt* root;

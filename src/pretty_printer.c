@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "globalEnum.h"
 #include <string.h>
-#include "AST.h"
+#include "ast.h"
 
 
 void prettyExpList(ExpList *list);
