@@ -309,21 +309,19 @@ Stmt* reverseStmtList(Stmt* reversed){
 
 
 
+=======
+#include <string.h>
+#include "globalEnum.h"
+#include "ast.h"
+//Neil provided
+
 int isBlank(Exp* expression){
     if (expression == NULL){
         return 0;
     }
-    if (expression->kind == expKindIdentifier){
-        if (strcmp(expression->val.id,"_") == 0){
-            return 1;
-        }else{
-            return 0;
-        }
-    }else{
-        return 0;
-    }
-}
 
+    return (expression->kind == expKindIdentifier && (strcmp(expression->val.id,"_") == 0));
+}
 
 int containsBlank(ExpList* list){
     if (list == NULL){
@@ -488,12 +486,12 @@ int weedSwitchClause(switchCaseClause* clauseList, State loopState, State switch
 
 
 Exp *makeExpIdentifier(char *identifier) //How should we handle types?
+
 {
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = expKindIdentifier;
 	e->val.id = identifier;
-
-    e->isBracketed = 0;
+  e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpIntLit(int intLit)
@@ -501,8 +499,7 @@ Exp *makeExpIntLit(int intLit)
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = expKindIntLit;
 	e->val.intLit = intLit;
-
-    e->isBracketed = 0;
+  e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpFloatLit(double floatLit)
@@ -510,8 +507,7 @@ Exp *makeExpFloatLit(double floatLit)
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = expKindFloatLit;
 	e->val.floatLit = floatLit;
-
-    e->isBracketed = 0;
+  e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpStringLit(ExpressionKind kind, char *stringLit)
@@ -519,17 +515,16 @@ Exp *makeExpStringLit(ExpressionKind kind, char *stringLit)
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = kind;
 	e->val.stringLit = stringLit;
-
-    e->isBracketed = 0;
+  e->isBracketed = 0;
 	return e;
 }
-Exp *makeExpRuneLit(char* runeLit)
+
+Exp *makeExpRuneLit(char *runeLit)
 {
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = expKindRuneLit;
 	e->val.runeLit = runeLit;
-
-    e->isBracketed = 0;
+  e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpBinary(Exp *left,  Exp *right, ExpressionKind kind)
@@ -538,8 +533,7 @@ Exp *makeExpBinary(Exp *left,  Exp *right, ExpressionKind kind)
 	e->kind = kind;
 	e->val.binary.left = left;
 	e->val.binary.right = right;
-
-    e->isBracketed = 0;
+  e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpUnary(Exp *unary, ExpressionKind kind )
@@ -547,8 +541,7 @@ Exp *makeExpUnary(Exp *unary, ExpressionKind kind )
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = kind;
 	e->val.unary = unary;
-
-    e->isBracketed = 0;
+  e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpAppend(Exp *list, Exp *elem)
@@ -557,8 +550,7 @@ Exp *makeExpAppend(Exp *list, Exp *elem)
 	e->kind = expKindAppend;
 	e->val.append.list = list;
 	e->val.append.elem = elem;
-
-    e->isBracketed = 0;
+  e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpBuiltInBody(Exp *builtInBody, ExpressionKind kind)
@@ -566,8 +558,7 @@ Exp *makeExpBuiltInBody(Exp *builtInBody, ExpressionKind kind)
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = kind;
 	e->val.builtInBody = builtInBody;
-
-    e->isBracketed = 0;
+  e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpAccess(Exp *base, Exp * accessor, ExpressionKind kind)
@@ -576,7 +567,6 @@ Exp *makeExpAccess(Exp *base, Exp * accessor, ExpressionKind kind)
 	e->kind = kind;
 	e->val.access.base = base;
 	e->val.access.accessor = accessor;
-
     e->isBracketed = 0;
 	return e;
 }
@@ -584,16 +574,12 @@ ExpList *addArgument(ExpList * args, Exp * argument)
 {
 	ExpList *newNode = createArgumentList(argument);
 	newNode->next = args;
-    
-
 	return newNode;
 }
 ExpList *createArgumentList(Exp *argument)
 {
 	ExpList *l = (ExpList *) malloc(sizeof(ExpList));
-	l->cur = argument;
-
-    
+	l->cur = argument;  
 	return l;
 }
 Exp *makeExpFuncCall(Exp *base, ExpList *arguments, ExpressionKind kind)
@@ -625,4 +611,29 @@ TopDeclarationNode* makeTopVarDecl(VarDeclNode* varDecl, TopDeclarationNode* nex
 	v -> nextTopDecl = nextTopDecl;
 	v -> actualRealDeclaration.varDecl = varDecl;
 	return v;
+
 }
+void reverseArgumentList(ExpList **list)
+{
+	ExpList *prev = NULL; 
+    ExpList *current = *list; 
+    ExpList *next = NULL; 
+    while ( current != NULL ) 
+	{ 
+        next = current->next; 
+        current->next = prev; 
+        prev = current; 
+        current = next; 
+    } 
+    *list = prev; 
+}
+Exp *makeExpFuncCall(Exp *base, ExpList *arguments)
+{
+	Exp * e = (Exp *) malloc (sizeof(Exp));
+	e->kind = expKindFuncCall;
+	e->val.funcCall.base = base;
+	reverseArgumentList(&arguments);
+	e->val.funcCall.arguments = arguments;
+	return e;
+}
+

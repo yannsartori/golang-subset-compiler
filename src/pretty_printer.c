@@ -1,8 +1,10 @@
+
 #include <stdlib.h>
 #include <stdio.h>
 #include "globalEnum.h"
 #include <string.h>
 #include "ast.h"
+
 
 
 void prettyExpList(ExpList *list);
@@ -269,8 +271,9 @@ void printSwitchCaseClause(switchCaseClause* clause,int indentLevel){
 
 
 
-//Yann's functions
 
+
+void prettyExpList(ExpList *list);
 void prettyExp(Exp * exp)
 {
 	if ( exp == NULL ) return;
@@ -292,7 +295,9 @@ void prettyExp(Exp * exp)
 		case expKindInterpretedStringLit:
 			printf("%s", exp->val.stringLit);
 			break;
+
 		case expKindTypeCast:
+
 		case expKindFuncCall:
 			prettyExp(exp->val.funcCall.base);
 			printf("(");
@@ -458,4 +463,5 @@ void prettyExpList(ExpList *list)
 		printf(", ");
 		prettyExpList(list->next);
 	}
+
 }

@@ -1,6 +1,7 @@
 #ifndef AST
 #define AST
 
+
 #include "globalEnum.h"
 #include <string.h>
 
@@ -116,6 +117,7 @@ struct switchCaseClause {
 
 
  // for arguments
+
 struct ExpList { //Will be reversed because of left recursion!
 	Exp * cur;
 	ExpList *next;
@@ -137,8 +139,6 @@ struct Exp {
 		Exp *builtInBody;
 	} val;
 };
-
-
 
 
 
@@ -189,6 +189,7 @@ struct FuncDeclNode {
 	char* identifier;
 	TypeDeclNode* argsDecls;
 };
+
 
 
 #endif

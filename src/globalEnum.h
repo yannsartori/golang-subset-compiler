@@ -41,6 +41,9 @@ typedef enum{
 
 //Yann's defintion
 
+
+extern int printTokens;
+
 typedef enum {
 	expKindIdentifier,
 	expKindIntLit,
@@ -77,6 +80,7 @@ typedef enum {
 	expKindAppend,
 	expKindLength,
 	expKindCapacity,
+
 	expKindTypeCast
 } ExpressionKind;
 
@@ -87,3 +91,5 @@ typedef enum {
 } TopDeclarationType;
 
 #endif
+
+

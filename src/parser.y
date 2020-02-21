@@ -5,9 +5,6 @@
 #include "globalEnum.h"
 #include "ast.h"
 
-
-
-
 int yylex();
 extern int yylineno;
 Stmt* root;
@@ -77,18 +74,44 @@ Stmt* compoundOperator(Exp* left,Exp* right,ExpressionKind kind){
 }
 
 
+void yyerror(char const *s) {
+	fprintf(stderr, "Error: %s on line %d\n", s, yylineno);
+	exit(1);
+}
+
+void builtInBlankError(char * func)
+{
+	fprintf(stderr, "Error: (line %d) Cannot use the blank identifier in the %s function.\n", yylineno, func);
+	exit(1);
+}
+void argumentBlankError()
+{
+	fprintf(stderr, "Error: (line %d) Cannot cast the blank identifier or use it as an argument to a function call.\n", yylineno);
+	exit(1);
+}
+void fieldSelectBlankError()
+{
+	fprintf(stderr, "Error: (line %d) Cannot use the blank identifier as a field selector.\n", yylineno);
+	exit(1);
+}
+void indexingBlankError()
+{
+	fprintf(stderr, "Error: (line %d) Cannot use the blank identifier as an index\n", yylineno);
+	exit(1);
+}
+
 %}
 
 %define parse.error verbose
 
 %code requires
 {
-	#include "AST.h"
+
+	#include "ast.h"
 	extern Stmt* root;
 
 }
-//need to implement their builtins
-//denali provided
+
 %union {
 	int intval;
 	double floatval;
@@ -107,8 +130,10 @@ Stmt* compoundOperator(Exp* left,Exp* right,ExpressionKind kind){
 %token <stringval> tRAWSTRINGLIT tINTERPRETEDSTRINGLIT
 %token <boolval> tBOOLVAL
 %token <identifier> tIDENTIFIER
+
 %type <exp>  expression operand literal conversion index selector appendExpression lengthExpression capExpression type primaryExpression 
 %type <explist> expressionList arguments expressionSwitchCase maybeEmptyExpressionList
+
 %left tLOGICOR
 %left tLOGICAND
 %left tEQ tNEQ tGEQ tLEQ '>' '<'
@@ -124,6 +149,7 @@ Stmt* compoundOperator(Exp* left,Exp* right,ExpressionKind kind){
 %start Program
 
 %%
+
 
 Program : statementList {root = reverseStmtList($1);}
 
