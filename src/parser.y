@@ -149,75 +149,67 @@ void indexingBlankError()
 Program : statementList {root = reverseStmtList($1);}
 
  
-expression: /* unrolled https://golang.org/ref/spec#Expression with precdence directives*/
-			  primaryExpression { $$ = $1; }
-			| expression '*' expression { $$ = makeExpBinary($1, $3, expKindMultiplication); } /*2.9.5*/
-			| expression '/' expression { $$ = makeExpBinary($1, $3, expKindDivision); }
-			| expression '%' expression { $$ = makeExpBinary($1, $3, expKindMod); }
-			| expression tBShiftLeft expression { $$ = makeExpBinary($1, $3, expKindBitShiftLeft); }
-			| expression tBShiftRight expression { $$ = makeExpBinary($1, $3, expKindBitShiftRight); }	
-			| expression '&' expression { $$ = makeExpBinary($1, $3, expKindBitAnd); }	
-			| expression tAndNot expression { $$ = makeExpBinary($1, $3, expKindBitAndNot); }	
-			| expression '+' expression { $$ = makeExpBinary($1, $3, expKindAddition); }	
-			| expression '-' expression { $$ = makeExpBinary($1, $3, expKindSubtraction); }	
-			| expression '|' expression { $$ = makeExpBinary($1, $3, expKindBitOr); }	
-			| expression '^' expression { $$ = makeExpBinary($1, $3, expKindBitNotBinary); }	
-			| expression tEQ expression { $$ = makeExpBinary($1, $3, expKindEQ); }	
-			| expression tNEQ expression { $$ = makeExpBinary($1, $3, expKindNEQ); }	
-			| expression '<' expression { $$ = makeExpBinary($1, $3, expKindLess); }	
-			| expression tLEQ expression { $$ = makeExpBinary($1, $3, expKindLEQ); }	
-			| expression '>' expression { $$ = makeExpBinary($1, $3, expKindGreater); }	
-			| expression tGEQ expression { $$ = makeExpBinary($1, $3, expKindGEQ); }	
-			| expression tLOGICAND expression { $$ = makeExpBinary($1, $3, expKindLogicAnd); }	
-			| expression tLOGICOR expression { $$ = makeExpBinary($1, $3, expKindLogicOr); }	
-			| '+' expression %prec UNARY { $$ = makeExpUnary($2, expKindUnaryPlus); } /*2.9.4*/
-			| '-' expression %prec UNARY { $$ = makeExpUnary($2, expKindUnaryMinus); }
-			| '!' expression { $$ = makeExpUnary($2, expKindLogicNot); } 
-			| '^' expression %prec UNARY { $$ = makeExpUnary($2, expKindBitNotUnary); }
+expression:
+			  primaryExpression								{ $$ = $1; }
+			| expression '*' expression						{ $$ = makeExpBinary($1, $3, expKindMultiplication); } /*2.9.5*/
+			| expression '/' expression						{ $$ = makeExpBinary($1, $3, expKindDivision); }
+			| expression '%' expression						{ $$ = makeExpBinary($1, $3, expKindMod); }
+			| expression tBShiftLeft expression				{ $$ = makeExpBinary($1, $3, expKindBitShiftLeft); }
+			| expression tBShiftRight expression			{ $$ = makeExpBinary($1, $3, expKindBitShiftRight); }	
+			| expression '&' expression						{ $$ = makeExpBinary($1, $3, expKindBitAnd); }	
+			| expression tAndNot expression					{ $$ = makeExpBinary($1, $3, expKindBitAndNot); }	
+			| expression '+' expression						{ $$ = makeExpBinary($1, $3, expKindAddition); }	
+			| expression '-' expression						{ $$ = makeExpBinary($1, $3, expKindSubtraction); }	
+			| expression '|' expression						{ $$ = makeExpBinary($1, $3, expKindBitOr); }	
+			| expression '^' expression						{ $$ = makeExpBinary($1, $3, expKindBitNotBinary); }	
+			| expression tEQ expression						{ $$ = makeExpBinary($1, $3, expKindEQ); }	
+			| expression tNEQ expression					{ $$ = makeExpBinary($1, $3, expKindNEQ); }	
+			| expression '<' expression						{ $$ = makeExpBinary($1, $3, expKindLess); }	
+			| expression tLEQ expression					{ $$ = makeExpBinary($1, $3, expKindLEQ); }	
+			| expression '>' expression						{ $$ = makeExpBinary($1, $3, expKindGreater); }	
+			| expression tGEQ expression					{ $$ = makeExpBinary($1, $3, expKindGEQ); }	
+			| expression tLOGICAND expression				{ $$ = makeExpBinary($1, $3, expKindLogicAnd); }	
+			| expression tLOGICOR expression				{ $$ = makeExpBinary($1, $3, expKindLogicOr); }	
+			| '+' expression %prec UNARY					{ $$ = makeExpUnary($2, expKindUnaryPlus); } /*2.9.4*/
+			| '-' expression %prec UNARY					{ $$ = makeExpUnary($2, expKindUnaryMinus); }
+			| '!' expression								{ $$ = makeExpUnary($2, expKindLogicNot); } 
+			| '^' expression %prec UNARY					{ $$ = makeExpUnary($2, expKindBitNotUnary); }
 			;
 expressionList: 
-			  expression { $$ = createArgumentList($1); }
-			| expressionList ',' expression { $$ = addArgument($1, $3); } /*Reversed!!!*/
-
-maybeEmptyExpressionList : %empty {$$ = NULL;}
-						| expressionList {$$ = $1;};
-			; //maybe Neil provided this?
+			  expression									{ $$ = createArgumentList($1); }
+			| expressionList ',' expression					{ $$ = addArgument($1, $3); } /*gets reversed in add argument */
+			; 
 primaryExpression: 
-			  operand { $$ = $1; }
-			| conversion { $$ = $1;}
-			| primaryExpression selector { $$ = makeExpAccess($1, $2, expKindFieldSelect); } 
-			| primaryExpression index { $$ = makeExpAccess($1, $2, expKindIndexing); }  
-			| primaryExpression arguments { $$ = makeExpFuncCall($1, $2, expKindFuncCall); }/*2.9.6*/ 
-			| appendExpression { $$ = $1; } 
-			| lengthExpression { $$ = $1; }
-			| capExpression { $$ = $1; }
-			; //ommitting method expression, slice indexing, type assertion
+			  operand										{ $$ = $1; }
+			| primaryExpression selector					{ $$ = makeExpAccess($1, $2, expKindFieldSelect); } 
+			| primaryExpression index						{ $$ = makeExpAccess($1, $2, expKindIndexing); }  
+			| primaryExpression arguments					{ $$ = makeExpFuncCall($1, $2); }/*2.9.6, 2.9.10*/ 
+			| appendExpression								{ $$ = $1; } 
+			| lengthExpression								{ $$ = $1; }
+			| capExpression									{ $$ = $1; }
+			; 
 operand: 
-			  literal { $$ = $1; } /*2.9.3*/
-			| tIDENTIFIER { $$ = makeExpIdentifier($1); } /*2.9.2*/ 
-			| '(' expression ')' { $$ = $2; $$->isBracketed = 1;}
+			  literal										{ $$ = $1; } /*2.9.3*/
+			| tIDENTIFIER									{ $$ = makeExpIdentifier($1); } /*2.9.2*/ 
+			| '(' expression ')'							{ $$ = $2; }
 			; /*2.9.1*/ 
-			//ommitting qualified lit, composite lit, function lit
+			
 literal:	
-			  tINTLIT { $$ = makeExpIntLit($1); } 
-			| tFLOATLIT { $$ = makeExpFloatLit($1); }  
-			| tRUNELIT { $$ = makeExpRuneLit($1); }  
-			| tRAWSTRINGLIT { $$ = makeExpStringLit(expKindRawStringLit, $1); }  
-			| tINTERPRETEDSTRINGLIT { $$ = makeExpStringLit(expKindInterpretedStringLit, $1); }  /*2.9.3*/
+			  tINTLIT										{ $$ = makeExpIntLit($1); } 
+			| tFLOATLIT										{ $$ = makeExpFloatLit($1); }  
+			| tRUNELIT										{ $$ = makeExpRuneLit($1); }  
+			| tRAWSTRINGLIT									{ $$ = makeExpStringLit(expKindRawStringLit, $1); }  
+			| tINTERPRETEDSTRINGLIT							{ $$ = makeExpStringLit(expKindInterpretedStringLit, $1); }  /*2.9.3*/
 			;
-conversion: /* I ommitted the trailing ',' */
-			type '(' expression ')' { $$ = makeExpFuncCall($1, createArgumentList($3), expKindTypeCast); } /*also fix type pls */
-			; /*2.9.10*/ //types also provided by Denali
-index: '[' expression ']' { $$ = $2; }/*2.9.7*/
+index:		  '[' expression ']'							{ if ( isBlank($2) ) indexingBlankError(); $$ = $2; }/*2.9.7*/
 arguments: 
-			  '(' expressionList ')' { $$ = $2;}
-			| '(' ')' { $$ = createArgumentList(NULL); }/*2.9.6*/
+			  '(' expressionList ')'						{ if ( containsBlank($2) ) argumentBlankError(); $$ = $2;}
+			| '(' ')'										{ $$ = createArgumentList(NULL); }/*2.9.6*/
 			;
-selector: '.' tIDENTIFIER { $$ = makeExpIdentifier($2); }; /*2.9.8-- Should we weed this ? "must not be the blank identifier" Also we should make sure we can do selector assignment e.g. a.b = c*/
-appendExpression: tAPPEND '(' expression ',' expression ')' { $$ = makeExpAppend($3, $5); }; /*2.9.9*/
-lengthExpression: tLENGTH '(' expression ')' { $$ = makeExpBuiltInBody($3, expKindLength); }; /*2.9.9*/
-capExpression: tCAP '(' expression ')' { $$ = makeExpBuiltInBody($3, expKindCapacity); }; /*2.9.9*/
-type: 'b' { $$ = makeExpIdentifier("b"); }; //placeholder
+selector:		  '.' tIDENTIFIER							{ if ( strcmp($2, "_") == 0 ) fieldSelectBlankError(); $$ = makeExpIdentifier($2); }; /*2.9.8*/
+appendExpression: tAPPEND '(' expression ',' expression ')' { if ( isBlank($3) || isBlank($5) ) builtInBlankError("append"); $$ = makeExpAppend($3, $5); }; /*2.9.9*/
+lengthExpression: tLENGTH '(' expression ')'				{ if ( isBlank($3) ) builtInBlankError("length"); $$ = makeExpBuiltInBody($3, expKindLength); }; /*2.9.9*/
+capExpression:	  tCAP '(' expression ')'					{ if ( isBlank($3) ) builtInBlankError("capacity"); $$ = makeExpBuiltInBody($3, expKindCapacity); }; /*2.9.9*/
 
 
 
