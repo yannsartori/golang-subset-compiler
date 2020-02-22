@@ -126,7 +126,7 @@ void indexingBlankError()
 %token <boolval> tBOOLVAL
 %token <identifier> tIDENTIFIER
 
-%type <exp>  expression operand literal conversion index selector appendExpression lengthExpression capExpression type primaryExpression 
+%type <exp>  expression operand literal index selector appendExpression lengthExpression capExpression primaryExpression 
 %type <explist> expressionList arguments expressionSwitchCase maybeEmptyExpressionList
 
 %left tLOGICOR
@@ -179,6 +179,10 @@ expressionList:
 			  expression									{ $$ = createArgumentList($1); }
 			| expressionList ',' expression					{ $$ = addArgument($1, $3); } /*gets reversed in add argument */
 			; 
+maybeEmptyExpressionList : 
+			  %empty {$$ = NULL;}
+			| expressionList {$$ = $1;};
+			;
 primaryExpression: 
 			  operand										{ $$ = $1; }
 			| primaryExpression selector					{ $$ = makeExpAccess($1, $2, expKindFieldSelect); } 
@@ -203,8 +207,7 @@ literal:
 			;
 index:		  '[' expression ']'							{ if ( isBlank($2) ) indexingBlankError(); $$ = $2; }/*2.9.7*/
 arguments: 
-			  '(' expressionList ')'						{ if ( containsBlank($2) ) argumentBlankError(); $$ = $2;}
-			| '(' ')'										{ $$ = createArgumentList(NULL); }/*2.9.6*/
+			  '(' maybeEmptyExpressionList ')'				{ if ( containsBlank($2) ) argumentBlankError(); $$ = $2;}
 			;
 selector:		  '.' tIDENTIFIER							{ if ( strcmp($2, "_") == 0 ) fieldSelectBlankError(); $$ = makeExpIdentifier($2); }; /*2.9.8*/
 appendExpression: tAPPEND '(' expression ',' expression ')' { if ( isBlank($3) || isBlank($5) ) builtInBlankError("append"); $$ = makeExpAppend($3, $5); }; /*2.9.9*/
