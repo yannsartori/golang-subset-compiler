@@ -5,7 +5,7 @@
 #include "pretty_printer.h"
 void yyparse();
 int yylex();
-RootNode * root;
+RootNode * rootNode;
 int printTokens = 0;
 int printSymbols = 0;
 
@@ -26,7 +26,7 @@ int main(int argc, char * argv[])
 	} else if ( !strcmp(argv[1], "pretty") )
 	{
 		yyparse();
-		printRoot(root);
+		printRoot(rootNode);
 	}
 	return 0;
 }

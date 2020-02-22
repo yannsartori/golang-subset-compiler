@@ -742,7 +742,7 @@ FuncDeclNode* makeFuncDecl(char* funcName, TypeDeclNode* argsDecls, TypeHolderNo
 
 TopDeclarationNode* makeTopFuncDecl(FuncDeclNode* funcDecl, TopDeclarationNode* nextTopDecl) {
 	TopDeclarationNode* t = malloc(sizeof(TopDeclarationNode));
-	t -> declType = typeDeclType;
+	t -> declType = funcDeclType;
 	t -> nextTopDecl = nextTopDecl;
 	t -> actualRealDeclaration.funcDecl = funcDecl;
 	return t;

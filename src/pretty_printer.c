@@ -37,8 +37,6 @@ void printStmt(Stmt* stmt, int indentLevel){
         return;
     }
 
-    
-
     switch (stmt->kind){
         case StmtKindBlock :    indent(indentLevel);
 								printf("{\n");
@@ -56,6 +54,10 @@ void printStmt(Stmt* stmt, int indentLevel){
 									printSimpleStatement(stmt);
                                     printf("\n");
                                     break;
+		case StmtKindShortVarDecl:
+		case StmtKindVarDeclaration:
+			prettyVarDecl(stmt->val.varDeclaration, indentLevel);
+			break;
     
         case StmtKindPrint : 	indent(indentLevel);
 								printf("print(");
@@ -127,7 +129,6 @@ void printStmt(Stmt* stmt, int indentLevel){
                                 printf("fallthrough;");
                                 break;
     }
-
 
     printStmt(stmt->next,indentLevel);
 }
@@ -444,6 +445,7 @@ void prettyExpList(ExpList *list)
 }
 void prettyTypeHolderForDecl(TypeHolderNode *node, int indentLevel)
 {
+	if ( node == NULL ) return;
 	switch (node->kind)
 	{
 		case sliceType:
@@ -469,6 +471,7 @@ void prettyTypeHolderForDecl(TypeHolderNode *node, int indentLevel)
 }
 void prettyTypeHolderForReference(TypeHolderNode *node, int indentLevel)
 {
+	if ( node == NULL ) return;
 	switch (node->kind)
 	{
 		case sliceType:
@@ -566,6 +569,8 @@ void prettyTopDeclaration(TopDeclarationNode *topDecl, int indentLevel)
 			prettyVarDecl(topDecl->actualRealDeclaration.varDecl, indentLevel);
 			break;
 		case typeDeclType:
+			if ( topDecl->actualRealDeclaration.typeDecl == NULL ) puts("FUCK");
+			puts(topDecl->actualRealDeclaration.typeDecl->identifier);
 			prettyTypeDecl(topDecl->actualRealDeclaration.typeDecl, indentLevel);
 			break;
 		case funcDeclType:

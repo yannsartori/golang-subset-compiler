@@ -7,7 +7,7 @@
 
 int yylex();
 extern int yylineno;
-Stmt* root;
+extern RootNode * rootNode;
 
 void yyerror(char const *s) {
 	fprintf(stderr, "Error: %s on line %d\n", s, yylineno);
@@ -103,8 +103,6 @@ void indexingBlankError()
 {
 
 	#include "ast.h"
-	extern Stmt* root;
-
 }
 
 %union {
@@ -158,13 +156,13 @@ void indexingBlankError()
 
 %%
 
-root			: tPackage tIDENTIFIER ';' topDeclarationList {$$ = makeRootNode($2, $4);}
+root			: tPackage tIDENTIFIER ';' topDeclarationList {rootNode = makeRootNode($2, $4);}
 ;
 
 topDeclarationList	: %empty				{$$ = NULL;}
 			| variableDecl topDeclarationList	{$$ = makeTopVarDecl($1, $2);}
-			| typeDecl topDeclarationList	{$$ = makeTopTypeDecl($1, $2);}
-			| funcDecl topDeclarationList	{$$ = makeTopFuncDecl($1, $2);}
+			| typeDecl topDeclarationList	{$$ = makeTopTypeDecl($1, $2); }
+			| funcDecl topDeclarationList	{$$ = makeTopFuncDecl($1, $2); }
 ;
 
 variableDecl		: tVar singleVarDecl ';'		{$$ = $2;}
