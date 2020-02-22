@@ -7,7 +7,7 @@
 int yylineno;
 int weedSwitchClause(switchCaseClause* clauseList, State loopState, State switchState, State functionState);
 int weedStatement(Stmt* stmt, State loopState, State switchState, State functionState);
-
+int defaultClauseCount(switchCaseClause* clauseList);
 
 Stmt* makeBlockStmt(Stmt* stmt){
     Stmt* ptr = malloc(sizeof(Stmt));
@@ -792,19 +792,3 @@ IdChain* extractIdList(ExpList* expressions, int lineno) {
 	return base;
 }
 
-/* Redondant code that should be removed. Committed out for the time being as a heads up, use ExpList* reverseList(ExpList*)
-void reverseArgumentList(ExpList **list)
-{
-	ExpList *prev = NULL; 
-    ExpList *current = *list; 
-    ExpList *next = NULL; 
-    while ( current != NULL ) 
-	{ 
-        next = current->next; 
-        current->next = prev; 
-        prev = current; 
-        current = next; 
-    } 
-    *list = prev; 
-}
-*/
