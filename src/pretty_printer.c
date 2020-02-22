@@ -57,7 +57,7 @@ void printStmt(Stmt* stmt, int indentLevel){
 									printf(";");
                                     printf("\n");
                                     break;
-		case StmtKindShortVarDecl: printSimpleStatement(stmt);
+		case StmtKindShortDeclaration: printSimpleStatement(stmt);
 									break;
 		case StmtKindVarDeclaration:
 			prettyVarDecl(stmt->val.varDeclaration, indentLevel);
