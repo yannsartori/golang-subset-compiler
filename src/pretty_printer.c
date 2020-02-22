@@ -47,11 +47,13 @@ void printStmt(Stmt* stmt, int indentLevel){
 
         case StmtKindExpression : 	indent(indentLevel);
 									printSimpleStatement(stmt);
+									printf(";");
                                     printf("\n");
                                     break;
                                     
         case StmtKindAssignment : indent(indentLevel);
 									printSimpleStatement(stmt);
+									printf(";");
                                     printf("\n");
                                     break;
 		case StmtKindShortVarDecl:
@@ -148,6 +150,7 @@ void printIfStmt(Stmt* stmt,int indentLevel){
     if (simpleStmt != NULL){
 		
         printSimpleStatement(simpleStmt);
+		printf(";");
     }
 
 
@@ -184,6 +187,7 @@ void printSwitchStmt(Stmt* stmt,int indentLevel){
 
     if (simpleStatement != NULL){
         printSimpleStatement(simpleStatement);
+		printf(";");
         
     }
 
@@ -214,13 +218,13 @@ void printSimpleStatement(Stmt* stmt){
 
         case StmtKindExpression : prettyExp(stmt->val.expression.expr);
 									
-                                    printf(";");
+                                    
                                     break;
                                     
         case StmtKindAssignment : prettyExpList(stmt->val.assignment.lhs);
                                     printf(" = ");
                                     prettyExpList(stmt->val.assignment.rhs);
-                                    printf(";");
+                                    
                                     break;
     
        
