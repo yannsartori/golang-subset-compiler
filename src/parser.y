@@ -167,6 +167,7 @@ void shortDeclarationPostError(Stmt* stmt){
 
 %%
 
+
 root			: tPackage tIDENTIFIER ';' topDeclarationList {rootNode = makeRootNode($2, $4);}
 ;
 
@@ -227,9 +228,9 @@ declType		: tIDENTIFIER					{$$ = makeIdTypeHolder($1);}
 			| structDeclType				{$$ = $1; }
 ;
 
-sliceDeclType		: '[' ']' tIDENTIFIER			{$$ = makeSliceHolder($3);}
+sliceDeclType		: '[' ']' declType				{$$ = makeSliceHolder($3);}
 ;
-arrayDeclType		: index tIDENTIFIER				{$$ = makeArrayHolder($1, $2);}
+arrayDeclType		: index declType				{$$ = makeArrayHolder($1, $2);}
 ;
 structDeclType	: tStruct '{' innerTypeDecls '}'		{$$ = makeStructHolder($3);}
 			| tStruct '{' '}'				{$$ = makeStructHolder(NULL);}

@@ -186,6 +186,7 @@ struct FuncDeclNode {
 struct TypeHolderNode {
 	TypeType kind;
 	char* identification;
+	TypeHolderNode* underlyingType;
 	Exp* arrayDims;
 	TypeDeclNode* structMembers;
 };
@@ -197,9 +198,9 @@ struct IdChain {
 
 RootNode* makeRootNode(char* packName, TopDeclarationNode* firstDecl);
 TopDeclarationNode* makeTopVarDecl(VarDeclNode* varDecl, TopDeclarationNode* nextTopDecl);
-TypeHolderNode* makeArrayHolder(Exp* arraySize, char* id);
+TypeHolderNode* makeArrayHolder(Exp* arraySize, TypeHolderNode* id);
 TypeHolderNode* makeStructHolder(TypeDeclNode* members);
-TypeHolderNode* makeSliceHolder(char* id);
+TypeHolderNode* makeSliceHolder(TypeHolderNode* id);
 TypeHolderNode* makeIdTypeHolder(char* id);
 IdChain* makeIdChain(char* identifier, IdChain* next);
 TypeDeclNode* makeSingleTypeDecl(IdChain* identifiers, TypeHolderNode* givenType);
