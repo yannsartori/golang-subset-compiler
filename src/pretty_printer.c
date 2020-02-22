@@ -23,6 +23,7 @@ void prettyTypeDecl(TypeDeclNode *type, int indentLevel);
 void prettyFuncArgs(TypeDeclNode *type, int indentLevel);
 void prettyStructMembers(TypeDeclNode *type, int indentLevel);
 void prettyVarDecl(VarDeclNode *var, int indentLevel);
+void prettyShortVarDecl(VarDeclNode *var, int indentLevel);
 void prettyTopDeclaration(TopDeclarationNode *topDecl, int indentLevel);
 
 void prettyVarDeclSimpleStatement(VarDeclNode *var);
@@ -57,8 +58,9 @@ void printStmt(Stmt* stmt, int indentLevel){
 									printf(";");
                                     printf("\n");
                                     break;
-		case StmtKindShortVarDecl: printSimpleStatement(stmt);
-									break;
+		case StmtKindShortVarDecl: 
+			prettyShortVarDecl(stmt->val.varDeclaration, indentLevel);
+			break;
 		case StmtKindVarDeclaration:
 			prettyVarDecl(stmt->val.varDeclaration, indentLevel);
 			break;
@@ -152,7 +154,6 @@ void printIfStmt(Stmt* stmt,int indentLevel){
 
 
     if (simpleStmt != NULL){
-		
         printSimpleStatement(simpleStmt);
 		printf(";");
     }
@@ -214,10 +215,6 @@ void printSimpleStatement(Stmt* stmt){
     if (stmt == NULL){
         return;
     }
-	
-
-	
-
     switch (stmt->kind){
 
         case StmtKindExpression : prettyExp(stmt->val.expression.expr);
@@ -230,7 +227,7 @@ void printSimpleStatement(Stmt* stmt){
                                     prettyExpList(stmt->val.assignment.rhs);
                                     
                                     break;
-		case StmtKindShortDeclaration : prettyVarDeclSimpleStatement(stmt->val.varDeclaration);
+		case StmtKindShortVarDecl : prettyVarDeclSimpleStatement(stmt->val.varDeclaration);
 										break;
     
        
@@ -541,6 +538,14 @@ void prettyVarDecl(VarDeclNode *var, int indentLevel)
 		printf(" = ");
 		prettyExp(var->value);
 	}
+	printf("\n");
+	prettyVarDecl(var->nextDecl, indentLevel);
+}
+void prettyShortVarDecl(VarDeclNode *var, int indentLevel)
+{
+	indent(indentLevel);
+	printf("%s := ", var->identifier);
+	prettyExp(var->value);
 	printf("\n");
 	prettyVarDecl(var->nextDecl, indentLevel);
 }
