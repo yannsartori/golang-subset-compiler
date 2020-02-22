@@ -577,10 +577,10 @@ TopDeclarationNode* makeTopVarDecl(VarDeclNode* varDecl, TopDeclarationNode* nex
 	return v;
 }
 
-TypeHolderNode* makeArrayHolder(Exp* arraySize, char* id){
+TypeHolderNode* makeArrayHolder(Exp* arraySize, TypeHolderNode* id){
 	TypeHolderNode* t = malloc(sizeof(TypeHolderNode));
 	t -> kind = arrayType;
-	t -> identification = id;
+	t -> underlyingType = id;
 	t -> arrayDims = arraySize;
 	return t;
 }
@@ -592,10 +592,10 @@ TypeHolderNode* makeStructHolder(TypeDeclNode* members) {
 	return t;
 }
 
-TypeHolderNode* makeSliceHolder(char* id) {
+TypeHolderNode* makeSliceHolder(TypeHolderNode* id) {
 	TypeHolderNode* t = malloc(sizeof(TypeHolderNode));
 	t -> kind = sliceType;
-	t -> identification = id;
+	t -> underlyingType = id;
 	return t;
 }
 
@@ -620,9 +620,9 @@ TypeDeclNode* makeSingleTypeDecl(IdChain* identifiers, TypeHolderNode* givenType
 	TypeDeclNode* temp = t;
 	IdChain* iter = identifiers;
 	while (iter -> next != NULL) {
+		temp -> nextDecl = malloc(sizeof(TypeDeclNode));
 		temp = temp -> nextDecl;
 		iter = iter -> next;
-		temp = malloc(sizeof(TypeDeclNode));
 		temp -> identifier = iter -> identifier;
 		temp -> actualType = givenType;
 	}
@@ -762,7 +762,13 @@ IdChain* extractIdList(ExpList* expressions, int lineno) {
 	idIter -> next = NULL;
 	return base;
 }
-
+/* This might be useful but not right now
+TypeHolderNode* getInferType() {
+	TypeHolderNode* t = malloc(sizeof(TypeHolderNode));
+	t -> kind = inferType;
+	return t;
+}
+*/
 /* Redondant code that should be removed. Committed out for the time being as a heads up, use ExpList* reverseList(ExpList*)
 void reverseArgumentList(ExpList **list)
 {

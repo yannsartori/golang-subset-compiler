@@ -7,7 +7,7 @@
 
 int yylex();
 extern int yylineno;
-Stmt* root;
+RootNode* root;
 
 void yyerror(char const *s) {
 	fprintf(stderr, "Error: %s on line %d\n", s, yylineno);
@@ -103,7 +103,7 @@ void indexingBlankError()
 {
 
 	#include "ast.h"
-	extern Stmt* root;
+	extern RootNode* root;
 
 }
 
@@ -158,7 +158,7 @@ void indexingBlankError()
 
 %%
 
-root			: tPackage tIDENTIFIER ';' topDeclarationList {$$ = makeRootNode($2, $4);}
+root			: tPackage tIDENTIFIER ';' topDeclarationList {root = makeRootNode($2, $4);}
 ;
 
 topDeclarationList	: %empty				{$$ = NULL;}
@@ -218,9 +218,9 @@ declType		: tIDENTIFIER					{$$ = makeIdTypeHolder($1);}
 			| structDeclType				{$$ = $1; }
 ;
 
-sliceDeclType		: '[' ']' tIDENTIFIER			{$$ = makeSliceHolder($3);}
+sliceDeclType		: '[' ']' declType				{$$ = makeSliceHolder($3);}
 ;
-arrayDeclType		: index tIDENTIFIER				{$$ = makeArrayHolder($1, $2);}
+arrayDeclType		: index declType				{$$ = makeArrayHolder($1, $2);}
 ;
 structDeclType	: tStruct '{' innerTypeDecls '}'		{$$ = makeStructHolder($3);}
 			| tStruct '{' '}'				{$$ = makeStructHolder(NULL);}
