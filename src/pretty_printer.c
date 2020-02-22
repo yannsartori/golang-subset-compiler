@@ -191,13 +191,6 @@ void printSwitchStmt(Stmt* stmt,int indentLevel){
 
 }
 
-
-
-
-
-
-
-
 void printSimpleStatement(Stmt* stmt){
     if (stmt == NULL){
         return;
@@ -248,32 +241,6 @@ void printSwitchCaseClause(switchCaseClause* clause,int indentLevel){
 
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void prettyExpList(ExpList *list);
 void prettyExp(Exp * exp)
 {
 	if ( exp == NULL ) return;
@@ -295,9 +262,6 @@ void prettyExp(Exp * exp)
 		case expKindInterpretedStringLit:
 			printf("%s", exp->val.stringLit);
 			break;
-
-		case expKindTypeCast:
-
 		case expKindFuncCall:
 			prettyExp(exp->val.funcCall.base);
 			printf("(");
@@ -330,6 +294,28 @@ void prettyExp(Exp * exp)
 		case expKindCapacity:
 			printf("cap(");
 			prettyExp(exp->val.builtInBody);
+			printf(")");
+			break;
+		case expKindLogicNot: //switch statements <3
+		case expKindUnaryMinus:
+		case expKindUnaryPlus:
+		case expKindBitNotUnary:
+			switch (exp->kind) {
+				case expKindLogicNot:
+					printf("!");
+					break;
+				case expKindUnaryMinus:
+					printf("-");
+					break;
+				case expKindUnaryPlus:
+					printf("+");
+					break;
+				case expKindBitNotUnary:
+					printf("^");
+					break;
+			}
+			printf("(");
+			prettyExp(exp->val.unary);
 			printf(")");
 			break;
 		default:
@@ -397,7 +383,7 @@ void prettyExp(Exp * exp)
 					break;
 				case expKindMod:
 					prettyExp(exp->val.binary.left);
-					fputs(" % ", stdout);
+					fputs(" % ", stdout); //for denali <3
 					prettyExp(exp->val.binary.right);
 					break;
 				case expKindBitAnd:
@@ -430,25 +416,6 @@ void prettyExp(Exp * exp)
 					printf(" &^ " );
 					prettyExp(exp->val.binary.right);
 					break;
-				case expKindLogicNot:
-					printf("!");
-					prettyExp(exp->val.unary);
-					break;
-				case expKindUnaryMinus:
-					printf("-");
-					prettyExp(exp->val.unary);
-					break;
-				case expKindUnaryPlus:
-					printf("+");
-					prettyExp(exp->val.unary);
-					break;
-				case expKindBitNotUnary:
-					printf("^");
-					prettyExp(exp->val.unary);
-					break;
-				default:
-					printf("An error occured :(");
-					exit(1);
 			}
 			printf(")");
 			
