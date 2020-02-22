@@ -38,7 +38,7 @@ void printStmt(Stmt* stmt, int indentLevel){
     }
 
     switch (stmt->kind){
-        case StmtKindBlock :    indent(indentLevel);
+        case StmtKindBlock :    
 								printf("{\n");
                                 printStmt(stmt->val.block.stmt,indentLevel + 1);
                                 indent(indentLevel);
@@ -507,9 +507,8 @@ void prettyFuncDecl(FuncDeclNode *func, int indentLevel)
 		prettyTypeHolderForReference(func->returnType, indentLevel);
 		printf(" ");
 	}
-	printf("{\n");
-	printStmt(func->blockStart, indentLevel + 1);	
-	printf("}\n");
+	printStmt(func->blockStart, indentLevel );	
+
 }
 void prettyFuncArgs(TypeDeclNode *type, int indentLevel)
 {
