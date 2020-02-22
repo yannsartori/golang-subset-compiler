@@ -1,6 +1,49 @@
 #ifndef GLOBAL_ENUM
 #define GLOBAL_ENUM
+
+typedef enum {
+    StmtKindBlock,
+    StmtKindExpression,
+    StmtKindAssignment,
+   
+    StmtKindDeclaration, //TODO
+    StmtKindShortDeclaration, //TODO
+    StmtKindSimpleStatement, //TODO
+
+    StmtKindPrint,
+    StmtKindPrintln,
+    StmtKindIf,
+    StmtKindReturn,
+    StmtKindElse,
+    StmtKindSwitch,
+    StmtKindInfLoop,
+    StmtKindWhileLoop,
+    StmtKindThreePartLoop,
+
+    StmtKindBreak,
+    StmtKindContinue,
+	StmtKindFallthrough
+
+
+
+}StatementKind;
+
+
+
+typedef enum{
+    inLoop,
+    inSwitchStatement,
+    inFunction,
+    outside
+}State;
+
+
+
+//Yann's defintion
+
+
 extern int printTokens;
+
 typedef enum {
 	expKindIdentifier,
 	expKindIntLit,
@@ -37,5 +80,16 @@ typedef enum {
 	expKindAppend,
 	expKindLength,
 	expKindCapacity,
+
+	expKindTypeCast
 } ExpressionKind;
+
+typedef enum {
+	funcDeclType,
+	typeDeclType,
+	variDeclType
+} TopDeclarationType;
+
 #endif
+
+
