@@ -22,10 +22,11 @@ typedef enum {
 
     StmtKindBreak,
     StmtKindContinue,
-	StmtKindFallthrough
+	StmtKindFallthrough,
 
-
-
+	StmtKindTypeDeclaration,
+	StmtKindVarDeclaration,
+	StmtKindShortVarDecl,
 }StatementKind;
 
 
@@ -87,6 +88,14 @@ typedef enum {
 	typeDeclType,
 	variDeclType
 } TopDeclarationType;
+
+typedef enum {
+	arrayType,
+	structType,
+	sliceType,
+	identifierType,
+	inferType,
+} TypeType;
 
 #endif
 

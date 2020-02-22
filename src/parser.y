@@ -117,9 +117,16 @@ void indexingBlankError()
 	struct Stmt* stmt;
 	struct switchCaseClause* clause;
 	struct ExpList *explist;
+	RootNode* rootNode;
+	TopDeclarationNode* topDeclNode;
+	VarDeclNode* varDeclNode;
+	TypeDeclNode* typeDeclNode;
+	FuncDeclNode* funcDeclNode;
+	TypeHolderNode* declType;
+	IdChain* tempIdChain;
 }
 %token tLOGICOR tLOGICAND tEQ tNEQ tGEQ tLEQ tBShiftLeft tBShiftRight tAndNot tLENGTH tCAP tAPPEND tBreak tDefault tFunc tInterface tSelect tCase tDefer tGo tMap tStruct tChan tElse tGoto tPackage tSwitch tConst tFallthrough tIf tRange tType tContinue tFor tImport tReturn tVar tPrint tPrintln tPlusEq tAndEq tMinusEquals tOrEquals tTimesEquals tHatEquals tLessMinus tDivideEquals tLShiftEquals tIncrement tDefined tModEquals tRShiftEquals tDecrement tElipses tAndHatEquals 
-%token <intval>	   tINTLIT
+%token <intval> tINTLIT
 %token <floatval>  tFLOATLIT
 %token <runeval> tRUNELIT
 %token <stringval> tRAWSTRINGLIT tINTERPRETEDSTRINGLIT
@@ -128,6 +135,15 @@ void indexingBlankError()
 
 %type <exp>  expression operand literal index selector appendExpression lengthExpression capExpression primaryExpression 
 %type <explist> expressionList arguments expressionSwitchCase maybeEmptyExpressionList
+%type <rootNode> root
+%type <topDeclNode> topDeclarationList
+%type <varDeclNode> variableDecl singleVarDecl innerVarDecls
+%type <typeDeclNode> typeDecl singleTypeDecl innerTypeDecls funcArgDecls
+%type <funcDeclNode> funcDecl
+%type <declType> declType sliceDeclType arrayDeclType structDeclType
+%type <tempIdChain> identifierList
+%type <clause> expressionCaseClauseList expressionCaseClause
+%type <stmt> block statementList statement simpleStatement assignmentStatement ifStatement loop switch
 
 %left tLOGICOR
 %left tLOGICAND
@@ -138,17 +154,88 @@ void indexingBlankError()
 
 
 
-%type <clause> expressionCaseClauseList expressionCaseClause
-%type <stmt> block statementList statement simpleStatement assignmentStatement ifStatement loop switch
-
-%start Program
+%start root
 
 %%
 
+root			: tPackage tIDENTIFIER ';' topDeclarationList {$$ = makeRootNode($2, $4);}
+;
 
-Program : statementList {root = reverseStmtList($1);}
+topDeclarationList	: %empty				{$$ = NULL;}
+			| variableDecl topDeclarationList	{$$ = makeTopVarDecl($1, $2);}
+			| typeDecl topDeclarationList	{$$ = makeTopTypeDecl($1, $2);}
+			| funcDecl topDeclarationList	{$$ = makeTopFuncDecl($1, $2);}
+;
 
- 
+variableDecl		: tVar singleVarDecl ';'		{$$ = $2;}
+			| tVar '(' innerVarDecls ')' ';'	{$$ = $3;}
+			| tVar '(' ')' ';'			{$$ = NULL;}
+;
+
+innerVarDecls		: singleVarDecl				{$$ = $1;}
+			| singleVarDecl ';'				{$$ = $1;}
+			| singleVarDecl ';' innerVarDecls		{$$ = $1, appendVarDecls($$, $3);}
+;
+
+singleVarDecl		: identifierList declType '=' expressionList
+							{$$ = makeSingleVarDeclWithExps($1, $2, $4, yylineno);}
+			| identifierList '=' expressionList
+							{$$ = makeSingleVarDeclWithExps($1, NULL, $3, yylineno);}
+			| identifierList declType	
+							{$$ = makeSingleVarDeclNoExps($1, $2);}
+;
+
+typeDecl		: tType singleTypeDecl ';'			{$$ = $2;}
+			| tType '(' innerTypeDecls ')' ';'		{$$ = $3;}
+			| tType '(' ')' ';'				{$$ = NULL;}
+;
+
+innerTypeDecls	: singleTypeDecl				{$$ = $1;}
+			| singleTypeDecl ';'				{$$ = $1;}
+			| singleTypeDecl ';' innerTypeDecls	{appendTypeDecls($1, $3); $$ = $1;}
+;
+
+singleTypeDecl	: identifierList declType			{$$ = makeSingleTypeDecl($1, $2);}
+;
+
+funcDecl		: tFunc tIDENTIFIER '(' funcArgDecls ')' declType block ';'
+						{$$ = makeFuncDecl($2, $4, $6, $7);}
+			| tFunc tIDENTIFIER '(' ')' declType block ';'
+						{$$ = makeFuncDecl($2, NULL, $5, $6);}
+			| tFunc tIDENTIFIER '(' funcArgDecls ')' block ';'
+						{$$ = makeFuncDecl($2, $4, NULL, $6);}
+			| tFunc tIDENTIFIER '(' ')' block ';'
+						{$$ = makeFuncDecl($2, NULL, NULL, $5);}
+;
+
+funcArgDecls		: singleTypeDecl ',' funcArgDecls		{appendTypeDecls($1, $3); $$ = $1;}
+			| singleTypeDecl				{$$ = $1;}
+;
+
+declType		: tIDENTIFIER					{$$ = makeIdTypeHolder($1);}
+			| sliceDeclType				{$$ = $1;}
+			| arrayDeclType				{$$ = $1;}
+			| structDeclType				{$$ = $1; }
+;
+
+sliceDeclType		: '[' ']' tIDENTIFIER			{$$ = makeSliceHolder($3);}
+;
+arrayDeclType		: index tIDENTIFIER				{$$ = makeArrayHolder($1, $2);}
+;
+structDeclType	: tStruct '{' innerTypeDecls '}'		{$$ = makeStructHolder($3);}
+			| tStruct '{' '}'				{$$ = makeStructHolder(NULL);}
+;
+
+identifierList	: tIDENTIFIER					{$$ = makeIdChain($1, NULL);}
+			| tIDENTIFIER ',' identifierList		{$$ = makeIdChain($1, $3);}
+;
+
+
+
+
+
+
+
 expression:
 			  primaryExpression								{ $$ = $1; }
 			| expression '*' expression						{ $$ = makeExpBinary($1, $3, expKindMultiplication); } /*2.9.5*/
@@ -198,7 +285,7 @@ operand:
 			| '(' expression ')'							{ $$ = $2; }
 			; /*2.9.1*/ 
 			
-literal:	
+literal:
 			  tINTLIT										{ $$ = makeExpIntLit($1); } 
 			| tFLOATLIT										{ $$ = makeExpFloatLit($1); }  
 			| tRUNELIT										{ $$ = makeExpRuneLit($1); }  
@@ -213,6 +300,8 @@ selector:		  '.' tIDENTIFIER							{ if ( strcmp($2, "_") == 0 ) fieldSelectBlan
 appendExpression: tAPPEND '(' expression ',' expression ')' { if ( isBlank($3) || isBlank($5) ) builtInBlankError("append"); $$ = makeExpAppend($3, $5); }; /*2.9.9*/
 lengthExpression: tLENGTH '(' expression ')'				{ if ( isBlank($3) ) builtInBlankError("length"); $$ = makeExpBuiltInBody($3, expKindLength); }; /*2.9.9*/
 capExpression:	  tCAP '(' expression ')'					{ if ( isBlank($3) ) builtInBlankError("capacity"); $$ = makeExpBuiltInBody($3, expKindCapacity); }; /*2.9.9*/
+
+
 
 
 
@@ -256,6 +345,8 @@ statement:
 			| switch //2.8.11 {$$ = $1;}
 			| ifStatement //2.8.10 {$$ = $1;}
 			| loop //2.8.12 {$$ = $1;}
+			| typeDecl				{$$ = makeTypeDeclStatement($1, yylineno);}
+			| variableDecl			{$$ = makeVarDeclStatement($1, 0, yylineno);}
 
 
 ;
@@ -273,7 +364,19 @@ simpleStatement:
 			| assignmentStatement {$$ = $1;}//2.8.4
 
 
-			| expressionList tDefined expressionList    /*2.8.6 Hacky Fix, LHS needs to be an identifier list
+			| expressionList tDefined expressionList   
+				{$$ = 
+					makeVarDeclStatement(
+						makeSingleVarDeclWithExps(
+							extractIdList($1, yylineno), 
+							NULL, 
+							$3,
+							yylineno
+						), 
+						1, 
+						yylineno
+					);
+				} /*2.8.6 Hacky Fix, LHS needs to be an identifier list
 													(Short declaration) Parser needs to check that length(LHS) == length(RHS), 
 													weeder probably needs to check that we can assign into LHS
 													 */
@@ -348,6 +451,7 @@ switch:
 
 expressionCaseClauseList : %empty {$$ = NULL;}
 						| expressionCaseClause expressionCaseClauseList {$$ = $1; $1->next  = $2;}
+						
 expressionCaseClause : expressionSwitchCase ':' statementList {$$ = makeSwitchCaseClause($1, reverseStmtList($3));}
 
 expressionSwitchCase : tCase expressionList {if (containsBlank($2)) {blankSwitchCaseClauseError();} ;$$ = $2;}

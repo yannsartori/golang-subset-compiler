@@ -1,8 +1,8 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "globalEnum.h"
 #include <string.h>
+#include "globalEnum.h"
 #include "ast.h"
 
 
