@@ -36,7 +36,7 @@
 
 \n {
 	if (needsSemiColon()) {
-		puts(";"); RETURN( ';' )
+		RETURN( ';' )
 	}
 }
 

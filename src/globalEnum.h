@@ -45,4 +45,12 @@ typedef enum {
 	variDeclType
 } TopDeclarationType;
 
+typedef enum {
+	arrayType,
+	structType,
+	sliceType,
+	identifierType,
+	inferType,
+} TypeType;
+
 #endif

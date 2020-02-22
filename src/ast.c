@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "globalEnum.h"
 #include "ast.h"
 //Neil provided
@@ -22,19 +23,164 @@ int containsBlank(ExpList* list){
 }
 
 RootNode* makeRootNode(char* packName, TopDeclarationNode* firstDecl) {
-	rootNode* r = malloc(sizeof(rootNode));
-	r -> packageName = packname;
+	RootNode* r = malloc(sizeof(RootNode));
+	r -> packageName = packName;
 	r -> startDecls = firstDecl;
 	return r;
 }
 
-TopDeclarationNode* makeTopVarDecl(VarDeclNode* varDecl, TopDeclarationNode* nextTopDecl, int multiDecl) {
+TopDeclarationNode* makeTopVarDecl(VarDeclNode* varDecl, TopDeclarationNode* nextTopDecl) {
 	TopDeclarationNode* v = malloc(sizeof(TopDeclarationNode*));
-	v -> TopDeclarationType = variDeclType;
-	v -> multiDecl = multiDecl;
+	v -> declType = variDeclType;
 	v -> nextTopDecl = nextTopDecl;
 	v -> actualRealDeclaration.varDecl = varDecl;
 	return v;
+}
+
+TypeHolderNode* makeArrayHolder(Exp* arraySize, char* id){
+	TypeHolderNode* t = malloc(sizeof(TypeHolderNode*));
+	t -> kind = arrayType;
+	t -> identification = id;
+	t -> arrayDims = arraySize;
+	return t;
+}
+
+TypeHolderNode* makeStructHolder(TypeDeclNode* members) {
+	TypeHolderNode* t = malloc(sizeof(TypeHolderNode*));
+	t -> kind = structType;
+	t -> structMembers = members;
+	return t;
+}
+
+TypeHolderNode* makeSliceHolder(char* id) {
+	TypeHolderNode* t = malloc(sizeof(TypeHolderNode*));
+	t -> kind = sliceType;
+	t -> identification = id;
+	return t;
+}
+
+TypeHolderNode* makeIdTypeHolder(char* id) {
+	TypeHolderNode* t = malloc(sizeof(TypeHolderNode*));
+	t -> kind = identifierType;
+	t -> identification = id;
+	return t;
+}
+
+IdChain* makeIdChain(char* identifier, IdChain* next) {
+	IdChain* c = malloc(sizeof(IdChain));
+	c -> identifier = identifier;
+	c -> next = next;
+	return c;
+}
+
+TypeDeclNode* makeSingleTypeDecl(IdChain* identifiers, TypeHolderNode* givenType) {
+	TypeDeclNode* t = malloc(sizeof(TypeDeclNode));
+	t -> actualType = givenType;
+	t -> identifier = identifiers -> identifier;
+	TypeDeclNode* temp = t;
+	IdChain* iter = identifiers;
+	while (iter -> next != NULL) {
+		temp = temp -> nextDecl;
+		iter = iter -> next;
+		temp = malloc(sizeof(TypeDeclNode));
+		temp -> identifier = iter -> identifier;
+		temp -> actualType = givenType;
+	}
+	temp -> nextDecl = NULL;
+	return t;
+}
+
+TopDeclarationNode* makeTopTypeDecl(TypeDeclNode* typeDecl, TopDeclarationNode* nextTopDecl) {
+	TopDeclarationNode* t = malloc(sizeof(TopDeclarationNode*));
+	t -> declType = typeDeclType;
+	t -> nextTopDecl = nextTopDecl;
+	t -> actualRealDeclaration.typeDecl = typeDecl;
+	return t;
+}
+
+void appendTypeDecls(TypeDeclNode* baseDecl, TypeDeclNode* leafDecl) {
+	TypeDeclNode* iter = baseDecl;
+	while (iter -> nextDecl != NULL) {
+		iter = iter -> nextDecl;
+	}
+	iter -> nextDecl = leafDecl;
+}
+
+void appendVarDecls(VarDeclNode* baseDecl, VarDeclNode* leafDecl) {
+	VarDeclNode* iter = baseDecl;
+	while (iter -> nextDecl != NULL) {
+		iter = iter -> nextDecl;
+	}
+	iter -> nextDecl = leafDecl;
+}
+
+VarDeclNode* makeSingleVarDeclNoExps(IdChain* identifiers, TypeHolderNode* givenType) {
+	printf("just before the malloc, in the makeSingleVarDeclNoExps\n");
+	VarDeclNode* v = malloc(sizeof(VarDeclNode));
+	printf("2\n");
+	v -> typeThing = givenType;
+	v -> identifier = identifiers -> identifier;
+	v -> value = NULL;
+	VarDeclNode* temp = v;
+	IdChain* iter = identifiers;
+	while (iter -> next != NULL) {
+		printf("x\n");
+		temp -> nextDecl = malloc(sizeof(VarDeclNode));
+		temp = temp -> nextDecl;
+		iter = iter -> next;
+		temp -> identifier = iter -> identifier;
+		temp -> value = NULL;
+		temp -> typeThing = givenType;
+	}
+	temp -> nextDecl = NULL;
+	return v;
+}
+
+VarDeclNode* makeSingleVarDeclWithExps(IdChain* identifiers, TypeHolderNode* givenType, ExpList* values) {
+	ExpList* valIter = values;
+	reverseArgumentList(&valIter);
+	VarDeclNode* t = malloc(sizeof(VarDeclNode));
+	t -> typeThing = givenType;
+	t -> identifier = identifiers -> identifier;
+	t -> value = valIter -> cur;
+	VarDeclNode* temp = t;
+	IdChain* iter = identifiers;
+	while (iter -> next != NULL) {
+		temp -> nextDecl = malloc(sizeof(VarDeclNode));
+		temp = temp -> nextDecl;
+		iter = iter -> next;
+		valIter = valIter -> next;
+		temp -> identifier = iter -> identifier;
+		if (valIter == NULL) {
+			fprintf(stderr, "Error: wrong number of expressions for assignment.\n");
+			exit(1);
+		}
+		temp -> value = valIter -> cur;
+		temp -> typeThing = givenType;
+	}
+	if (valIter -> next != NULL) {
+		fprintf(stderr, "Error: wrong number of expressions for assignment.\n");
+		exit(1);
+	}
+	temp -> nextDecl = NULL;
+	return t;
+}
+
+FuncDeclNode* makeFuncDecl(char* funcName, TypeDeclNode* argsDecls, TypeHolderNode* returnType, void* blockStart) {
+	FuncDeclNode* f = malloc(sizeof(FuncDeclNode));
+	f -> identifier = funcName;
+	f -> argsDecls = argsDecls;
+	f -> returnType = returnType;
+	f -> blockStart = blockStart;
+	return f;
+}
+
+TopDeclarationNode* makeTopFuncDecl(FuncDeclNode* funcDecl, TopDeclarationNode* nextTopDecl) {
+	TopDeclarationNode* t = malloc(sizeof(TopDeclarationNode*));
+	t -> declType = typeDeclType;
+	t -> nextTopDecl = nextTopDecl;
+	t -> actualRealDeclaration.funcDecl = funcDecl;
+	return t;
 }
 
 Exp *makeExpIdentifier(char *identifier) //How should we handle types?

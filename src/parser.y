@@ -52,20 +52,28 @@ void indexingBlankError()
 	struct ExpList *explist;
 	RootNode* rootNode;
 	TopDeclarationNode* topDeclNode;
+	VarDeclNode* varDeclNode;
+	TypeDeclNode* typeDeclNode;
+	FuncDeclNode* funcDeclNode;
+	TypeHolderNode* declType;
+	IdChain* tempIdChain;
 }
 %token tLOGICOR tLOGICAND tEQ tNEQ tGEQ tLEQ tBShiftLeft tBShiftRight tAndNot tLENGTH tCAP tAPPEND tBreak tDefault tFunc tInterface tSelect tCase tDefer tGo tMap tStruct tChan tElse tGoto tPackage tSwitch tConst tFallthrough tIf tRange tType tContinue tFor tImport tReturn tVar tPrint tPrintln tPlusEq tAndEq tMinusEquals tOrEquals tTimesEquals tHatEquals tLessMinus tDivideEquals tLShiftEquals tIncrement tDefined tModEquals tRShiftEquals tDecrement tElipses tAndHatEquals 
-%token <intval>	   tINTLIT
+%token <intval> tINTLIT
 %token <floatval>  tFLOATLIT
 %token <runeval> tRUNELIT
 %token <stringval> tRAWSTRINGLIT tINTERPRETEDSTRINGLIT
 %token <boolval> tBOOLVAL
 %token <identifier> tIDENTIFIER
-
 %type <exp> expression operand literal index selector appendExpression lengthExpression capExpression primaryExpression 
-
 %type <explist> expressionList arguments
 %type <rootNode> root
-%type <topDeclNode> variableDecl typeDecl funcDecl topDeclarationList
+%type <topDeclNode> topDeclarationList
+%type <varDeclNode> variableDecl singleVarDecl innerVarDecls
+%type <typeDeclNode> typeDecl singleTypeDecl innerTypeDecls funcArgDecls
+%type <funcDeclNode> funcDecl
+%type <declType> declType sliceDeclType arrayDeclType structDeclType
+%type <tempIdChain> identifierList
 %left tLOGICOR
 %left tLOGICAND
 %left tEQ tNEQ tGEQ tLEQ '>' '<'
@@ -83,63 +91,80 @@ root			: tPackage tIDENTIFIER ';' topDeclarationList {$$ = makeRootNode($2, $4);
 ;
 
 topDeclarationList	: 					{$$ = NULL;}
-			| variableDecl topDeclarationList	
-			| typeDecl topDeclarationList	
-			| funcDecl topDeclarationList	
+			| variableDecl topDeclarationList	{$$ = makeTopVarDecl($1, $2);}
+			| typeDecl topDeclarationList	{$$ = makeTopTypeDecl($1, $2);}
+			| funcDecl topDeclarationList	{$$ = makeTopFuncDecl($1, $2);}
 ;
 
-variableDecl		: tVar singleVarDecl ';'		
-			| tVar '(' innerVarDecls ')' ';'	
-			| tVar '(' ')' ';'			
+variableDecl		: tVar singleVarDecl ';'		{$$ = $2;}
+			| tVar '(' innerVarDecls ')' ';'	{$$ = $3;}
+			| tVar '(' ')' ';'			{$$ = NULL;}
 ;
 
-innerVarDecls		: singleVarDecl
-			| singleVarDecl ';'
-			| singleVarDecl ';' innerVarDecls
+innerVarDecls		: singleVarDecl				{$$ = $1;}
+			| singleVarDecl ';'				{$$ = $1;}
+			| singleVarDecl ';' innerVarDecls		{$$ = $1, appendVarDecls($$, $3);}
 ;
 
 singleVarDecl		: identifierList declType '=' expressionList
+							{$$ = makeSingleVarDeclWithExps($1, $2, $4);}
 			| identifierList '=' expressionList
-			| identifierList declType
+							{$$ = makeSingleVarDeclWithExps($1, NULL, $3);}
+			| identifierList declType	
+							{$$ = makeSingleVarDeclNoExps($1, $2);}
 ;
 
-typeDecl		: tType singleTypeDecl ';'
-			| tType '(' innerTypeDecls ')' ';'
-			| tType '(' ')' ';'
+typeDecl		: tType singleTypeDecl ';'			{$$ = $2;}
+			| tType '(' innerTypeDecls ')' ';'		{$$ = $3;}
+			| tType '(' ')' ';'				{$$ = NULL;}
 ;
 
-innerTypeDecls	: singleTypeDecl
-			| singleTypeDecl ';'
-			| singleTypeDecl ';' innerTypeDecls
+innerTypeDecls	: singleTypeDecl				{$$ = $1;}
+			| singleTypeDecl ';'				{$$ = $1;}
+			| singleTypeDecl ';' innerTypeDecls	{appendTypeDecls($1, $3); $$ = $1;}
 ;
 
-singleTypeDecl	: identifierList declType
+singleTypeDecl	: identifierList declType			{$$ = makeSingleTypeDecl($1, $2);}
 ;
 
-funcDecl		: tFunc tIDENTIFIER '(' funcArgDecls ')' declType block
-			| tFunc tIDENTIFIER '(' ')' declType block
-			| tFunc tIDENTIFIER '(' funcArgDecls ')' block
-			| tFunc tIDENTIFIER '(' ')' block
+funcDecl		: tFunc tIDENTIFIER '(' funcArgDecls ')' declType block ';'
+						{$$ = makeFuncDecl($2, $4, $6, NULL);}
+			| tFunc tIDENTIFIER '(' ')' declType block ';'
+						{$$ = makeFuncDecl($2, NULL, $5, NULL);}
+			| tFunc tIDENTIFIER '(' funcArgDecls ')' block ';'
+						{$$ = makeFuncDecl($2, $4, NULL, NULL);}
+			| tFunc tIDENTIFIER '(' ')' block ';'
+						{$$ = makeFuncDecl($2, NULL, NULL, NULL);}
 ;
 
-funcArgDecls		: identifierList declType funcArgDecls
-			| identifierList declType
+funcArgDecls		: singleTypeDecl ',' funcArgDecls		{appendTypeDecls($1, $3); $$ = $1;}
+			| singleTypeDecl				{$$ = $1;}
 ;
 
-declType		: tIDENTIFIER
-			| sliceDeclType
-			| arrayDeclType
-			| structDeclType
+declType		: tIDENTIFIER					{$$ = makeIdTypeHolder($1);}
+			| sliceDeclType				{$$ = $1;}
+			| arrayDeclType				{$$ = $1;}
+			| structDeclType				{$$ = $1; }
 ;
 
-sliceDeclType		: '[' ']' tIDENTIFIER;
-arrayDeclType		: index tIDENTIFIER;
-structDeclType	: tStruct '{' innerTypeDecls '}' ';'
-			| tStruct '{' '}' ';'
+sliceDeclType		: '[' ']' tIDENTIFIER			{$$ = makeSliceHolder($3);}
+;
+arrayDeclType		: index tIDENTIFIER				{$$ = makeArrayHolder($1, $2);}
+;
+structDeclType	: tStruct '{' innerTypeDecls '}'		{$$ = makeStructHolder($3);}
+			| tStruct '{' '}'		
+				{
+					printf("x\n");
+					$$ = makeStructHolder(NULL); 
+					printf("y\n");
+				}
 ;
 
-identifierList	: tIDENTIFIER
-			| tIDENTIFIER ',' identifierList
+identifierList	: tIDENTIFIER					{$$ = makeIdChain($1, NULL);}
+			| tIDENTIFIER ',' identifierList		{$$ = makeIdChain($1, $3);}
+;
+
+block			: '{' '}'
 ;
 
 expression:
