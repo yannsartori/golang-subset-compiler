@@ -58,7 +58,7 @@ void printStmt(Stmt* stmt, int indentLevel){
 									printf(";");
                                     printf("\n");
                                     break;
-		case StmtKindShortVarDecl: 
+		case StmtKindShortDeclaration: 
 			prettyShortVarDecl(stmt->val.varDeclaration, indentLevel);
 			break;
 		case StmtKindVarDeclaration:
@@ -227,7 +227,7 @@ void printSimpleStatement(Stmt* stmt){
                                     prettyExpList(stmt->val.assignment.rhs);
                                     
                                     break;
-		case StmtKindShortVarDecl : prettyVarDeclSimpleStatement(stmt->val.varDeclaration);
+		case StmtKindShortDeclaration : prettyVarDeclSimpleStatement(stmt->val.varDeclaration);
 										break;
     
        

@@ -589,7 +589,7 @@ Exp *makeExpFuncCall(Exp *base, ExpList *arguments)
 
 RootNode* makeRootNode(char* packName, TopDeclarationNode* firstDecl) {
 	if (strcmp(packName, "_") == 0) {
-		fprintf(stderr, "Package name cannot be the blank identifier.\n");
+		fprintf(stderr, "Error: package name cannot be the blank identifier.\n");
 		exit(1);
 	}
 	RootNode* r = malloc(sizeof(RootNode));
@@ -752,7 +752,7 @@ Stmt* makeVarDeclStatement(VarDeclNode* declaration, int isShort, int lineNomber
 	Stmt* s = malloc(sizeof(Stmt));
 	s -> val.varDeclaration = declaration;
 	if (isShort) {
-		s -> kind = StmtKindShortVarDecl;
+		s -> kind = StmtKindShortDeclaration;
 	} else {
 		s -> kind = StmtKindVarDeclaration;
 	}
