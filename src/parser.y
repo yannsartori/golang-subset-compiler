@@ -220,7 +220,8 @@ funcArgDecls		: singleTypeDecl ',' funcArgDecls		{appendTypeDecls($1, $3); $$ = 
 			| singleTypeDecl				{$$ = $1;}
 ;
 
-declType		: tIDENTIFIER					{$$ = makeIdTypeHolder($1);}
+declType		: '(' declType ')'				{$$ = $2;}
+			| tIDENTIFIER					{$$ = makeIdTypeHolder($1);}
 			| sliceDeclType				{$$ = $1;}
 			| arrayDeclType				{$$ = $1;}
 			| structDeclType				{$$ = $1; }
