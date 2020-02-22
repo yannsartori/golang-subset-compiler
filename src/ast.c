@@ -307,12 +307,6 @@ Stmt* reverseStmtList(Stmt* reversed){
     return reverseStmtListPrivate(NULL,reversed);
 }
 
-
-#include <string.h>
-#include "globalEnum.h"
-#include "ast.h"
-//Neil provided
-
 int isBlank(Exp* expression){
     if (expression == NULL){
         return 0;
@@ -453,43 +447,13 @@ int weedSwitchClause(switchCaseClause* clauseList, State loopState, State switch
 
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//Yann's functions
-
-
-
-
-
-
-
-Exp *makeExpIdentifier(char *identifier) //How should we handle types?
+Exp *makeExpIdentifier(char *identifier) 
 
 {
 	Exp *e = (Exp *) malloc(sizeof(Exp));
 	e->kind = expKindIdentifier;
 	e->val.id = identifier;
-  e->isBracketed = 0;
+	e->isBracketed = 0;
 	return e;
 }
 Exp *makeExpIntLit(int intLit)
@@ -580,13 +544,12 @@ ExpList *createArgumentList(Exp *argument)
 	l->cur = argument;  
 	return l;
 }
-Exp *makeExpFuncCall(Exp *base, ExpList *arguments, ExpressionKind kind)
+Exp *makeExpFuncCall(Exp *base, ExpList *arguments)
 {
 	Exp * e = (Exp *) malloc (sizeof(Exp));
-	e->kind = kind;
+	e->kind = expKindFuncCall;
 	e->val.funcCall.base = base;
-	e->val.funcCall.arguments = arguments;
-
+	e->val.funcCall.arguments = reverseList(arguments);	
     e->isBracketed = 0;
 	return e;
 }
@@ -611,6 +574,7 @@ TopDeclarationNode* makeTopVarDecl(VarDeclNode* varDecl, TopDeclarationNode* nex
 	return v;
 
 }
+/* Redondant code that should be removed. Committed out for the time being as a heads up, use ExpList* reverseList(ExpList*)
 void reverseArgumentList(ExpList **list)
 {
 	ExpList *prev = NULL; 
@@ -625,4 +589,4 @@ void reverseArgumentList(ExpList **list)
     } 
     *list = prev; 
 }
-
+*/

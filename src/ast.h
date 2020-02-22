@@ -45,7 +45,7 @@ Exp *makeExpBuiltInBody(Exp *builtInBody, ExpressionKind kind);
 Exp *makeExpAccess(Exp *base, Exp * accessor, ExpressionKind kind);
 ExpList *addArgument(ExpList * args, Exp * argument);
 ExpList *createArgumentList(Exp *argument);
-Exp *makeExpFuncCall(Exp *base, ExpList *arguments, ExpressionKind kind);
+Exp *makeExpFuncCall(Exp *base, ExpList *arguments);
 
 Stmt* reverseStmtList(Stmt* reversed);
 ExpList* reverseList(ExpList* reversed);
