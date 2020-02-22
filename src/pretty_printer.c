@@ -26,6 +26,8 @@ void prettyStructMembers(TypeDeclNode *type, int indentLevel);
 void prettyVarDecl(VarDeclNode *var, int indentLevel);
 void prettyTopDeclaration(TopDeclarationNode *topDecl, int indentLevel);
 
+void prettyVarDeclSimpleStatement(VarDeclNode *var);
+
 void indent(int indentLevel){
     for(int i = 0 ; i < indentLevel; i++){
         printf("    ");
@@ -56,7 +58,8 @@ void printStmt(Stmt* stmt, int indentLevel){
 									printf(";");
                                     printf("\n");
                                     break;
-		case StmtKindShortVarDecl:
+		case StmtKindShortVarDecl: printSimpleStatement(stmt);
+									break;
 		case StmtKindVarDeclaration:
 			prettyVarDecl(stmt->val.varDeclaration, indentLevel);
 			break;
@@ -228,6 +231,8 @@ void printSimpleStatement(Stmt* stmt){
                                     prettyExpList(stmt->val.assignment.rhs);
                                     
                                     break;
+		case StmtKindShortDeclaration : prettyVarDeclSimpleStatement(stmt->val.varDeclaration);
+										break;
     
        
     }
@@ -593,4 +598,27 @@ void printRoot(RootNode *root)
 {
 	printf("package %s\n", root->packageName);
 	prettyTopDeclaration(root->startDecls, 0);
+}
+
+
+
+
+
+
+
+
+//Neil (Needs a touch up)
+
+void prettyVarDeclSimpleStatement(VarDeclNode *var)
+{
+	if ( var == NULL ) return;
+
+	printf("%s", var->identifier);
+	
+	if ( var->value != NULL )
+	{
+		printf(" := ");
+		prettyExp(var->value);
+	}
+	
 }
