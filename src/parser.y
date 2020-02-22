@@ -230,7 +230,7 @@ declType		: tIDENTIFIER					{$$ = makeIdTypeHolder($1);}
 
 sliceDeclType		: '[' ']' declType				{$$ = makeSliceHolder($3);}
 ;
-arrayDeclType		: index declType				{$$ = makeArrayHolder($1, $2);}
+arrayDeclType		: '[' tINTLIT ']' declType				{$$ = makeArrayHolder($2, $4);}
 ;
 structDeclType	: tStruct '{' innerTypeDecls '}'		{$$ = makeStructHolder($3);}
 			| tStruct '{' '}'				{$$ = makeStructHolder(NULL);}
