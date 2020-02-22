@@ -4,6 +4,7 @@
 #include <string.h>
 #include "globalEnum.h"
 #include "ast.h"
+#include "pretty_printer.h"
 
 
 
@@ -16,6 +17,15 @@ void printSwitchStmt(Stmt* stmt,int indentLevel);
 void printSimpleStatement(Stmt* stmt);
 void printSwitchCaseClause(switchCaseClause* clause,int indentLevel);
 
+void prettyTypeHolderForDecl(TypeHolderNode *node, int indentLevel);
+void prettyTypeHolderForReference(TypeHolderNode *node, int indentLevel);
+void prettyFuncDecl(FuncDeclNode *func, int indentLevel);
+void prettyTypeDecl(TypeDeclNode *type, int indentLevel);
+void prettyFuncArgs(TypeDeclNode *type, int indentLevel);
+void prettyStructMembers(TypeDeclNode *type, int indentLevel);
+void prettyVarDecl(VarDeclNode *var, int indentLevel);
+void prettyTopDeclaration(TopDeclarationNode *topDecl, int indentLevel);
+
 void indent(int indentLevel){
     for(int i = 0 ; i < indentLevel; i++){
         printf("    ");
@@ -26,8 +36,6 @@ void printStmt(Stmt* stmt, int indentLevel){
     if (stmt == NULL){
         return;
     }
-
-    
 
     switch (stmt->kind){
         case StmtKindBlock :    indent(indentLevel);
@@ -46,6 +54,10 @@ void printStmt(Stmt* stmt, int indentLevel){
 									printSimpleStatement(stmt);
                                     printf("\n");
                                     break;
+		case StmtKindShortVarDecl:
+		case StmtKindVarDeclaration:
+			prettyVarDecl(stmt->val.varDeclaration, indentLevel);
+			break;
     
         case StmtKindPrint : 	indent(indentLevel);
 								printf("print(");
@@ -117,7 +129,6 @@ void printStmt(Stmt* stmt, int indentLevel){
                                 printf("fallthrough;");
                                 break;
     }
-
 
     printStmt(stmt->next,indentLevel);
 }
@@ -191,13 +202,6 @@ void printSwitchStmt(Stmt* stmt,int indentLevel){
 
 }
 
-
-
-
-
-
-
-
 void printSimpleStatement(Stmt* stmt){
     if (stmt == NULL){
         return;
@@ -248,32 +252,6 @@ void printSwitchCaseClause(switchCaseClause* clause,int indentLevel){
 
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void prettyExpList(ExpList *list);
 void prettyExp(Exp * exp)
 {
 	if ( exp == NULL ) return;
@@ -295,9 +273,6 @@ void prettyExp(Exp * exp)
 		case expKindInterpretedStringLit:
 			printf("%s", exp->val.stringLit);
 			break;
-
-		case expKindTypeCast:
-
 		case expKindFuncCall:
 			prettyExp(exp->val.funcCall.base);
 			printf("(");
@@ -330,6 +305,28 @@ void prettyExp(Exp * exp)
 		case expKindCapacity:
 			printf("cap(");
 			prettyExp(exp->val.builtInBody);
+			printf(")");
+			break;
+		case expKindLogicNot: //switch statements <3
+		case expKindUnaryMinus:
+		case expKindUnaryPlus:
+		case expKindBitNotUnary:
+			switch (exp->kind) {
+				case expKindLogicNot:
+					printf("!");
+					break;
+				case expKindUnaryMinus:
+					printf("-");
+					break;
+				case expKindUnaryPlus:
+					printf("+");
+					break;
+				case expKindBitNotUnary:
+					printf("^");
+					break;
+			}
+			printf("(");
+			prettyExp(exp->val.unary);
 			printf(")");
 			break;
 		default:
@@ -397,7 +394,7 @@ void prettyExp(Exp * exp)
 					break;
 				case expKindMod:
 					prettyExp(exp->val.binary.left);
-					fputs(" % ", stdout);
+					fputs(" % ", stdout); //for denali <3
 					prettyExp(exp->val.binary.right);
 					break;
 				case expKindBitAnd:
@@ -430,25 +427,6 @@ void prettyExp(Exp * exp)
 					printf(" &^ " );
 					prettyExp(exp->val.binary.right);
 					break;
-				case expKindLogicNot:
-					printf("!");
-					prettyExp(exp->val.unary);
-					break;
-				case expKindUnaryMinus:
-					printf("-");
-					prettyExp(exp->val.unary);
-					break;
-				case expKindUnaryPlus:
-					printf("+");
-					prettyExp(exp->val.unary);
-					break;
-				case expKindBitNotUnary:
-					printf("^");
-					prettyExp(exp->val.unary);
-					break;
-				default:
-					printf("An error occured :(");
-					exit(1);
 			}
 			printf(")");
 			
@@ -464,4 +442,145 @@ void prettyExpList(ExpList *list)
 		prettyExpList(list->next);
 	}
 
+}
+void prettyTypeHolderForDecl(TypeHolderNode *node, int indentLevel)
+{
+	if ( node == NULL ) return;
+	switch (node->kind)
+	{
+		case sliceType:
+			printf("[]%s", node->identification);
+			break;
+		case arrayType:
+			printf("[");
+			prettyExp(node->arrayDims);
+			printf("]%s", node->identification);
+			break;
+		case identifierType:
+			printf("%s", node->identification);
+			break;
+		case structType:
+			printf("%s struct {\n", node->identification);
+			prettyStructMembers(node->structMembers, indentLevel + 1);
+			printf("}");
+			break;
+		case inferType:
+			//nothing :(
+			break;
+	}
+}
+void prettyTypeHolderForReference(TypeHolderNode *node, int indentLevel)
+{
+	if ( node == NULL ) return;
+	switch (node->kind)
+	{
+		case sliceType:
+			printf("[]%s", node->identification);
+			break;
+		case arrayType:
+			printf("[");
+			prettyExp(node->arrayDims);
+			printf("]%s", node->identification);
+			break;
+		case identifierType:
+		case structType:
+			printf("%s", node->identification);
+			break;
+		case inferType:
+			//nothing :(
+			break;
+	}
+}
+void prettyFuncDecl(FuncDeclNode *func, int indentLevel)
+{
+	if ( func == NULL ) return;
+	indent(indentLevel);
+	printf("func %s(", func->identifier);
+	prettyFuncArgs(func->argsDecls, indentLevel);
+	printf(") ");
+	if ( func->returnType != NULL )
+	{
+		prettyTypeHolderForReference(func->returnType, indentLevel);
+		printf(" ");
+	}
+	printf("{\n");
+	printStmt(func->blockStart, indentLevel + 1);	
+	printf("}\n");
+}
+void prettyFuncArgs(TypeDeclNode *type, int indentLevel)
+{
+	if ( type == NULL ) return;
+	printf("%s", type->identifier);
+	if ( type->actualType != NULL )
+	{
+		printf(" ");
+		prettyTypeHolderForReference(type->actualType, indentLevel);
+	}
+	if ( type->nextDecl != NULL )
+	{
+		printf(", ");
+		prettyFuncArgs(type->nextDecl, indentLevel);
+	}
+}
+void prettyStructMembers(TypeDeclNode *type, int indentLevel)
+{
+	if ( type == NULL ) return;
+	indent(indentLevel);
+	printf("%s", type->identifier);
+	if ( type->actualType != NULL )
+	{
+		printf(" ");
+		prettyTypeHolderForReference(type->actualType, indentLevel);
+	}
+	printf("\n");
+	prettyStructMembers(type->nextDecl, indentLevel);
+}
+void prettyTypeDecl(TypeDeclNode *type, int indentLevel)
+{
+	if ( type == NULL ) return;
+	indent(indentLevel);
+	printf("type ");
+	printf("%s ", type->identifier);
+	prettyTypeHolderForDecl(type->actualType, indentLevel);
+	printf("\n");
+	prettyTypeDecl(type->nextDecl, indentLevel);
+}
+void prettyVarDecl(VarDeclNode *var, int indentLevel)
+{
+	if ( var == NULL ) return;
+	indent(indentLevel);
+	printf("var %s", var->identifier);
+	prettyTypeHolderForReference(var->typeThing, indentLevel);
+	if ( var->value != NULL )
+	{
+		printf(" = ");
+		prettyExp(var->value);
+	}
+	printf("\n");
+	prettyVarDecl(var->nextDecl, indentLevel);
+}
+void prettyTopDeclaration(TopDeclarationNode *topDecl, int indentLevel)
+{
+	if ( topDecl == NULL ) return;
+	indent(indentLevel);
+	switch (topDecl->declType)
+	{
+		case variDeclType:
+			prettyVarDecl(topDecl->actualRealDeclaration.varDecl, indentLevel);
+			break;
+		case typeDeclType:
+			if ( topDecl->actualRealDeclaration.typeDecl == NULL ) puts("FUCK");
+			puts(topDecl->actualRealDeclaration.typeDecl->identifier);
+			prettyTypeDecl(topDecl->actualRealDeclaration.typeDecl, indentLevel);
+			break;
+		case funcDeclType:
+			prettyFuncDecl(topDecl->actualRealDeclaration.funcDecl, indentLevel);
+			break;
+	}
+	prettyTopDeclaration(topDecl->nextTopDecl, indentLevel);
+}
+void printRoot(RootNode *root)
+{
+	printf("package %s\n", root->packageName);
+	prettyTopDeclaration(root->startDecls, 0);
 }

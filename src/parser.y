@@ -7,7 +7,7 @@
 
 int yylex();
 extern int yylineno;
-RootNode* root;
+extern RootNode * rootNode;
 
 void yyerror(char const *s) {
 	fprintf(stderr, "Error: %s on line %d\n", s, yylineno);
@@ -95,6 +95,17 @@ void indexingBlankError()
 	exit(1);
 }
 
+void shortDeclarationPostError(Stmt* stmt){
+
+	if(stmt == NULL){
+		return;
+	}
+	if (stmt->kind == StmtKindShortDeclaration){
+		fprintf(stderr, "Error: (line %d) for loop post statement may not be a short declaration\n", yylineno);
+		exit(1);
+	}
+}
+
 %}
 
 %define parse.error verbose
@@ -103,8 +114,11 @@ void indexingBlankError()
 {
 
 	#include "ast.h"
+<<<<<<< HEAD
 	extern RootNode* root;
 
+=======
+>>>>>>> e01fe5e987d7ea1aeef92b05a201639bf16a0bcb
 }
 
 %union {
@@ -158,13 +172,17 @@ void indexingBlankError()
 
 %%
 
+<<<<<<< HEAD
 root			: tPackage tIDENTIFIER ';' topDeclarationList {root = makeRootNode($2, $4);}
+=======
+root			: tPackage tIDENTIFIER ';' topDeclarationList {rootNode = makeRootNode($2, $4);}
+>>>>>>> e01fe5e987d7ea1aeef92b05a201639bf16a0bcb
 ;
 
 topDeclarationList	: %empty				{$$ = NULL;}
 			| variableDecl topDeclarationList	{$$ = makeTopVarDecl($1, $2);}
-			| typeDecl topDeclarationList	{$$ = makeTopTypeDecl($1, $2);}
-			| funcDecl topDeclarationList	{$$ = makeTopFuncDecl($1, $2);}
+			| typeDecl topDeclarationList	{$$ = makeTopTypeDecl($1, $2); }
+			| funcDecl topDeclarationList	{$$ = makeTopFuncDecl($1, $2); }
 ;
 
 variableDecl		: tVar singleVarDecl ';'		{$$ = $2;}
@@ -432,7 +450,7 @@ ifStatement :
 loop : 
 		tFor block {$$ = makeInfLoopStmt($2);}
 		| tFor expression block {$$ = makeWhileLoopStmt($2,$3);}
-		| tFor simpleStatement ';' expression ';' simpleStatement block {$$ = makeThreePartLoopStmt($2,$4,$6,$7);}
+		| tFor simpleStatement ';' expression ';' simpleStatement block { shortDeclarationPostError($6) ;  $$ = makeThreePartLoopStmt($2,$4,$6,$7);}
 
 
 
