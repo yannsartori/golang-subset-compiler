@@ -30,7 +30,7 @@ RootNode* makeRootNode(char* packName, TopDeclarationNode* firstDecl) {
 }
 
 TopDeclarationNode* makeTopVarDecl(VarDeclNode* varDecl, TopDeclarationNode* nextTopDecl) {
-	TopDeclarationNode* v = malloc(sizeof(TopDeclarationNode*));
+	TopDeclarationNode* v = malloc(sizeof(TopDeclarationNode));
 	v -> declType = variDeclType;
 	v -> nextTopDecl = nextTopDecl;
 	v -> actualRealDeclaration.varDecl = varDecl;
@@ -38,7 +38,7 @@ TopDeclarationNode* makeTopVarDecl(VarDeclNode* varDecl, TopDeclarationNode* nex
 }
 
 TypeHolderNode* makeArrayHolder(Exp* arraySize, char* id){
-	TypeHolderNode* t = malloc(sizeof(TypeHolderNode*));
+	TypeHolderNode* t = malloc(sizeof(TypeHolderNode));
 	t -> kind = arrayType;
 	t -> identification = id;
 	t -> arrayDims = arraySize;
@@ -46,21 +46,21 @@ TypeHolderNode* makeArrayHolder(Exp* arraySize, char* id){
 }
 
 TypeHolderNode* makeStructHolder(TypeDeclNode* members) {
-	TypeHolderNode* t = malloc(sizeof(TypeHolderNode*));
+	TypeHolderNode* t = malloc(sizeof(TypeHolderNode));
 	t -> kind = structType;
 	t -> structMembers = members;
 	return t;
 }
 
 TypeHolderNode* makeSliceHolder(char* id) {
-	TypeHolderNode* t = malloc(sizeof(TypeHolderNode*));
+	TypeHolderNode* t = malloc(sizeof(TypeHolderNode));
 	t -> kind = sliceType;
 	t -> identification = id;
 	return t;
 }
 
 TypeHolderNode* makeIdTypeHolder(char* id) {
-	TypeHolderNode* t = malloc(sizeof(TypeHolderNode*));
+	TypeHolderNode* t = malloc(sizeof(TypeHolderNode));
 	t -> kind = identifierType;
 	t -> identification = id;
 	return t;
@@ -91,7 +91,7 @@ TypeDeclNode* makeSingleTypeDecl(IdChain* identifiers, TypeHolderNode* givenType
 }
 
 TopDeclarationNode* makeTopTypeDecl(TypeDeclNode* typeDecl, TopDeclarationNode* nextTopDecl) {
-	TopDeclarationNode* t = malloc(sizeof(TopDeclarationNode*));
+	TopDeclarationNode* t = malloc(sizeof(TopDeclarationNode));
 	t -> declType = typeDeclType;
 	t -> nextTopDecl = nextTopDecl;
 	t -> actualRealDeclaration.typeDecl = typeDecl;
@@ -176,7 +176,7 @@ FuncDeclNode* makeFuncDecl(char* funcName, TypeDeclNode* argsDecls, TypeHolderNo
 }
 
 TopDeclarationNode* makeTopFuncDecl(FuncDeclNode* funcDecl, TopDeclarationNode* nextTopDecl) {
-	TopDeclarationNode* t = malloc(sizeof(TopDeclarationNode*));
+	TopDeclarationNode* t = malloc(sizeof(TopDeclarationNode));
 	t -> declType = typeDeclType;
 	t -> nextTopDecl = nextTopDecl;
 	t -> actualRealDeclaration.funcDecl = funcDecl;

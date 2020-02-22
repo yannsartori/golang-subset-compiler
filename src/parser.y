@@ -152,12 +152,7 @@ sliceDeclType		: '[' ']' tIDENTIFIER			{$$ = makeSliceHolder($3);}
 arrayDeclType		: index tIDENTIFIER				{$$ = makeArrayHolder($1, $2);}
 ;
 structDeclType	: tStruct '{' innerTypeDecls '}'		{$$ = makeStructHolder($3);}
-			| tStruct '{' '}'		
-				{
-					printf("x\n");
-					$$ = makeStructHolder(NULL); 
-					printf("y\n");
-				}
+			| tStruct '{' '}'				{$$ = makeStructHolder(NULL);}
 ;
 
 identifierList	: tIDENTIFIER					{$$ = makeIdChain($1, NULL);}
