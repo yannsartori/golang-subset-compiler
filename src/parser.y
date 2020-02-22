@@ -182,8 +182,7 @@ variableDecl		: tVar singleVarDecl ';'		{$$ = $2;}
 			| tVar '(' ')' ';'			{$$ = NULL;}
 ;
 
-innerVarDecls		: singleVarDecl				{$$ = $1;}
-			| singleVarDecl ';'				{$$ = $1;}
+innerVarDecls		: singleVarDecl ';'				{$$ = $1;}
 			| singleVarDecl ';' innerVarDecls		{$$ = $1, appendVarDecls($$, $3);}
 ;
 
@@ -200,8 +199,7 @@ typeDecl		: tType singleTypeDecl ';'			{$$ = $2;}
 			| tType '(' ')' ';'				{$$ = NULL;}
 ;
 
-innerTypeDecls	: singleTypeDecl				{$$ = $1;}
-			| singleTypeDecl ';'				{$$ = $1;}
+innerTypeDecls	: singleTypeDecl ';'				{$$ = $1;}
 			| singleTypeDecl ';' innerTypeDecls	{appendTypeDecls($1, $3); $$ = $1;}
 ;
 

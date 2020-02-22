@@ -6,7 +6,6 @@ typedef enum {
     StmtKindExpression,
     StmtKindAssignment,
    
-    StmtKindDeclaration, //TODO
     StmtKindShortDeclaration, //TODO
     StmtKindSimpleStatement, //TODO
 
@@ -26,7 +25,6 @@ typedef enum {
 
 	StmtKindTypeDeclaration,
 	StmtKindVarDeclaration,
-	StmtKindShortVarDecl,
 }StatementKind;
 
 
