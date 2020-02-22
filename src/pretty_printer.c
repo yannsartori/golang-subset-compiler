@@ -27,6 +27,7 @@ void prettyShortVarDecl(VarDeclNode *var, int indentLevel);
 void prettyTopDeclaration(TopDeclarationNode *topDecl, int indentLevel);
 
 void prettyVarDeclSimpleStatement(VarDeclNode *var);
+void printPartiallyIndentedBlock(Stmt* stmt,int indentLevel);
 
 void indent(int indentLevel){
     for(int i = 0 ; i < indentLevel; i++){
@@ -41,6 +42,7 @@ void printStmt(Stmt* stmt, int indentLevel){
 
     switch (stmt->kind){
         case StmtKindBlock :    
+								indent(indentLevel);
 								printf("{\n");
                                 printStmt(stmt->val.block.stmt,indentLevel + 1);
                                 indent(indentLevel);
@@ -82,14 +84,7 @@ void printStmt(Stmt* stmt, int indentLevel){
 							printIfStmt(stmt,indentLevel);
                             break;
         case StmtKindElse: printf("else");
-
-							Stmt* blockStmt = stmt->val.elseStmt.block;
-
-							printf("{\n\n");
-	
-                            printStmt(blockStmt->val.block.stmt,indentLevel+1);
-							indent(indentLevel);
-							printf("}\n\n");
+							printPartiallyIndentedBlock(stmt->val.elseStmt.block,indentLevel);
                             break;
         case StmtKindReturn: 
 							indent(indentLevel);
@@ -106,13 +101,13 @@ void printStmt(Stmt* stmt, int indentLevel){
 
         case StmtKindInfLoop:   indent(indentLevel);
 								printf("for ");
-                                printStmt(stmt->val.infLoop.block,indentLevel);
+                                printPartiallyIndentedBlock(stmt->val.infLoop.block,indentLevel);
                                 break;
 
         case StmtKindWhileLoop: indent(indentLevel);
 								printf("for ");
                                 prettyExp(stmt->val.whileLoop.conditon);
-                                printStmt(stmt->val.whileLoop.block,indentLevel);
+                                printPartiallyIndentedBlock(stmt->val.whileLoop.block,indentLevel);
                                 break;
         case StmtKindThreePartLoop:  indent(indentLevel);
 									printf("for ");
@@ -122,7 +117,7 @@ void printStmt(Stmt* stmt, int indentLevel){
                                     printf(";");
                                     printSimpleStatement(stmt->val.forLoop.inc);
 
-                                    printStmt(stmt->val.forLoop.block,indentLevel);
+                                    printPartiallyIndentedBlock(stmt->val.forLoop.block,indentLevel);
 
                                     break;
 
@@ -595,4 +590,18 @@ void prettyVarDeclSimpleStatement(VarDeclNode *var)
 		prettyExp(var->value);
 	}
 	
+}
+
+
+
+
+void printPartiallyIndentedBlock(Stmt* stmt,int indentLevel){
+	if (stmt == NULL){
+		return;
+	}
+	printf("{\n");
+	printStmt(stmt->val.block.stmt,indentLevel+1);
+	indent(indentLevel);
+	printf("}\n");
+
 }
