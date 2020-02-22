@@ -74,11 +74,6 @@ Stmt* compoundOperator(Exp* left,Exp* right,ExpressionKind kind){
 }
 
 
-void yyerror(char const *s) {
-	fprintf(stderr, "Error: %s on line %d\n", s, yylineno);
-	exit(1);
-}
-
 void builtInBlankError(char * func)
 {
 	fprintf(stderr, "Error: (line %d) Cannot use the blank identifier in the %s function.\n", yylineno, func);

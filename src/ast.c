@@ -308,8 +308,6 @@ Stmt* reverseStmtList(Stmt* reversed){
 }
 
 
-
-=======
 #include <string.h>
 #include "globalEnum.h"
 #include "ast.h"
@@ -626,14 +624,5 @@ void reverseArgumentList(ExpList **list)
         current = next; 
     } 
     *list = prev; 
-}
-Exp *makeExpFuncCall(Exp *base, ExpList *arguments)
-{
-	Exp * e = (Exp *) malloc (sizeof(Exp));
-	e->kind = expKindFuncCall;
-	e->val.funcCall.base = base;
-	reverseArgumentList(&arguments);
-	e->val.funcCall.arguments = arguments;
-	return e;
 }
 
