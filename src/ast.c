@@ -366,16 +366,18 @@ Stmt* cons(Stmt* head,Stmt* tail){
 
 
 
+
 int weedStatement(Stmt* stmt, State loopState, State switchState, State functionState){
     if (stmt == NULL){
         return 0;
     }
 
+
     switch (stmt->kind)
     
     {
         
-        case StmtKindBlock : return weedStatement(stmt->val.block.stmt,loopState,switchState,functionState);
+        case StmtKindBlock : weedStatement(stmt->val.block.stmt,loopState,switchState,functionState);
                             break;
         case StmtKindExpression : break;
         case StmtKindAssignment :break;
@@ -384,38 +386,45 @@ int weedStatement(Stmt* stmt, State loopState, State switchState, State function
 
         case StmtKindPrint :break;
         case StmtKindPrintln :break;
-        case StmtKindIf :break;
+        case StmtKindIf :   weedStatement(stmt->val.ifStmt.block,loopState,switchState,functionState);
+                            break;
         case StmtKindReturn :   if (functionState == outside){
-                                    fprintf(stderr,"Error: (line %d) return statements must occur inside a function",stmt->lineno);
+                                    fprintf(stderr,"Error: (line %d) return statements must occur inside a function\n",stmt->lineno);
                                     exit(1);
                                 }
                                 break;
-        case StmtKindElse :  return weedStatement(stmt->val.elseStmt.block,loopState,switchState,functionState);
+        case StmtKindElse :  weedStatement(stmt->val.elseStmt.block,loopState,switchState,functionState);
                             break;
-        case StmtKindSwitch : return weedSwitchClause(stmt->val.switchStmt.clauseList,loopState,inSwitchStatement,functionState);
+        case StmtKindSwitch :   if(defaultClauseCount(stmt->val.switchStmt.clauseList) > 1){
+                                    fprintf(stderr,"Error: (line %d) switch statement contains multiple default clauses\n",stmt->lineno);
+                                    exit(1);
+                                }
+                                weedSwitchClause(stmt->val.switchStmt.clauseList,loopState,inSwitchStatement,functionState);
                                 break;
 
        
-        case StmtKindInfLoop : return weedStatement(stmt->val.infLoop.block,inLoop,switchState,functionState);
+        case StmtKindInfLoop : weedStatement(stmt->val.infLoop.block,inLoop,switchState,functionState);
                                 break;
-        case StmtKindWhileLoop : return weedStatement(stmt->val.whileLoop.block,inLoop,switchState,functionState);
+        case StmtKindWhileLoop : weedStatement(stmt->val.whileLoop.block,inLoop,switchState,functionState);
                                 break;
 
 
          //TODO the inc condition of the three part for loop cannot be a short declaration
-        case StmtKindThreePartLoop :return weedStatement(stmt->val.whileLoop.block,inLoop,switchState,functionState);
+        case StmtKindThreePartLoop :weedStatement(stmt->val.whileLoop.block,inLoop,switchState,functionState);
                                     break;
 
-        case StmtKindBreak :    
-                            if (loopState != inLoop || switchState != inSwitchStatement){
-                                fprintf(stderr,"Error: (line %d) break statements must occur inside a loop or a switch statement",stmt->lineno);
+        case StmtKindBreak :  
+                            if (loopState != inLoop && switchState != inSwitchStatement){
+                                fprintf(stderr,"Error: (line %d) break statements must occur inside a loop or a switch statement\n",stmt->lineno);
                                 exit(1);
                             }
                             break;
-        case StmtKindContinue : if (loopState != inLoop){
-                                    fprintf(stderr,"Error: (line %d) continue statements must occur inside a loopt",stmt->lineno);
+        case StmtKindContinue : 
+                                if (loopState != inLoop){
+                                    fprintf(stderr,"Error: (line %d) continue statements must occur inside a loop\n",stmt->lineno);
                                     exit(1);
                                 }
+                                
                                 break;
 
 
@@ -425,27 +434,47 @@ int weedStatement(Stmt* stmt, State loopState, State switchState, State function
 
     }
 
-    return 0;
+
+
+
+    return weedStatement(stmt->next,loopState,switchState,functionState);
 }
 
 
-
+int weed(Stmt* stmt){
+    return weedStatement(stmt,outside,outside,outside);
+}
 
 int weedSwitchClause(switchCaseClause* clauseList, State loopState, State switchState, State functionState){
+
     if (clauseList == NULL){
         return 0;
     }
 
     int n = weedStatement(clauseList->statementList,loopState,switchState,functionState);
-    if (n != 0){
-        return n;
-    }
+    
 
     return weedSwitchClause(clauseList->next,loopState,switchState,functionState);
 
     
 
 }
+
+int defaultClauseCount(switchCaseClause* clauseList){
+    if (clauseList == NULL){
+        return 0;
+    }
+
+    if (clauseList->expressionList == NULL){ // Is defualt
+        return 1 + defaultClauseCount(clauseList->next);
+    }
+
+    return defaultClauseCount(clauseList->next);
+}
+
+
+
+
 
 Exp *makeExpIdentifier(char *identifier) 
 
