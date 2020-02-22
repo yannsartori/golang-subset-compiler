@@ -18,7 +18,6 @@ void printSimpleStatement(Stmt* stmt);
 void printSwitchCaseClause(switchCaseClause* clause,int indentLevel);
 
 void prettyTypeHolder(TypeHolderNode *node, int indentLevel);
-//void prettyTypeHolderForReference(TypeHolderNode *node, int indentLevel);
 void prettyFuncDecl(FuncDeclNode *func, int indentLevel);
 void prettyTypeDecl(TypeDeclNode *type, int indentLevel);
 void prettyFuncArgs(TypeDeclNode *type, int indentLevel);
@@ -463,10 +462,10 @@ void prettyTypeHolder(TypeHolderNode *node, int indentLevel)
 			prettyTypeHolder(node -> underlyingType, indentLevel);
 			break;
 		case identifierType:
-			printf("%s", node->identification);
+			printf(" %s", node->identification);
 			break;
 		case structType:
-			printf("struct {\n");
+			printf(" struct {\n");
 			prettyStructMembers(node->structMembers, indentLevel + 1);
 			indent(indentLevel);
 			printf("}");
@@ -476,32 +475,6 @@ void prettyTypeHolder(TypeHolderNode *node, int indentLevel)
 			break;
 	}
 }
-/*
-void prettyTypeHolderForReference(TypeHolderNode *node, int indentLevel)
-{
-	if ( node == NULL ) return;
-	switch (node->kind)
-	{
-		case sliceType:
-			printf(" []");
-			prettyTypeHolderForReference(node->underlyingType, indentLevel);
-			break;
-		case arrayType:
-			printf(" [");
-			prettyExp(node->arrayDims);
-			printf("]");
-			prettyTypeHolderForReference(node->underlyingType, indentLevel);
-			break;
-		case identifierType:
-			printf(" %s", node->identification);
-			break;
-		case structType:
-		case inferType:
-			prettyTypeHolderForReference(node->underlyingType, indentLevel);
-			break;
-	}
-}
-*/
 void prettyFuncDecl(FuncDeclNode *func, int indentLevel)
 {
 	if ( func == NULL ) return;
@@ -512,8 +485,8 @@ void prettyFuncDecl(FuncDeclNode *func, int indentLevel)
 	if ( func->returnType != NULL )
 	{
 		prettyTypeHolder(func->returnType, indentLevel);
-		printf(" ");
 	}
+	printf(" ");
 	printStmt(func->blockStart, indentLevel );	
 
 }
@@ -523,7 +496,6 @@ void prettyFuncArgs(TypeDeclNode *type, int indentLevel)
 	printf("%s", type->identifier);
 	if ( type->actualType != NULL )
 	{
-		printf(" ");
 		prettyTypeHolder(type->actualType, indentLevel);
 	}
 	if ( type->nextDecl != NULL )
@@ -539,7 +511,6 @@ void prettyStructMembers(TypeDeclNode *type, int indentLevel)
 	printf("%s", type->identifier);
 	if ( type->actualType != NULL )
 	{
-		printf(" ");
 		prettyTypeHolder(type->actualType, indentLevel);
 	}
 	printf("\n");
@@ -549,8 +520,7 @@ void prettyTypeDecl(TypeDeclNode *type, int indentLevel)
 {
 	if ( type == NULL ) return;
 	indent(indentLevel);
-	printf("type ");
-	printf("%s ", type->identifier);
+	printf("type %s", type->identifier);
 	prettyTypeHolder(type->actualType, indentLevel);
 	printf("\n");
 	prettyTypeDecl(type->nextDecl, indentLevel);
@@ -580,7 +550,6 @@ void prettyTopDeclaration(TopDeclarationNode *topDecl, int indentLevel)
 			break;
 		case typeDeclType:
 			if ( topDecl->actualRealDeclaration.typeDecl == NULL ) puts("FUCK");
-			//puts(topDecl->actualRealDeclaration.typeDecl->identifier);
 			prettyTypeDecl(topDecl->actualRealDeclaration.typeDecl, indentLevel);
 			break;
 		case funcDeclType:
