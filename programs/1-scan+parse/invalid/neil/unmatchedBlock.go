@@ -1,4 +1,4 @@
-// Closing right brace missing from block statement
+// (Neil) Closing right brace missing from block statement
 
 package main
 

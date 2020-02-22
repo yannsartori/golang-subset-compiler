@@ -1,4 +1,4 @@
-// The third part of a for loop (that corresponds to the increment) may not be a short declaration
+// (Neil) The third part of a for loop (that corresponds to the increment) may not be a short declaration
 
 
 

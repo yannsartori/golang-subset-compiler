@@ -1,4 +1,4 @@
-// Break statements must occur in a loop or a switch statement
+//(Neil) Break statements must occur in a loop or a switch statement
 
 package main
 

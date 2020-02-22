@@ -1,4 +1,4 @@
-// RHS of assignment statements may not containn the blank identifier
+//(Neil) RHS of assignment statements may not containn the blank identifier
 
 package main
 
