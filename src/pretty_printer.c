@@ -122,14 +122,14 @@ void printStmt(Stmt* stmt, int indentLevel){
                                     break;
 
         case StmtKindBreak:     indent(indentLevel);
-								printf("break;");
+								printf("break;\n");
                                 break;
         case StmtKindContinue: indent(indentLevel);
-								printf("continue;");
+								printf("continue;\n");
                                 break;
         case StmtKindFallthrough: 
 								indent(indentLevel);
-                                printf("fallthrough;");
+                                printf("fallthrough;\n");
                                 break;
     }
 

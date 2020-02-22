@@ -442,6 +442,7 @@ loop :
 		tFor block {$$ = makeInfLoopStmt($2);}
 		| tFor expression block {$$ = makeWhileLoopStmt($2,$3);}
 		| tFor simpleStatement ';' expression ';' simpleStatement block { shortDeclarationPostError($6) ;  $$ = makeThreePartLoopStmt($2,$4,$6,$7);}
+		| tFor simpleStatement ';' ';' simpleStatement block { shortDeclarationPostError($5) ;  $$ = makeThreePartLoopStmt($2,NULL,$5,$6);}
 
 
 
@@ -463,5 +464,5 @@ expressionCaseClauseList : %empty {$$ = NULL;}
 						
 expressionCaseClause : expressionSwitchCase ':' statementList {$$ = makeSwitchCaseClause($1, reverseStmtList($3));}
 
-expressionSwitchCase : tCase expressionList {if (containsBlank($2)) {blankSwitchCaseClauseError();} ;$$ = $2;}
+expressionSwitchCase : tCase expressionList {if (containsBlank($2)) {blankSwitchCaseClauseError();} ;$$ = reverseList($2);}
 					| tDefault {$$ = NULL;}
