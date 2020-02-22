@@ -187,7 +187,7 @@ struct TypeHolderNode {
 	TypeType kind;
 	char* identification;
 	TypeHolderNode* underlyingType;
-	Exp* arrayDims;
+	int arrayDims;
 	TypeDeclNode* structMembers;
 };
 
@@ -198,7 +198,7 @@ struct IdChain {
 
 RootNode* makeRootNode(char* packName, TopDeclarationNode* firstDecl);
 TopDeclarationNode* makeTopVarDecl(VarDeclNode* varDecl, TopDeclarationNode* nextTopDecl);
-TypeHolderNode* makeArrayHolder(Exp* arraySize, TypeHolderNode* id);
+TypeHolderNode* makeArrayHolder(int arraySize, TypeHolderNode* id);
 TypeHolderNode* makeStructHolder(TypeDeclNode* members);
 TypeHolderNode* makeSliceHolder(TypeHolderNode* id);
 TypeHolderNode* makeIdTypeHolder(char* id);
