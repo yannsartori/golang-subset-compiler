@@ -114,11 +114,6 @@ void shortDeclarationPostError(Stmt* stmt){
 {
 
 	#include "ast.h"
-<<<<<<< HEAD
-	extern RootNode* root;
-
-=======
->>>>>>> e01fe5e987d7ea1aeef92b05a201639bf16a0bcb
 }
 
 %union {
@@ -172,11 +167,8 @@ void shortDeclarationPostError(Stmt* stmt){
 
 %%
 
-<<<<<<< HEAD
-root			: tPackage tIDENTIFIER ';' topDeclarationList {root = makeRootNode($2, $4);}
-=======
+
 root			: tPackage tIDENTIFIER ';' topDeclarationList {rootNode = makeRootNode($2, $4);}
->>>>>>> e01fe5e987d7ea1aeef92b05a201639bf16a0bcb
 ;
 
 topDeclarationList	: %empty				{$$ = NULL;}
