@@ -95,6 +95,17 @@ void indexingBlankError()
 	exit(1);
 }
 
+void shortDeclarationPostError(Stmt* stmt){
+
+	if(stmt == NULL){
+		return;
+	}
+	if (stmt->kind == StmtKindShortDeclaration){
+		fprintf(stderr, "Error: (line %d) for loop post statement may not be a short declaration\n", yylineno);
+		exit(1);
+	}
+}
+
 %}
 
 %define parse.error verbose
@@ -430,7 +441,7 @@ ifStatement :
 loop : 
 		tFor block {$$ = makeInfLoopStmt($2);}
 		| tFor expression block {$$ = makeWhileLoopStmt($2,$3);}
-		| tFor simpleStatement ';' expression ';' simpleStatement block {$$ = makeThreePartLoopStmt($2,$4,$6,$7);}
+		| tFor simpleStatement ';' expression ';' simpleStatement block { shortDeclarationPostError($6) ;  $$ = makeThreePartLoopStmt($2,$4,$6,$7);}
 
 
 
