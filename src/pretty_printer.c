@@ -60,7 +60,9 @@ void printStmt(Stmt* stmt, int indentLevel){
 		case StmtKindVarDeclaration:
 			prettyVarDecl(stmt->val.varDeclaration, indentLevel);
 			break;
-    
+		case StmtKindTypeDeclaration:
+			prettyTypeDecl(stmt->val.typeDeclaration, indentLevel);
+			break;
         case StmtKindPrint : 	indent(indentLevel);
 								printf("print(");
                                 prettyExpList(stmt->val.print.list);
@@ -464,8 +466,9 @@ void prettyTypeHolderForDecl(TypeHolderNode *node, int indentLevel)
 			printf("%s", node->identification);
 			break;
 		case structType:
-			printf("%s struct {\n", node->identification);
+			printf("struct {\n");
 			prettyStructMembers(node->structMembers, indentLevel + 1);
+			indent(indentLevel);
 			printf("}");
 			break;
 		case inferType:
@@ -479,19 +482,21 @@ void prettyTypeHolderForReference(TypeHolderNode *node, int indentLevel)
 	switch (node->kind)
 	{
 		case sliceType:
-			printf("[]%s", node->identification);
+			printf(" []");
+			prettyTypeHolderForReference(node->underlyingType, indentLevel);
 			break;
 		case arrayType:
-			printf("[");
+			printf(" [");
 			prettyExp(node->arrayDims);
-			printf("]%s", node->identification);
+			printf("]");
+			prettyTypeHolderForReference(node->underlyingType, indentLevel);
 			break;
 		case identifierType:
-		case structType:
-			printf("%s", node->identification);
+			printf(" %s", node->identification);
 			break;
+		case structType:
 		case inferType:
-			//nothing :(
+			prettyTypeHolderForReference(node->underlyingType, indentLevel);
 			break;
 	}
 }
@@ -501,7 +506,7 @@ void prettyFuncDecl(FuncDeclNode *func, int indentLevel)
 	indent(indentLevel);
 	printf("func %s(", func->identifier);
 	prettyFuncArgs(func->argsDecls, indentLevel);
-	printf(") ");
+	printf(")");
 	if ( func->returnType != NULL )
 	{
 		prettyTypeHolderForReference(func->returnType, indentLevel);
