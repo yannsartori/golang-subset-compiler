@@ -4,6 +4,7 @@
 #include <string.h>
 #include "globalEnum.h"
 #include "ast.h"
+#include "pretty_printer.h"
 
 
 
@@ -24,7 +25,6 @@ void prettyFuncArgs(TypeDeclNode *type, int indentLevel);
 void prettyStructMembers(TypeDeclNode *type, int indentLevel);
 void prettyVarDecl(VarDeclNode *var, int indentLevel);
 void prettyTopDeclaration(TopDeclarationNode *topDecl, int indentLevel);
-void printRoot(RootNode *root);
 
 void indent(int indentLevel){
     for(int i = 0 ; i < indentLevel; i++){

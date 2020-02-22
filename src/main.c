@@ -2,10 +2,10 @@
 #include<stdio.h>
 #include<string.h>
 #include "ast.h"
-//#include "pretty_printer.h"
+#include "pretty_printer.h"
 void yyparse();
 int yylex();
-//Stmt * root;
+RootNode * root;
 int printTokens = 0;
 int printSymbols = 0;
 
@@ -23,10 +23,10 @@ int main(int argc, char * argv[])
 	{
 		yyparse();
 		printf("OK\n");
-	} /*else if ( !strcmp(argv[1], "pretty"))
+	} else if ( !strcmp(argv[1], "pretty") )
 	{
 		yyparse();
-		prettyStmt(root);
-	}*/
+		printRoot(root);
+	}
 	return 0;
 }
