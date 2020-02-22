@@ -606,7 +606,7 @@ TopDeclarationNode* makeTopVarDecl(VarDeclNode* varDecl, TopDeclarationNode* nex
 	return v;
 }
 
-TypeHolderNode* makeArrayHolder(Exp* arraySize, TypeHolderNode* id){
+TypeHolderNode* makeArrayHolder(int arraySize, TypeHolderNode* id){
 	TypeHolderNode* t = malloc(sizeof(TypeHolderNode));
 	t -> kind = arrayType;
 	t -> underlyingType = id;
