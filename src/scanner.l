@@ -1,4 +1,7 @@
+
 %{
+   #include "ast.h"
+    extern int yylineno;
     #include <stdio.h>
     #include <stdlib.h>
 	#include "globalEnum.h"
@@ -215,4 +218,3 @@
 }
 
 %%
-
