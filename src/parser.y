@@ -114,6 +114,7 @@ void shortDeclarationPostError(Stmt* stmt){
 {
 
 	#include "ast.h"
+	#include "globalEnum.h"
 }
 
 %union {
@@ -166,9 +167,9 @@ void shortDeclarationPostError(Stmt* stmt){
 %start root
 
 %%
+//
 
-
-root			: tPackage tIDENTIFIER ';' topDeclarationList {rootNode = makeRootNode($2, $4);}
+root			: tPackage tIDENTIFIER ';' topDeclarationList {weedTopDeclarationNode($4,outside,outside,outside);rootNode = makeRootNode($2, $4);}
 ;
 
 topDeclarationList	: %empty				{$$ = NULL;}

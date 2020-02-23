@@ -56,6 +56,8 @@ Exp *makeExpFuncCall(Exp *base, ExpList *arguments);
 Stmt* reverseStmtList(Stmt* reversed);
 ExpList* reverseList(ExpList* reversed);
 
+int weedTopDeclarationNode(TopDeclarationNode* node, State loopState, State switchState, State functionState);
+
 int isFuncCall(Exp* expression);
 
 

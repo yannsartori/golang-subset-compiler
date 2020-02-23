@@ -369,9 +369,11 @@ Stmt* cons(Stmt* head,Stmt* tail){
 
 
 int weedStatement(Stmt* stmt, State loopState, State switchState, State functionState){
+    
     if (stmt == NULL){
         return 0;
     }
+
 
 
     switch (stmt->kind)
@@ -411,7 +413,7 @@ int weedStatement(Stmt* stmt, State loopState, State switchState, State function
 
 
          //TODO the inc condition of the three part for loop cannot be a short declaration
-        case StmtKindThreePartLoop :weedStatement(stmt->val.whileLoop.block,inLoop,switchState,functionState);
+        case StmtKindThreePartLoop :weedStatement(stmt->val.forLoop.block,inLoop,switchState,functionState);
                                     break;
 
         case StmtKindBreak :  
@@ -429,8 +431,8 @@ int weedStatement(Stmt* stmt, State loopState, State switchState, State function
                                 break;
 
 
-        //StmtKindDeclaration, //TODO
-        //StmtKindShortDeclaration, //TODO
+        case StmtKindVarDeclaration : break;
+        case StmtKindShortDeclaration : break;
 
 
     }
@@ -471,6 +473,27 @@ int defaultClauseCount(switchCaseClause* clauseList){
     }
 
     return defaultClauseCount(clauseList->next);
+}
+
+int weedFunctionDeclarationNode(FuncDeclNode* node, State loopState, State switchState, State functionState){
+    if (node == NULL){
+        return 0;
+    }
+
+    return weedStatement(node->blockStart,loopState,switchState,inFunction);
+}
+
+
+int weedTopDeclarationNode(TopDeclarationNode* node, State loopState, State switchState, State functionState){
+    if (node == NULL){
+        return 0;
+    }
+
+    if (node->declType == funcDeclType){
+        weedFunctionDeclarationNode(node->actualRealDeclaration.funcDecl,loopState,switchState,functionState);
+    }
+
+    return weedTopDeclarationNode(node->nextTopDecl,loopState,switchState,functionState);
 }
 
 
