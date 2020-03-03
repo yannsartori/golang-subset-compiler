@@ -506,6 +506,7 @@ Exp *makeExpIdentifier(char *identifier)
 	e->kind = expKindIdentifier;
 	e->val.id = identifier;
 	e->isBracketed = 0;
+	e->lineno = yylineno;
 	return e;
 }
 Exp *makeExpIntLit(int intLit)
@@ -514,6 +515,7 @@ Exp *makeExpIntLit(int intLit)
 	e->kind = expKindIntLit;
 	e->val.intLit = intLit;
   e->isBracketed = 0;
+	e->lineno = yylineno;
 	return e;
 }
 Exp *makeExpFloatLit(double floatLit)
@@ -522,6 +524,7 @@ Exp *makeExpFloatLit(double floatLit)
 	e->kind = expKindFloatLit;
 	e->val.floatLit = floatLit;
   e->isBracketed = 0;
+	e->lineno = yylineno;
 	return e;
 }
 Exp *makeExpStringLit(ExpressionKind kind, char *stringLit)
@@ -530,6 +533,7 @@ Exp *makeExpStringLit(ExpressionKind kind, char *stringLit)
 	e->kind = kind;
 	e->val.stringLit = stringLit;
   e->isBracketed = 0;
+	e->lineno = yylineno;
 	return e;
 }
 
@@ -539,6 +543,7 @@ Exp *makeExpRuneLit(char *runeLit)
 	e->kind = expKindRuneLit;
 	e->val.runeLit = runeLit;
   e->isBracketed = 0;
+	e->lineno = yylineno;
 	return e;
 }
 Exp *makeExpBinary(Exp *left,  Exp *right, ExpressionKind kind)
@@ -548,6 +553,7 @@ Exp *makeExpBinary(Exp *left,  Exp *right, ExpressionKind kind)
 	e->val.binary.left = left;
 	e->val.binary.right = right;
   e->isBracketed = 0;
+	e->lineno = yylineno;
 	return e;
 }
 Exp *makeExpUnary(Exp *unary, ExpressionKind kind )
@@ -556,6 +562,7 @@ Exp *makeExpUnary(Exp *unary, ExpressionKind kind )
 	e->kind = kind;
 	e->val.unary = unary;
   e->isBracketed = 0;
+	e->lineno = yylineno;
 	return e;
 }
 Exp *makeExpAppend(Exp *list, Exp *elem)
@@ -565,6 +572,7 @@ Exp *makeExpAppend(Exp *list, Exp *elem)
 	e->val.append.list = list;
 	e->val.append.elem = elem;
   e->isBracketed = 0;
+	e->lineno = yylineno;
 	return e;
 }
 Exp *makeExpBuiltInBody(Exp *builtInBody, ExpressionKind kind)
@@ -573,6 +581,7 @@ Exp *makeExpBuiltInBody(Exp *builtInBody, ExpressionKind kind)
 	e->kind = kind;
 	e->val.builtInBody = builtInBody;
   e->isBracketed = 0;
+	e->lineno = yylineno;
 	return e;
 }
 Exp *makeExpAccess(Exp *base, Exp * accessor, ExpressionKind kind)
@@ -582,6 +591,7 @@ Exp *makeExpAccess(Exp *base, Exp * accessor, ExpressionKind kind)
 	e->val.access.base = base;
 	e->val.access.accessor = accessor;
     e->isBracketed = 0;
+	e->lineno = yylineno;
 	return e;
 }
 ExpList *addArgument(ExpList * args, Exp * argument)
@@ -603,6 +613,7 @@ Exp *makeExpFuncCall(Exp *base, ExpList *arguments)
 	e->val.funcCall.base = base;
 	e->val.funcCall.arguments = reverseList(arguments);	
     e->isBracketed = 0;
+	e->lineno = yylineno;
 	return e;
 }
 
