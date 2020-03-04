@@ -13,6 +13,7 @@ STEntry * symbolLookup(char *id, SymbolTable *s);
 TTEntry * typeLookup(char *id, TypeTable *t);
 
 
+
 void symbolCheckExpressionList(ExpList* expressionList,Context* context);
 void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* context);
 
@@ -20,6 +21,7 @@ void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* cont
 
 
 int hashCode(char * id)
+
 {
 	unsigned int hash = 0;
 	while ( *id ) hash = (hash << 1) + *(id++);
@@ -102,6 +104,8 @@ PolymorphicEntry *getEntry(Context *c, char *id)
 	return getEntry(c->parent, id);
 }
 
+
+//Deleted Yann's initial version so that I could compile
 void symbolCheckExpression(Exp *e, Context* context)
 {
 	return;	
