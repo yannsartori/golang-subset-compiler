@@ -5,14 +5,7 @@
 #include "globalEnum.h"
 #include <string.h>
 
-
-typedef struct Stmt Stmt;
-typedef struct switchCaseClause switchCaseClause;
-
-typedef struct Exp Exp;
-typedef struct ExpList ExpList;
-
-
+//typedefs in globalEnum
 
 Stmt* makeBreakStmt();
 Stmt* makeContinueStmt();
@@ -33,7 +26,7 @@ Stmt* makeThreePartLoopStmt(Stmt* init, Exp* condition, Stmt* inc, Stmt* block);
 Stmt* makeSwitchStmt(Stmt* statement, Exp* expression, switchCaseClause* clauseList);
 switchCaseClause* makeSwitchCaseClause(ExpList* expressionList, Stmt* statementList);
 ExpList* reverseList(ExpList* reversed);
-Exp *makeExpIdentifier(char *identifier); //How should we handle types?
+Exp *makeExpIdentifier(char *identifier); 
 Exp *makeExpIntLit(int intLit);
 Exp *makeExpFloatLit(double floatLit);
 Exp *makeExpStringLit(ExpressionKind kind, char *stringLit);
@@ -45,10 +38,12 @@ Exp *makeExpBuiltInBody(Exp *builtInBody, ExpressionKind kind);
 Exp *makeExpAccess(Exp *base, Exp * accessor, ExpressionKind kind);
 ExpList *addArgument(ExpList * args, Exp * argument);
 ExpList *createArgumentList(Exp *argument);
-Exp *makeExpFuncCall(Exp *base, ExpList *arguments, ExpressionKind kind);
+Exp *makeExpFuncCall(Exp *base, ExpList *arguments);
 
 Stmt* reverseStmtList(Stmt* reversed);
 ExpList* reverseList(ExpList* reversed);
+
+int weedTopDeclarationNode(TopDeclarationNode* node, State loopState, State switchState, State functionState);
 
 int isFuncCall(Exp* expression);
 
@@ -88,7 +83,8 @@ struct Stmt{
 
         //Break and continue are encoded in kind
 
-
+	VarDeclNode* varDeclaration;
+	TypeDeclNode* typeDeclaration;
 
         // TODO Declaration, short declaration
 
@@ -107,14 +103,9 @@ struct switchCaseClause {
 
 
 
-
-
-
-
-
-
 // Yann's definitions 
-
+int isBinary(Exp *e);
+int isUnary(Exp *e);
 
  // for arguments
 
@@ -122,9 +113,13 @@ struct ExpList { //Will be reversed because of left recursion!
 	Exp * cur;
 	ExpList *next;
 };
+
 struct Exp {
 	ExpressionKind kind;
-    int isBracketed;
+	int isBracketed;
+	int lineno;
+	STEntry *symbolEntry; //only one or both will be null
+	TTEntry *typeEntry;
 	union {
 		char *id;
 		int intLit;
@@ -145,15 +140,6 @@ struct Exp {
 
 
 
-typedef struct RootNode RootNode;
-typedef struct TopDeclarationNode TopDeclarationNode;
-typedef struct VarDeclNode VarDeclNode;
-typedef struct TypeDeclNode TypeDeclNode;
-typedef struct FuncDeclNode FuncDeclNode;
-
-
-
-RootNode* makeRootNode(char* packName, TopDeclarationNode* firstDecl);
 
 struct RootNode  {
 	char* packageName;
@@ -162,7 +148,6 @@ struct RootNode  {
 
 struct TopDeclarationNode {
 	TopDeclarationNode* nextTopDecl;
-	int multiDecl;
 	TopDeclarationType declType;
 	union {
 		VarDeclNode* varDecl;
@@ -171,25 +156,56 @@ struct TopDeclarationNode {
 	} actualRealDeclaration;
 };
 
-
-
 struct VarDeclNode {
 	char* identifier;
 	Exp* value;
-	int arrayLength;
 	VarDeclNode* nextDecl;
+	TypeHolderNode* typeThing;
 };
 
 struct TypeDeclNode {
 	char* identifier;
 	TypeDeclNode* nextDecl;
+	TypeHolderNode* actualType;
 };
 
 struct FuncDeclNode {
 	char* identifier;
 	TypeDeclNode* argsDecls;
+	TypeHolderNode* returnType;
+	Stmt* blockStart;
 };
 
+struct TypeHolderNode {
+	TypeType kind;
+	char* identification;
+	TypeHolderNode* underlyingType;
+	int arrayDims;
+	TypeDeclNode* structMembers;
+};
 
+struct IdChain {
+	char* identifier;
+	IdChain* next;
+};
+
+RootNode* makeRootNode(char* packName, TopDeclarationNode* firstDecl);
+TopDeclarationNode* makeTopVarDecl(VarDeclNode* varDecl, TopDeclarationNode* nextTopDecl);
+TypeHolderNode* makeArrayHolder(int arraySize, TypeHolderNode* id);
+TypeHolderNode* makeStructHolder(TypeDeclNode* members);
+TypeHolderNode* makeSliceHolder(TypeHolderNode* id);
+TypeHolderNode* makeIdTypeHolder(char* id);
+IdChain* makeIdChain(char* identifier, IdChain* next);
+TypeDeclNode* makeSingleTypeDecl(IdChain* identifiers, TypeHolderNode* givenType);
+TopDeclarationNode* makeTopTypeDecl(TypeDeclNode* typeDecl, TopDeclarationNode* nextTopDecl);
+void appendTypeDecls(TypeDeclNode* baseDecl, TypeDeclNode* leafDecl);
+void appendVarDecls(VarDeclNode* baseDecl, VarDeclNode* leafDecl);
+VarDeclNode* makeSingleVarDeclNoExps(IdChain* identifiers, TypeHolderNode* givenType);
+VarDeclNode* makeSingleVarDeclWithExps(IdChain* identifiers, TypeHolderNode* givenType, ExpList* values, int lineno);
+FuncDeclNode* makeFuncDecl(char* funcName, TypeDeclNode* argsDecls, TypeHolderNode* returnType, Stmt* blockStart);
+TopDeclarationNode* makeTopFuncDecl(FuncDeclNode* funcDecl, TopDeclarationNode* nextTopDecl);
+Stmt* makeVarDeclStatement(VarDeclNode* declaration, int isShort, int lineNomber);
+Stmt* makeTypeDeclStatement(TypeDeclNode* declaration, int lineNomber);
+IdChain* extractIdList(ExpList* expressions, int lineno);
 
 #endif

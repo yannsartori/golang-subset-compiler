@@ -7,7 +7,7 @@
 
 int yylex();
 extern int yylineno;
-Stmt* root;
+extern RootNode * rootNode;
 
 void yyerror(char const *s) {
 	fprintf(stderr, "Error: %s on line %d\n", s, yylineno);
@@ -74,11 +74,6 @@ Stmt* compoundOperator(Exp* left,Exp* right,ExpressionKind kind){
 }
 
 
-void yyerror(char const *s) {
-	fprintf(stderr, "Error: %s on line %d\n", s, yylineno);
-	exit(1);
-}
-
 void builtInBlankError(char * func)
 {
 	fprintf(stderr, "Error: (line %d) Cannot use the blank identifier in the %s function.\n", yylineno, func);
@@ -100,6 +95,17 @@ void indexingBlankError()
 	exit(1);
 }
 
+void shortDeclarationPostError(Stmt* stmt){
+
+	if(stmt == NULL){
+		return;
+	}
+	if (stmt->kind == StmtKindShortDeclaration){
+		fprintf(stderr, "Error: (line %d) for loop post statement may not be a short declaration\n", yylineno);
+		exit(1);
+	}
+}
+
 %}
 
 %define parse.error verbose
@@ -108,8 +114,7 @@ void indexingBlankError()
 {
 
 	#include "ast.h"
-	extern Stmt* root;
-
+	#include "globalEnum.h"
 }
 
 %union {
@@ -122,17 +127,33 @@ void indexingBlankError()
 	struct Stmt* stmt;
 	struct switchCaseClause* clause;
 	struct ExpList *explist;
+	RootNode* rootNode;
+	TopDeclarationNode* topDeclNode;
+	VarDeclNode* varDeclNode;
+	TypeDeclNode* typeDeclNode;
+	FuncDeclNode* funcDeclNode;
+	TypeHolderNode* declType;
+	IdChain* tempIdChain;
 }
 %token tLOGICOR tLOGICAND tEQ tNEQ tGEQ tLEQ tBShiftLeft tBShiftRight tAndNot tLENGTH tCAP tAPPEND tBreak tDefault tFunc tInterface tSelect tCase tDefer tGo tMap tStruct tChan tElse tGoto tPackage tSwitch tConst tFallthrough tIf tRange tType tContinue tFor tImport tReturn tVar tPrint tPrintln tPlusEq tAndEq tMinusEquals tOrEquals tTimesEquals tHatEquals tLessMinus tDivideEquals tLShiftEquals tIncrement tDefined tModEquals tRShiftEquals tDecrement tElipses tAndHatEquals 
-%token <intval>	   tINTLIT
+%token <intval> tINTLIT
 %token <floatval>  tFLOATLIT
 %token <runeval> tRUNELIT
 %token <stringval> tRAWSTRINGLIT tINTERPRETEDSTRINGLIT
 %token <boolval> tBOOLVAL
 %token <identifier> tIDENTIFIER
 
-%type <exp>  expression operand literal conversion index selector appendExpression lengthExpression capExpression type primaryExpression 
+%type <exp>  expression operand literal index selector appendExpression lengthExpression capExpression primaryExpression 
 %type <explist> expressionList arguments expressionSwitchCase maybeEmptyExpressionList
+%type <rootNode> root
+%type <topDeclNode> topDeclarationList
+%type <varDeclNode> variableDecl singleVarDecl innerVarDecls
+%type <typeDeclNode> typeDecl singleTypeDecl innerTypeDecls funcArgDecls
+%type <funcDeclNode> funcDecl
+%type <declType> declType sliceDeclType arrayDeclType structDeclType
+%type <tempIdChain> identifierList
+%type <clause> expressionCaseClauseList expressionCaseClause
+%type <stmt> block statementList statement simpleStatement assignmentStatement ifStatement loop switch
 
 %left tLOGICOR
 %left tLOGICAND
@@ -143,86 +164,154 @@ void indexingBlankError()
 
 
 
-%type <clause> expressionCaseClauseList expressionCaseClause
-%type <stmt> block statementList statement simpleStatement assignmentStatement ifStatement loop switch
-
-%start Program
+%start root
 
 %%
+//
+
+root			: tPackage tIDENTIFIER ';' topDeclarationList {weedTopDeclarationNode($4,outside,outside,outside);rootNode = makeRootNode($2, $4);}
+;
+
+topDeclarationList	: %empty				{$$ = NULL;}
+			| variableDecl topDeclarationList	{$$ = makeTopVarDecl($1, $2);}
+			| typeDecl topDeclarationList	{$$ = makeTopTypeDecl($1, $2); }
+			| funcDecl topDeclarationList	{$$ = makeTopFuncDecl($1, $2); }
+;
+
+variableDecl		: tVar singleVarDecl ';'		{$$ = $2;}
+			| tVar '(' innerVarDecls ')' ';'	{$$ = $3;}
+			| tVar '(' ')' ';'			{$$ = NULL;}
+;
+
+innerVarDecls		: singleVarDecl ';'				{$$ = $1;}
+			| singleVarDecl ';' innerVarDecls		{$$ = $1, appendVarDecls($$, $3);}
+;
+
+singleVarDecl		: identifierList declType '=' expressionList
+							{$$ = makeSingleVarDeclWithExps($1, $2, $4, yylineno);}
+			| identifierList '=' expressionList
+							{$$ = makeSingleVarDeclWithExps($1, NULL, $3, yylineno);}
+			| identifierList declType	
+							{$$ = makeSingleVarDeclNoExps($1, $2);}
+;
+
+typeDecl		: tType singleTypeDecl ';'			{$$ = $2;}
+			| tType '(' innerTypeDecls ')' ';'		{$$ = $3;}
+			| tType '(' ')' ';'				{$$ = NULL;}
+;
+
+innerTypeDecls	: singleTypeDecl ';'				{$$ = $1;}
+			| singleTypeDecl ';' innerTypeDecls	{appendTypeDecls($1, $3); $$ = $1;}
+;
+
+singleTypeDecl	: identifierList declType			{$$ = makeSingleTypeDecl($1, $2);}
+;
+
+funcDecl		: tFunc tIDENTIFIER '(' funcArgDecls ')' declType block ';'
+						{$$ = makeFuncDecl($2, $4, $6, $7);}
+			| tFunc tIDENTIFIER '(' ')' declType block ';'
+						{$$ = makeFuncDecl($2, NULL, $5, $6);}
+			| tFunc tIDENTIFIER '(' funcArgDecls ')' block ';'
+						{$$ = makeFuncDecl($2, $4, NULL, $6);}
+			| tFunc tIDENTIFIER '(' ')' block ';'
+						{$$ = makeFuncDecl($2, NULL, NULL, $5);}
+;
+
+funcArgDecls		: singleTypeDecl ',' funcArgDecls		{appendTypeDecls($1, $3); $$ = $1;}
+			| singleTypeDecl				{$$ = $1;}
+;
+
+declType		: '(' declType ')'				{$$ = $2;}
+			| tIDENTIFIER					{$$ = makeIdTypeHolder($1);}
+			| sliceDeclType				{$$ = $1;}
+			| arrayDeclType				{$$ = $1;}
+			| structDeclType				{$$ = $1; }
+;
+
+sliceDeclType		: '[' ']' declType				{$$ = makeSliceHolder($3);}
+;
+arrayDeclType		: '[' tINTLIT ']' declType				{$$ = makeArrayHolder($2, $4);}
+;
+structDeclType	: tStruct '{' innerTypeDecls '}'		{$$ = makeStructHolder($3);}
+			| tStruct '{' '}'				{$$ = makeStructHolder(NULL);}
+;
+
+identifierList	: tIDENTIFIER					{$$ = makeIdChain($1, NULL);}
+			| tIDENTIFIER ',' identifierList		{$$ = makeIdChain($1, $3);}
+;
 
 
-Program : statementList {root = reverseStmtList($1);}
 
- 
-expression: /* unrolled https://golang.org/ref/spec#Expression with precdence directives*/
-			  primaryExpression { $$ = $1; }
-			| expression '*' expression { $$ = makeExpBinary($1, $3, expKindMultiplication); } /*2.9.5*/
-			| expression '/' expression { $$ = makeExpBinary($1, $3, expKindDivision); }
-			| expression '%' expression { $$ = makeExpBinary($1, $3, expKindMod); }
-			| expression tBShiftLeft expression { $$ = makeExpBinary($1, $3, expKindBitShiftLeft); }
-			| expression tBShiftRight expression { $$ = makeExpBinary($1, $3, expKindBitShiftRight); }	
-			| expression '&' expression { $$ = makeExpBinary($1, $3, expKindBitAnd); }	
-			| expression tAndNot expression { $$ = makeExpBinary($1, $3, expKindBitAndNot); }	
-			| expression '+' expression { $$ = makeExpBinary($1, $3, expKindAddition); }	
-			| expression '-' expression { $$ = makeExpBinary($1, $3, expKindSubtraction); }	
-			| expression '|' expression { $$ = makeExpBinary($1, $3, expKindBitOr); }	
-			| expression '^' expression { $$ = makeExpBinary($1, $3, expKindBitNotBinary); }	
-			| expression tEQ expression { $$ = makeExpBinary($1, $3, expKindEQ); }	
-			| expression tNEQ expression { $$ = makeExpBinary($1, $3, expKindNEQ); }	
-			| expression '<' expression { $$ = makeExpBinary($1, $3, expKindLess); }	
-			| expression tLEQ expression { $$ = makeExpBinary($1, $3, expKindLEQ); }	
-			| expression '>' expression { $$ = makeExpBinary($1, $3, expKindGreater); }	
-			| expression tGEQ expression { $$ = makeExpBinary($1, $3, expKindGEQ); }	
-			| expression tLOGICAND expression { $$ = makeExpBinary($1, $3, expKindLogicAnd); }	
-			| expression tLOGICOR expression { $$ = makeExpBinary($1, $3, expKindLogicOr); }	
-			| '+' expression %prec UNARY { $$ = makeExpUnary($2, expKindUnaryPlus); } /*2.9.4*/
-			| '-' expression %prec UNARY { $$ = makeExpUnary($2, expKindUnaryMinus); }
-			| '!' expression { $$ = makeExpUnary($2, expKindLogicNot); } 
-			| '^' expression %prec UNARY { $$ = makeExpUnary($2, expKindBitNotUnary); }
+
+
+
+
+expression:
+			  primaryExpression								{ $$ = $1; }
+			| expression '*' expression						{ $$ = makeExpBinary($1, $3, expKindMultiplication); } /*2.9.5*/
+			| expression '/' expression						{ $$ = makeExpBinary($1, $3, expKindDivision); }
+			| expression '%' expression						{ $$ = makeExpBinary($1, $3, expKindMod); }
+			| expression tBShiftLeft expression				{ $$ = makeExpBinary($1, $3, expKindBitShiftLeft); }
+			| expression tBShiftRight expression			{ $$ = makeExpBinary($1, $3, expKindBitShiftRight); }	
+			| expression '&' expression						{ $$ = makeExpBinary($1, $3, expKindBitAnd); }	
+			| expression tAndNot expression					{ $$ = makeExpBinary($1, $3, expKindBitAndNot); }	
+			| expression '+' expression						{ $$ = makeExpBinary($1, $3, expKindAddition); }	
+			| expression '-' expression						{ $$ = makeExpBinary($1, $3, expKindSubtraction); }	
+			| expression '|' expression						{ $$ = makeExpBinary($1, $3, expKindBitOr); }	
+			| expression '^' expression						{ $$ = makeExpBinary($1, $3, expKindBitNotBinary); }	
+			| expression tEQ expression						{ $$ = makeExpBinary($1, $3, expKindEQ); }	
+			| expression tNEQ expression					{ $$ = makeExpBinary($1, $3, expKindNEQ); }	
+			| expression '<' expression						{ $$ = makeExpBinary($1, $3, expKindLess); }	
+			| expression tLEQ expression					{ $$ = makeExpBinary($1, $3, expKindLEQ); }	
+			| expression '>' expression						{ $$ = makeExpBinary($1, $3, expKindGreater); }	
+			| expression tGEQ expression					{ $$ = makeExpBinary($1, $3, expKindGEQ); }	
+			| expression tLOGICAND expression				{ $$ = makeExpBinary($1, $3, expKindLogicAnd); }	
+			| expression tLOGICOR expression				{ $$ = makeExpBinary($1, $3, expKindLogicOr); }	
+			| '+' expression %prec UNARY					{ $$ = makeExpUnary($2, expKindUnaryPlus); } /*2.9.4*/
+			| '-' expression %prec UNARY					{ $$ = makeExpUnary($2, expKindUnaryMinus); }
+			| '!' expression								{ $$ = makeExpUnary($2, expKindLogicNot); } 
+			| '^' expression %prec UNARY					{ $$ = makeExpUnary($2, expKindBitNotUnary); }
 			;
 expressionList: 
-			  expression { $$ = createArgumentList($1); }
-			| expressionList ',' expression { $$ = addArgument($1, $3); } /*Reversed!!!*/
-
-maybeEmptyExpressionList : %empty {$$ = NULL;}
-						| expressionList {$$ = $1;};
-			; //maybe Neil provided this?
+			  expression									{ $$ = createArgumentList($1); }
+			| expressionList ',' expression					{ $$ = addArgument($1, $3); } /*gets reversed in add argument */
+			; 
+maybeEmptyExpressionList : 
+			  %empty {$$ = NULL;}
+			| expressionList {$$ = $1;};
+			;
 primaryExpression: 
-			  operand { $$ = $1; }
-			| conversion { $$ = $1;}
-			| primaryExpression selector { $$ = makeExpAccess($1, $2, expKindFieldSelect); } 
-			| primaryExpression index { $$ = makeExpAccess($1, $2, expKindIndexing); }  
-			| primaryExpression arguments { $$ = makeExpFuncCall($1, $2, expKindFuncCall); }/*2.9.6*/ 
-			| appendExpression { $$ = $1; } 
-			| lengthExpression { $$ = $1; }
-			| capExpression { $$ = $1; }
-			; //ommitting method expression, slice indexing, type assertion
+			  operand										{ $$ = $1; }
+			| primaryExpression selector					{ $$ = makeExpAccess($1, $2, expKindFieldSelect); } 
+			| primaryExpression index						{ $$ = makeExpAccess($1, $2, expKindIndexing); }  
+			| primaryExpression arguments					{ $$ = makeExpFuncCall($1, $2); }/*2.9.6, 2.9.10*/ 
+			| appendExpression								{ $$ = $1; } 
+			| lengthExpression								{ $$ = $1; }
+			| capExpression									{ $$ = $1; }
+			; 
 operand: 
-			  literal { $$ = $1; } /*2.9.3*/
-			| tIDENTIFIER { $$ = makeExpIdentifier($1); } /*2.9.2*/ 
-			| '(' expression ')' { $$ = $2; $$->isBracketed = 1;}
+			  literal										{ $$ = $1; } /*2.9.3*/
+			| tIDENTIFIER									{ $$ = makeExpIdentifier($1); } /*2.9.2*/ 
+			| '(' expression ')'							{ $$ = $2; }
 			; /*2.9.1*/ 
-			//ommitting qualified lit, composite lit, function lit
-literal:	
-			  tINTLIT { $$ = makeExpIntLit($1); } 
-			| tFLOATLIT { $$ = makeExpFloatLit($1); }  
-			| tRUNELIT { $$ = makeExpRuneLit($1); }  
-			| tRAWSTRINGLIT { $$ = makeExpStringLit(expKindRawStringLit, $1); }  
-			| tINTERPRETEDSTRINGLIT { $$ = makeExpStringLit(expKindInterpretedStringLit, $1); }  /*2.9.3*/
+			
+literal:
+			  tINTLIT										{ $$ = makeExpIntLit($1); } 
+			| tFLOATLIT										{ $$ = makeExpFloatLit($1); }  
+			| tRUNELIT										{ $$ = makeExpRuneLit($1); }  
+			| tRAWSTRINGLIT									{ $$ = makeExpStringLit(expKindRawStringLit, $1); }  
+			| tINTERPRETEDSTRINGLIT							{ $$ = makeExpStringLit(expKindInterpretedStringLit, $1); }  /*2.9.3*/
 			;
-conversion: /* I ommitted the trailing ',' */
-			type '(' expression ')' { $$ = makeExpFuncCall($1, createArgumentList($3), expKindTypeCast); } /*also fix type pls */
-			; /*2.9.10*/ //types also provided by Denali
-index: '[' expression ']' { $$ = $2; }/*2.9.7*/
+index:		  '[' expression ']'							{ if ( isBlank($2) ) indexingBlankError(); $$ = $2; }/*2.9.7*/
 arguments: 
-			  '(' expressionList ')' { $$ = $2;}
-			| '(' ')' { $$ = createArgumentList(NULL); }/*2.9.6*/
+			  '(' maybeEmptyExpressionList ')'				{ if ( containsBlank($2) ) argumentBlankError(); $$ = $2;}
 			;
-selector: '.' tIDENTIFIER { $$ = makeExpIdentifier($2); }; /*2.9.8-- Should we weed this ? "must not be the blank identifier" Also we should make sure we can do selector assignment e.g. a.b = c*/
-appendExpression: tAPPEND '(' expression ',' expression ')' { $$ = makeExpAppend($3, $5); }; /*2.9.9*/
-lengthExpression: tLENGTH '(' expression ')' { $$ = makeExpBuiltInBody($3, expKindLength); }; /*2.9.9*/
-capExpression: tCAP '(' expression ')' { $$ = makeExpBuiltInBody($3, expKindCapacity); }; /*2.9.9*/
-type: 'b' { $$ = makeExpIdentifier("b"); }; //placeholder
+selector:		  '.' tIDENTIFIER							{ if ( strcmp($2, "_") == 0 ) fieldSelectBlankError(); $$ = makeExpIdentifier($2); }; /*2.9.8*/
+appendExpression: tAPPEND '(' expression ',' expression ')' { if ( isBlank($3) || isBlank($5) ) builtInBlankError("append"); $$ = makeExpAppend($3, $5); }; /*2.9.9*/
+lengthExpression: tLENGTH '(' expression ')'				{ if ( isBlank($3) ) builtInBlankError("length"); $$ = makeExpBuiltInBody($3, expKindLength); }; /*2.9.9*/
+capExpression:	  tCAP '(' expression ')'					{ if ( isBlank($3) ) builtInBlankError("capacity"); $$ = makeExpBuiltInBody($3, expKindCapacity); }; /*2.9.9*/
+
+
 
 
 
@@ -266,6 +355,8 @@ statement:
 			| switch //2.8.11 {$$ = $1;}
 			| ifStatement //2.8.10 {$$ = $1;}
 			| loop //2.8.12 {$$ = $1;}
+			| typeDecl				{$$ = makeTypeDeclStatement($1, yylineno);}
+			| variableDecl			{$$ = makeVarDeclStatement($1, 0, yylineno);}
 
 
 ;
@@ -283,7 +374,19 @@ simpleStatement:
 			| assignmentStatement {$$ = $1;}//2.8.4
 
 
-			| expressionList tDefined expressionList    /*2.8.6 Hacky Fix, LHS needs to be an identifier list
+			| expressionList tDefined expressionList   
+				{$$ = 
+					makeVarDeclStatement(
+						makeSingleVarDeclWithExps(
+							extractIdList($1, yylineno), 
+							NULL, 
+							$3,
+							yylineno
+						), 
+						1, 
+						yylineno
+					);
+				} /*2.8.6 Hacky Fix, LHS needs to be an identifier list
 													(Short declaration) Parser needs to check that length(LHS) == length(RHS), 
 													weeder probably needs to check that we can assign into LHS
 													 */
@@ -339,7 +442,8 @@ ifStatement :
 loop : 
 		tFor block {$$ = makeInfLoopStmt($2);}
 		| tFor expression block {$$ = makeWhileLoopStmt($2,$3);}
-		| tFor simpleStatement ';' expression ';' simpleStatement block {$$ = makeThreePartLoopStmt($2,$4,$6,$7);}
+		| tFor simpleStatement ';' expression ';' simpleStatement block { shortDeclarationPostError($6) ;  $$ = makeThreePartLoopStmt($2,$4,$6,$7);}
+		| tFor simpleStatement ';' ';' simpleStatement block { shortDeclarationPostError($5) ;  $$ = makeThreePartLoopStmt($2,NULL,$5,$6);}
 
 
 
@@ -358,7 +462,8 @@ switch:
 
 expressionCaseClauseList : %empty {$$ = NULL;}
 						| expressionCaseClause expressionCaseClauseList {$$ = $1; $1->next  = $2;}
+						
 expressionCaseClause : expressionSwitchCase ':' statementList {$$ = makeSwitchCaseClause($1, reverseStmtList($3));}
 
-expressionSwitchCase : tCase expressionList {if (containsBlank($2)) {blankSwitchCaseClauseError();} ;$$ = $2;}
+expressionSwitchCase : tCase expressionList {if (containsBlank($2)) {blankSwitchCaseClauseError();} ;$$ = reverseList($2);}
 					| tDefault {$$ = NULL;}

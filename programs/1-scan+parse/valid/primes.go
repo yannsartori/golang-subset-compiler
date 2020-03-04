@@ -5,7 +5,9 @@ package main
 
 func printPrimes (n int){
 	if (n < 0){
-		fmt.Println("n must be >= 0")
+    
+		println("n must be >= 0")
+
 		return
 	}
 	
@@ -37,4 +39,4 @@ func main() {
 	
 	
 	printPrimes(500);
-}
+

@@ -1,9 +1,10 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "globalEnum.h"
 #include <string.h>
+#include "globalEnum.h"
 #include "ast.h"
+#include "pretty_printer.h"
 
 
 
@@ -16,6 +17,18 @@ void printSwitchStmt(Stmt* stmt,int indentLevel);
 void printSimpleStatement(Stmt* stmt);
 void printSwitchCaseClause(switchCaseClause* clause,int indentLevel);
 
+void prettyTypeHolder(TypeHolderNode *node, int indentLevel);
+void prettyFuncDecl(FuncDeclNode *func, int indentLevel);
+void prettyTypeDecl(TypeDeclNode *type, int indentLevel);
+void prettyFuncArgs(TypeDeclNode *type, int indentLevel);
+void prettyStructMembers(TypeDeclNode *type, int indentLevel);
+void prettyVarDecl(VarDeclNode *var, int indentLevel);
+void prettyShortVarDecl(VarDeclNode *var, int indentLevel);
+void prettyTopDeclaration(TopDeclarationNode *topDecl, int indentLevel);
+
+void prettyVarDeclSimpleStatement(VarDeclNode *var);
+void printPartiallyIndentedBlock(Stmt* stmt,int indentLevel);
+
 void indent(int indentLevel){
     for(int i = 0 ; i < indentLevel; i++){
         printf("    ");
@@ -27,10 +40,9 @@ void printStmt(Stmt* stmt, int indentLevel){
         return;
     }
 
-    
-
     switch (stmt->kind){
-        case StmtKindBlock :    indent(indentLevel);
+        case StmtKindBlock :    
+								indent(indentLevel);
 								printf("{\n");
                                 printStmt(stmt->val.block.stmt,indentLevel + 1);
                                 indent(indentLevel);
@@ -39,14 +51,24 @@ void printStmt(Stmt* stmt, int indentLevel){
 
         case StmtKindExpression : 	indent(indentLevel);
 									printSimpleStatement(stmt);
+									printf(";");
                                     printf("\n");
                                     break;
                                     
         case StmtKindAssignment : indent(indentLevel);
 									printSimpleStatement(stmt);
+									printf(";");
                                     printf("\n");
                                     break;
-    
+		case StmtKindShortDeclaration: 
+			prettyShortVarDecl(stmt->val.varDeclaration, indentLevel);
+			break;
+		case StmtKindVarDeclaration:
+			prettyVarDecl(stmt->val.varDeclaration, indentLevel);
+			break;
+		case StmtKindTypeDeclaration:
+			prettyTypeDecl(stmt->val.typeDeclaration, indentLevel);
+			break;
         case StmtKindPrint : 	indent(indentLevel);
 								printf("print(");
                                 prettyExpList(stmt->val.print.list);
@@ -62,14 +84,7 @@ void printStmt(Stmt* stmt, int indentLevel){
 							printIfStmt(stmt,indentLevel);
                             break;
         case StmtKindElse: printf("else");
-
-							Stmt* blockStmt = stmt->val.elseStmt.block;
-
-							printf("{\n\n");
-	
-                            printStmt(blockStmt->val.block.stmt,indentLevel+1);
-							indent(indentLevel);
-							printf("}\n\n");
+							printPartiallyIndentedBlock(stmt->val.elseStmt.block,indentLevel);
                             break;
         case StmtKindReturn: 
 							indent(indentLevel);
@@ -86,13 +101,13 @@ void printStmt(Stmt* stmt, int indentLevel){
 
         case StmtKindInfLoop:   indent(indentLevel);
 								printf("for ");
-                                printStmt(stmt->val.infLoop.block,indentLevel);
+                                printPartiallyIndentedBlock(stmt->val.infLoop.block,indentLevel);
                                 break;
 
         case StmtKindWhileLoop: indent(indentLevel);
 								printf("for ");
                                 prettyExp(stmt->val.whileLoop.conditon);
-                                printStmt(stmt->val.whileLoop.block,indentLevel);
+                                printPartiallyIndentedBlock(stmt->val.whileLoop.block,indentLevel);
                                 break;
         case StmtKindThreePartLoop:  indent(indentLevel);
 									printf("for ");
@@ -102,22 +117,21 @@ void printStmt(Stmt* stmt, int indentLevel){
                                     printf(";");
                                     printSimpleStatement(stmt->val.forLoop.inc);
 
-                                    printStmt(stmt->val.forLoop.block,indentLevel);
+                                    printPartiallyIndentedBlock(stmt->val.forLoop.block,indentLevel);
 
                                     break;
 
         case StmtKindBreak:     indent(indentLevel);
-								printf("break;");
+								printf("break;\n");
                                 break;
         case StmtKindContinue: indent(indentLevel);
-								printf("continue;");
+								printf("continue;\n");
                                 break;
         case StmtKindFallthrough: 
 								indent(indentLevel);
-                                printf("fallthrough;");
+                                printf("fallthrough;\n");
                                 break;
     }
-
 
     printStmt(stmt->next,indentLevel);
 }
@@ -135,8 +149,8 @@ void printIfStmt(Stmt* stmt,int indentLevel){
 
 
     if (simpleStmt != NULL){
-		
         printSimpleStatement(simpleStmt);
+		printf(";");
     }
 
 
@@ -173,6 +187,7 @@ void printSwitchStmt(Stmt* stmt,int indentLevel){
 
     if (simpleStatement != NULL){
         printSimpleStatement(simpleStatement);
+		printf(";");
         
     }
 
@@ -191,33 +206,24 @@ void printSwitchStmt(Stmt* stmt,int indentLevel){
 
 }
 
-
-
-
-
-
-
-
 void printSimpleStatement(Stmt* stmt){
     if (stmt == NULL){
         return;
     }
-	
-
-	
-
     switch (stmt->kind){
 
         case StmtKindExpression : prettyExp(stmt->val.expression.expr);
 									
-                                    printf(";");
+                                    
                                     break;
                                     
         case StmtKindAssignment : prettyExpList(stmt->val.assignment.lhs);
                                     printf(" = ");
                                     prettyExpList(stmt->val.assignment.rhs);
-                                    printf(";");
+                                    
                                     break;
+		case StmtKindShortDeclaration : prettyVarDeclSimpleStatement(stmt->val.varDeclaration);
+										break;
     
        
     }
@@ -248,32 +254,6 @@ void printSwitchCaseClause(switchCaseClause* clause,int indentLevel){
 
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void prettyExpList(ExpList *list);
 void prettyExp(Exp * exp)
 {
 	if ( exp == NULL ) return;
@@ -295,9 +275,6 @@ void prettyExp(Exp * exp)
 		case expKindInterpretedStringLit:
 			printf("%s", exp->val.stringLit);
 			break;
-
-		case expKindTypeCast:
-
 		case expKindFuncCall:
 			prettyExp(exp->val.funcCall.base);
 			printf("(");
@@ -330,6 +307,28 @@ void prettyExp(Exp * exp)
 		case expKindCapacity:
 			printf("cap(");
 			prettyExp(exp->val.builtInBody);
+			printf(")");
+			break;
+		case expKindLogicNot: //switch statements <3
+		case expKindUnaryMinus:
+		case expKindUnaryPlus:
+		case expKindBitNotUnary:
+			switch (exp->kind) {
+				case expKindLogicNot:
+					printf("!");
+					break;
+				case expKindUnaryMinus:
+					printf("-");
+					break;
+				case expKindUnaryPlus:
+					printf("+");
+					break;
+				case expKindBitNotUnary:
+					printf("^");
+					break;
+			}
+			printf("(");
+			prettyExp(exp->val.unary);
 			printf(")");
 			break;
 		default:
@@ -397,7 +396,7 @@ void prettyExp(Exp * exp)
 					break;
 				case expKindMod:
 					prettyExp(exp->val.binary.left);
-					fputs(" % ", stdout);
+					fputs(" % ", stdout); //for denali <3
 					prettyExp(exp->val.binary.right);
 					break;
 				case expKindBitAnd:
@@ -430,25 +429,6 @@ void prettyExp(Exp * exp)
 					printf(" &^ " );
 					prettyExp(exp->val.binary.right);
 					break;
-				case expKindLogicNot:
-					printf("!");
-					prettyExp(exp->val.unary);
-					break;
-				case expKindUnaryMinus:
-					printf("-");
-					prettyExp(exp->val.unary);
-					break;
-				case expKindUnaryPlus:
-					printf("+");
-					prettyExp(exp->val.unary);
-					break;
-				case expKindBitNotUnary:
-					printf("^");
-					prettyExp(exp->val.unary);
-					break;
-				default:
-					printf("An error occured :(");
-					exit(1);
 			}
 			printf(")");
 			
@@ -463,5 +443,165 @@ void prettyExpList(ExpList *list)
 		printf(", ");
 		prettyExpList(list->next);
 	}
+
+}
+void prettyTypeHolder(TypeHolderNode *node, int indentLevel)
+{
+	if ( node == NULL ) return;
+	switch (node->kind)
+	{
+		case sliceType:
+			printf("[]");
+			prettyTypeHolder(node -> underlyingType, indentLevel);
+			break;
+		case arrayType:
+			printf("[%d]", node->arrayDims);
+			prettyTypeHolder(node -> underlyingType, indentLevel);
+			break;
+		case identifierType:
+			printf(" %s", node->identification);
+			break;
+		case structType:
+			printf(" struct {\n");
+			prettyStructMembers(node->structMembers, indentLevel + 1);
+			indent(indentLevel);
+			printf("}");
+			break;
+		case inferType:
+			//nothing :(
+			break;
+	}
+}
+void prettyFuncDecl(FuncDeclNode *func, int indentLevel)
+{
+	if ( func == NULL ) return;
+	indent(indentLevel);
+	printf("func %s(", func->identifier);
+	prettyFuncArgs(func->argsDecls, indentLevel);
+	printf(")");
+	if ( func->returnType != NULL )
+	{
+		prettyTypeHolder(func->returnType, indentLevel);
+	}
+	printf(" ");
+	printStmt(func->blockStart, indentLevel );	
+
+}
+void prettyFuncArgs(TypeDeclNode *type, int indentLevel)
+{
+	if ( type == NULL ) return;
+	printf("%s", type->identifier);
+	if ( type->actualType != NULL )
+	{
+		prettyTypeHolder(type->actualType, indentLevel);
+	}
+	if ( type->nextDecl != NULL )
+	{
+		printf(", ");
+		prettyFuncArgs(type->nextDecl, indentLevel);
+	}
+}
+void prettyStructMembers(TypeDeclNode *type, int indentLevel)
+{
+	if ( type == NULL ) return;
+	indent(indentLevel);
+	printf("%s", type->identifier);
+	if ( type->actualType != NULL )
+	{
+		prettyTypeHolder(type->actualType, indentLevel);
+	}
+	printf("\n");
+	prettyStructMembers(type->nextDecl, indentLevel);
+}
+void prettyTypeDecl(TypeDeclNode *type, int indentLevel)
+{
+	if ( type == NULL ) return;
+	indent(indentLevel);
+	printf("type %s", type->identifier);
+	prettyTypeHolder(type->actualType, indentLevel);
+	printf("\n");
+	prettyTypeDecl(type->nextDecl, indentLevel);
+}
+void prettyVarDecl(VarDeclNode *var, int indentLevel)
+{
+	if ( var == NULL ) return;
+	indent(indentLevel);
+	printf("var %s", var->identifier);
+	prettyTypeHolder(var->typeThing, indentLevel);
+	if ( var->value != NULL )
+	{
+		printf(" = ");
+		prettyExp(var->value);
+	}
+	printf("\n");
+	prettyVarDecl(var->nextDecl, indentLevel);
+}
+void prettyShortVarDecl(VarDeclNode *var, int indentLevel)
+{
+	indent(indentLevel);
+	printf("%s := ", var->identifier);
+	prettyExp(var->value);
+	printf("\n");
+	prettyVarDecl(var->nextDecl, indentLevel);
+}
+void prettyTopDeclaration(TopDeclarationNode *topDecl, int indentLevel)
+{
+	if ( topDecl == NULL ) return;
+	indent(indentLevel);
+	switch (topDecl->declType)
+	{
+		case variDeclType:
+			prettyVarDecl(topDecl->actualRealDeclaration.varDecl, indentLevel);
+			break;
+		case typeDeclType:
+			if ( topDecl->actualRealDeclaration.typeDecl == NULL ) puts("FUCK");
+			prettyTypeDecl(topDecl->actualRealDeclaration.typeDecl, indentLevel);
+			break;
+		case funcDeclType:
+			prettyFuncDecl(topDecl->actualRealDeclaration.funcDecl, indentLevel);
+			break;
+	}
+	prettyTopDeclaration(topDecl->nextTopDecl, indentLevel);
+}
+void printRoot(RootNode *root)
+{
+	printf("package %s\n", root->packageName);
+	prettyTopDeclaration(root->startDecls, 0);
+}
+
+
+
+
+
+
+
+
+//Neil (Needs a touch up)
+
+void prettyVarDeclSimpleStatement(VarDeclNode *var)
+{
+	if ( var == NULL ) return;
+
+	printf("%s", var->identifier);
+	
+	if ( var->value != NULL )
+	{
+		printf(" := ");
+		prettyExp(var->value);
+	}
+	
+}
+
+
+
+
+void printPartiallyIndentedBlock(Stmt* stmt,int indentLevel){
+	if (stmt == NULL){
+		return;
+	}
+	printf("{\n");
+	printStmt(stmt->val.block.stmt,indentLevel+1);
+	indent(indentLevel);
+	printf("}\n");
 
 }
