@@ -5,20 +5,7 @@
 #include "globalEnum.h"
 #include <string.h>
 
-
-typedef struct Stmt Stmt;
-typedef struct switchCaseClause switchCaseClause;
-
-typedef struct Exp Exp;
-typedef struct ExpList ExpList; // for arguments
-
-typedef struct RootNode RootNode;
-typedef struct TopDeclarationNode TopDeclarationNode;
-typedef struct VarDeclNode VarDeclNode;
-typedef struct TypeDeclNode TypeDeclNode;
-typedef struct FuncDeclNode FuncDeclNode;
-typedef struct TypeHolderNode TypeHolderNode;
-typedef struct IdChain IdChain;
+//typedefs in globalEnum
 
 Stmt* makeBreakStmt();
 Stmt* makeContinueStmt();
@@ -39,7 +26,7 @@ Stmt* makeThreePartLoopStmt(Stmt* init, Exp* condition, Stmt* inc, Stmt* block);
 Stmt* makeSwitchStmt(Stmt* statement, Exp* expression, switchCaseClause* clauseList);
 switchCaseClause* makeSwitchCaseClause(ExpList* expressionList, Stmt* statementList);
 ExpList* reverseList(ExpList* reversed);
-Exp *makeExpIdentifier(char *identifier); //How should we handle types?
+Exp *makeExpIdentifier(char *identifier); 
 Exp *makeExpIntLit(int intLit);
 Exp *makeExpFloatLit(double floatLit);
 Exp *makeExpStringLit(ExpressionKind kind, char *stringLit);
@@ -117,7 +104,8 @@ struct switchCaseClause {
 
 
 // Yann's definitions 
-
+int isBinary(Exp *e);
+int isUnary(Exp *e);
 
  // for arguments
 
@@ -130,6 +118,8 @@ struct Exp {
 	ExpressionKind kind;
 	int isBracketed;
 	int lineno;
+	STEntry *symbolEntry; //only one or both will be null
+	TTEntry *typeEntry;
 	union {
 		char *id;
 		int intLit;

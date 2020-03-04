@@ -825,3 +825,11 @@ IdChain* extractIdList(ExpList* expressions, int lineno) {
 	idIter -> next = NULL;
 	return base;
 }
+int isBinary(Exp *e)
+{
+	return e->kind == expKindAddition || e->kind == expKindSubtraction || e->kind == expKindMultiplication || e->kind == expKindDivision || e->kind == expKindMod || e->kind == expKindBitAnd || e->kind == expKindBitOr || e->kind == expKindBitNotBinary || e->kind == expKindBitShiftLeft || e->kind == expKindBitShiftRight || e->kind == expKindBitAndNot || e->kind == expKindLogicAnd || e->kind == expKindLogicOr || e->kind == expKindEQ || e->kind == expKindGreater || e->kind == expKindLess || e->kind == expKindNEQ || e->kind == expKindLEQ || e->kind == expKindGEQ;
+}
+int isUnary(Exp *e)
+{
+	return e->kind == expKindBitNotUnary || e->kind == expKindLogicNot || e->kind == expKindUnaryPlus || e->kind == expKindUnaryMinus;
+}

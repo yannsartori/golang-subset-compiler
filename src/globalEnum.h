@@ -1,6 +1,27 @@
 #ifndef GLOBAL_ENUM
 #define GLOBAL_ENUM
 
+typedef struct Stmt Stmt;
+typedef struct switchCaseClause switchCaseClause;
+
+typedef struct Exp Exp;
+typedef struct ExpList ExpList; // for arguments
+
+typedef struct RootNode RootNode;
+typedef struct TopDeclarationNode TopDeclarationNode;
+typedef struct VarDeclNode VarDeclNode;
+typedef struct TypeDeclNode TypeDeclNode;
+typedef struct FuncDeclNode FuncDeclNode;
+typedef struct TypeHolderNode TypeHolderNode;
+typedef struct IdChain IdChain;
+
+
+typedef struct SymbolTable SymbolTable;
+typedef struct TypeTable TypeTable;
+typedef struct STEntry STEntry;
+typedef struct TTEntry TTEntry;
+typedef struct TTEntryList TTEntryList;
+
 typedef enum {
     StmtKindBlock,
     StmtKindExpression,
@@ -94,7 +115,13 @@ typedef enum {
 	identifierType,
 	inferType,
 } TypeType;
-
+typedef enum {
+	baseInt,
+	baseFloat64,
+	baseRune,
+	baseString,
+	baseBool,
+} BaseType;
 #endif
 
 
