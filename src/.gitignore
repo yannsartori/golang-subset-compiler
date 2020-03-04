@@ -1,3 +1,4 @@
 errors.txt
 .gitignore
+*.o
 test.go

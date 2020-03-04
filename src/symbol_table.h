@@ -41,5 +41,5 @@ struct TTEntryList {
 	TTEntry *cur;
 	TTEntryList *next;
 };
-void symbolCheckExpression(Exp *e, SymbolTable *s, TypeTable *t);
+void symbolCheckExpression(Exp *e, Context* contex);
 #endif

@@ -124,5 +124,3 @@ typedef enum {
 	baseBool,
 } BaseType;
 #endif
-
-
