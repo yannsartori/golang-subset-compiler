@@ -3,13 +3,23 @@
 #define TABLE_SIZE 997
 #include "globalEnum.h"
 //typedefs in globalEnum
+struct Context {
+	TypeTable *curTypeTable;
+	SymbolTable *curSymbolTable;
+	Context *parent;
+};
 struct SymbolTable {
 	STEntry *entries[TABLE_SIZE];
-	SymbolTable *parent;
 };
 struct TypeTable {
 	TTEntry *entries[TABLE_SIZE];
-	TypeTable *parent;
+};
+struct PolymorphicEntry { // helper. Used for the getEntry method.
+	int isSymbol;
+	union {
+		STEntry *s;
+		TTEntry *t;
+	} entry;
 };
 struct STEntry {
 	char *id;

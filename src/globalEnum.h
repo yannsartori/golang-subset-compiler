@@ -15,12 +15,13 @@ typedef struct FuncDeclNode FuncDeclNode;
 typedef struct TypeHolderNode TypeHolderNode;
 typedef struct IdChain IdChain;
 
-
+typedef struct Context Context;
 typedef struct SymbolTable SymbolTable;
 typedef struct TypeTable TypeTable;
 typedef struct STEntry STEntry;
 typedef struct TTEntry TTEntry;
 typedef struct TTEntryList TTEntryList;
+typedef struct PolymorphicEntry PolymorphicEntry;
 
 typedef enum {
     StmtKindBlock,
