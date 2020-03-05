@@ -46,5 +46,5 @@ struct TTEntryList {
 	TTEntry *cur;
 	TTEntryList *next;
 };
-void symbolLookupExpression(Exp *e, Context *c);
+void symbolCheckExpression(Exp *e, Context *c);
 #endif
