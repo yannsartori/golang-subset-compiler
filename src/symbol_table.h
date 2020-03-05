@@ -31,15 +31,20 @@ struct TTEntry { //base types have id = type and basetype = basetype to simplify
 	TypeType underlyingTypeType; //array struct slice etc TODO discuss if we shoudl add funcDeclType to TypeType (it is currently not) 
 	BaseType underlyingType; //an enum int float etc
 	union {
-		struct {TTEntry *type;} normalType; //encompasses slice, array, boring type
-		struct {TTEntryList *fields;} structType; 
+		struct {TTEntry *type;} normalType; //encompasses slice, array, (e.g. if this is of type []T, then normalType.type == T)
+		struct {EntryTupleList *fields;} structType; 
 		struct {TTEntryList *args; TTEntry *ret;} functionType;
 	} val;
 	TTEntry *next;
+};
+struct EntryTupleList {
+	TTEntry *type;
+	char *id; //could change
+	EntryTupleList *next;
 };
 struct TTEntryList {
 	TTEntry *cur;
 	TTEntryList *next;
 };
-void symbolCheckExpression(Exp *e, SymbolTable *s, TypeTable *t);
+void symbolLookupExpression(Exp *e, Context *c);
 #endif

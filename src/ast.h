@@ -118,8 +118,7 @@ struct Exp {
 	ExpressionKind kind;
 	int isBracketed;
 	int lineno;
-	STEntry *symbolEntry; //only one or both will be null
-	TTEntry *typeEntry;
+	PolymorphicEntry *contextEntry;
 	union {
 		char *id;
 		int intLit;

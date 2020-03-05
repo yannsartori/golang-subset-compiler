@@ -21,6 +21,7 @@ typedef struct TypeTable TypeTable;
 typedef struct STEntry STEntry;
 typedef struct TTEntry TTEntry;
 typedef struct TTEntryList TTEntryList;
+typedef struct EntryTupleList EntryTupleList;
 typedef struct PolymorphicEntry PolymorphicEntry;
 
 typedef enum {
@@ -112,6 +113,7 @@ typedef enum {
 typedef enum {
 	arrayType,
 	structType,
+	funcType, //TODO decide if this is the way
 	sliceType,
 	identifierType,
 	inferType,
