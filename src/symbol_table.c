@@ -4,13 +4,12 @@
 #include "globalEnum.h"
 #include "symbol_table.h"
 
-SymbolTable *globalSymbolTable;
-TypeTable *globalTypeTable;
-//CURRENT PLACEHOLDERS: TODO
-// STEntry * symbolLookup(char *id, SymbolTable *s)
-// TTEntry * typeLookup(char *id, TypeTable *t)
+Context *globalContext;
 STEntry * symbolLookup(char *id, SymbolTable *s);
 TTEntry * typeLookup(char *id, TypeTable *t);
+int main(void) { 
+	return 0; 
+} // to compile
 
 
 
@@ -18,8 +17,6 @@ void symbolCheckExpressionList(ExpList* expressionList,Context* context);
 void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* context);
 
 void printClauseListSymbol(switchCaseClause* clauseList,int indentLevel);
-
-
 
 
 int hashCode(char * id)
@@ -106,16 +103,56 @@ PolymorphicEntry *getEntry(Context *c, char *id)
 	return getEntry(c->parent, id);
 }
 
-
-//Deleted Yann's initial version so that I could compile
-void symbolCheckExpression(Exp *e, Context* context)
+void symbolCheckExpression(Exp *e, Context *c)
 {
-	return;	
+	if ( e->kind == expKindIdentifier )
+	{
+		if ( getEntry(c, e->val.id) == NULL )
+		{
+			fprintf(stderr, "Error: (%d) %s not declared as a variable, nor type", e->lineno, e->val.id);
+			exit(1);
+		}
+		e->contextEntry = getEntry(c, e->val.id);
+	}
+	else if ( e->kind == expKindFieldSelect || e->kind == expKindIndexing )
+	{
+		symbolCheckExpression(e->val.access.base, c);
+		symbolCheckExpression(e->val.access.accessor, c);
+	}
+	else if ( e->kind == expKindFuncCall )
+	{ //All that matters in this stage is that it exists in A table. Which will matter in typecheck and codegen                   
+		if ( getEntry(c, e->val.funcCall.base->val.id) == NULL ) //we did yardwork to ensure that base is an identifier
+		{
+			fprintf(stderr, "Error: (%d) %s not declared as a variable, nor variable", e->lineno, e->val.funcCall.base->val.id); 
+			exit(1);
+		}
+		e->contextEntry = getEntry(c, e->val.funcCall.base->val.id);
+		ExpList *curArg = e->val.funcCall.arguments;
+		while ( curArg != NULL )
+		{
+			symbolCheckExpression(curArg->cur, c);
+			curArg = curArg->next;
+		}
+	}
+	else if ( isBinary(e) )
+	{
+		symbolCheckExpression(e->val.binary.left, c);
+		symbolCheckExpression(e->val.binary.right, c);
+	}
+	else if ( isUnary(e) )
+	{
+		symbolCheckExpression(e->val.unary, c);		
+	}
+	else if ( e->kind == expKindCapacity || e->kind == expKindLength )
+	{
+		symbolCheckExpression(e->val.builtInBody, c);
+	}
+	else if ( e->kind == expKindAppend )
+	{
+		symbolCheckExpression(e->val.append.list, c);
+		symbolCheckExpression(e->val.append.elem, c);
+	}
 }
-
-
-
-
 void symbolCheckStatement(Stmt* stmt, Context* context){
 	if (stmt == NULL){
 		return;
@@ -255,7 +292,6 @@ void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* cont
 }
 
 
-
 static void indent(int indentLevel){
 	for(int i = 0; i < indentLevel; i++){
 		printf("	");
@@ -365,3 +401,4 @@ void printClauseListSymbol(switchCaseClause* clauseList,int indentLevel){
 
 	printClauseListSymbol(clauseList->next,indentLevel);
 }
+

@@ -27,6 +27,15 @@ int main(int argc, char * argv[])
 	{
 		yyparse();
 		printRoot(rootNode);
+	} else if ( !strcmp(argv[1], "symbol") )
+	{
+		yyparse();
+		//symbolcheck
+	} else if ( !strcmp(argv[1], "typecheck") )
+	{
+		yyparse();
+		//symbolchecknoprint
+		//typecheck
 	}
 	return 0;
 }
