@@ -17,6 +17,8 @@ TTEntry * typeLookup(char *id, TypeTable *t);
 void symbolCheckExpressionList(ExpList* expressionList,Context* context);
 void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* context);
 
+void printClauseListSymbol(switchCaseClause* clauseList,int indentLevel);
+
 
 
 
@@ -129,7 +131,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 	switch (stmt->kind){
 
 
-		//TODO
+		
 		case StmtKindSwitch :
 							newContext = scopedContext(context);
 							symbolCheckStatement(stmt->val.switchStmt.statement,newContext);
@@ -220,7 +222,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 
 
 
-		//For Denali to implement
+		//For Denali to implement (Probably want to modify declaration nodes to include symbol references)
 		case StmtKindTypeDeclaration :break;
 		case StmtKindVarDeclaration :break;
 		case StmtKindShortDeclaration : break; //Short declaration needs to contain a new variable
@@ -247,7 +249,119 @@ void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* cont
 	}
 
 	symbolCheckExpressionList(clauseList->expressionList,context);
-	symbolCheckStatement(clauseList->statementList,context);
+	symbolCheckStatement(clauseList->statementList,scopedContext(context)); // Each stmt list in a clause has its own scope
 
 	symbolCheckSwitchCaseClauseList(clauseList->next,context);
+}
+
+
+
+static void indent(int indentLevel){
+	for(int i = 0; i < indentLevel; i++){
+		printf("	");
+	}
+}
+ 
+void printStatementSymbol(Stmt* stmt,int indentLevel){
+
+		if (stmt == NULL){
+			return;
+		}
+
+
+		switch (stmt->kind){
+
+			
+			case StmtKindSwitch : 
+								indent(indentLevel);
+								printf("{\n");
+
+								printStatementSymbol(stmt->val.switchStmt.statement,indentLevel+1);
+								printClauseListSymbol(stmt->val.switchStmt.clauseList,indentLevel+1);
+
+								printf("\n");
+								indent(indentLevel);
+								printf("}\n");
+								break;
+
+			case StmtKindBlock : indent(indentLevel);
+								printf("{\n");
+								printStatementSymbol(stmt->val.block.stmt,indentLevel+1);
+								printf("\n");
+								indent(indentLevel);
+								printf("}\n");
+								break;
+
+
+			//Cannot introduce symbol, scope
+			case StmtKindExpression : break; 
+			case StmtKindAssignment : break;
+			case StmtKindPrintln : break;
+			case StmtKindPrint : break;
+			case StmtKindReturn : break;
+			case StmtKindBreak : break;
+			case StmtKindContinue : break;
+
+
+
+
+			case StmtKindIf : indent(indentLevel);
+								printf("{\n");
+
+								printStatementSymbol(stmt->val.ifStmt.statement,indentLevel+1);
+
+								printStatementSymbol(stmt->val.ifStmt.block,indentLevel+1);
+
+								printf("\n");
+								indent(indentLevel);
+								printf("}\n");
+								break;
+
+			case StmtKindElse : printStatementSymbol(stmt->val.elseStmt.block,indentLevel);
+								break;
+			case StmtKindInfLoop : printStatementSymbol(stmt->val.infLoop.block,indentLevel);
+									break;
+			case StmtKindWhileLoop : printStatementSymbol(stmt->val.whileLoop.block,indentLevel);
+									break;
+			case StmtKindThreePartLoop :indent(indentLevel);
+										printf("{\n");
+
+										printStatementSymbol(stmt->val.forLoop.init,indentLevel+1);
+										printStatementSymbol(stmt->val.forLoop.inc,indentLevel+1);
+
+										printStatementSymbol(stmt->val.forLoop.block,indentLevel+2);
+
+										printf("\n");
+										indent(indentLevel);
+										printf("}\n");
+										break;
+
+
+				
+			//For Denali to implement (I also designed the rest with the assumption that the following are terminated with newline characters)
+			case StmtKindTypeDeclaration :break;
+			case StmtKindVarDeclaration :break;
+			case StmtKindShortDeclaration : break;
+
+
+
+		}
+
+		printStatementSymbol(stmt->next,indentLevel);
+}
+
+
+void printClauseListSymbol(switchCaseClause* clauseList,int indentLevel){
+	if (clauseList == NULL){
+		return;
+	}
+
+	indent(indentLevel);
+	printf("{\n");
+	printStatementSymbol(clauseList->statementList,indentLevel+1);
+	printf("\n");
+	indent(indentLevel);
+	printf("}\n");
+
+	printClauseListSymbol(clauseList->next,indentLevel);
 }
