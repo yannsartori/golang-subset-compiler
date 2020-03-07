@@ -7,9 +7,7 @@
 Context *globalContext;
 STEntry * symbolLookup(char *id, SymbolTable *s);
 TTEntry * typeLookup(char *id, TypeTable *t);
-int main(void) { 
-	return 0; 
-} // to compile
+
 
 
 
@@ -213,7 +211,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 
 
 
-    	case StmtKindExpression: //TODO (symbolCheckExpression signature, implementation need to change)
+    	case StmtKindExpression: //TODO Needs to be an actual function call(distinguish between type casts and function calls) cannot be append, len or cap either
 						symbolCheckExpression(stmt->val.expression.expr,context);
 						break;
 

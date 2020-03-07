@@ -257,6 +257,8 @@ switchCaseClause* makeSwitchCaseClause(ExpList* expressionList, Stmt* statementL
     ptr->expressionList = expressionList;
     ptr->statementList = statementList;
 
+    ptr->lineno = yylineno;
+
     return ptr;
 }
 
