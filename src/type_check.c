@@ -13,6 +13,9 @@
 #define STRING_HOLDER NULL;
 #define BOOL_HOLDER NULL;
 
+
+
+
 TTEntry *getExpressionType(Exp *e)
 {
 	if ( e->contextEntry->isSymbol ) return e->contextEntry->entry.s->type;
@@ -357,3 +360,264 @@ TTEntry *typeCheckExpression(Exp *e)
 
 	}
 }
+
+//TODO
+void typeCheckStatement(Stmt* stmt){
+	if (stmt == NULL){
+		return;
+	}
+
+	switch (stmt->kind){
+		case StmtKindBlock:
+			break;
+
+		
+		case StmtKindExpression: 
+			break;
+
+		//TODO, lots todo
+		case StmtKindAssignment:
+			break;
+
+
+		//TODO
+		case StmtKindPrint:
+			break;
+		case StmtKindPrintln:
+			break;
+
+
+		case StmtKindIf:
+			break;  
+		case StmtKindReturn:
+			break;
+		case StmtKindElse:
+			break;
+		case StmtKindSwitch:
+			break;
+		case StmtKindInfLoop:
+			break;
+		case StmtKindWhileLoop:
+			break;
+		case StmtKindThreePartLoop:
+			break;
+
+		case StmtKindBreak:
+			break;
+		case StmtKindContinue:
+			break;
+		case StmtKindFallthrough:
+			break;
+
+
+
+		//For denali to implement
+		case StmtKindTypeDeclaration:
+			break;
+		case StmtKindVarDeclaration:
+			break;
+		case StmtKindShortDeclaration:
+			break;
+	}
+
+	typeCheckStatement(stmt->next);
+
+
+}
+
+
+int statementIsProperlyTerminated(Stmt* stmt, char* funcName);
+
+
+int isLocalBreakPresent(Stmt* stmt){
+	if (stmt == NULL){
+		return 0;
+	}
+
+	int wasFound = 0;
+
+	
+	switch (stmt->kind){
+		case StmtKindBlock : 
+			wasFound =  isLocalBreakPresent(stmt->val.block.stmt);
+			break;
+
+		case StmtKindExpression :
+			break;
+		case StmtKindAssignment:
+			break;
+	
+
+		case StmtKindPrint:
+			break;
+		case StmtKindPrintln:
+			break;
+		case StmtKindIf:
+			wasFound = isLocalBreakPresent(stmt->val.ifStmt.block) || isLocalBreakPresent(stmt->val.ifStmt.elseBlock);
+			break;
+
+		case StmtKindReturn:
+			break;
+		case StmtKindElse :
+			wasFound = isLocalBreakPresent(stmt->val.elseStmt.block);
+			break;
+
+		case StmtKindSwitch :
+			break;
+		case StmtKindInfLoop :
+			break;
+		case StmtKindWhileLoop:
+			break;
+		case StmtKindThreePartLoop:
+			break;
+
+		case StmtKindBreak:
+			return 1;
+			break;
+		case StmtKindContinue:
+			break;
+
+		case StmtKindTypeDeclaration:
+			break;
+		case StmtKindVarDeclaration:
+			break;
+		case StmtKindShortDeclaration:
+			break;
+	}
+
+	if (wasFound){
+		return 1;
+	}
+
+	return isLocalBreakPresent(stmt->next);
+}
+
+int isDefaultCasePresent(switchCaseClause* clauseList){
+	if (clauseList == NULL){
+		return 0;
+	}
+
+	if (clauseList->expressionList == NULL){
+		return 1;
+	}
+
+	return isDefaultCasePresent(clauseList->next);
+}
+
+int clauseListBreakCheck(switchCaseClause* clauseList,char* functionName){
+	if (clauseList == NULL){
+		return 0;
+	}
+
+	if (isLocalBreakPresent(clauseList->statementList)){
+		fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [switch clause cannot break]\n",clauseList->lineno,functionName);
+		exit(1);
+	}
+
+
+	return statementIsProperlyTerminated(clauseList->statementList,functionName) && clauseListBreakCheck(clauseList->next,functionName);
+}
+
+
+int weedSwitchStatementClauseList(Stmt* stmt, char* functionName){
+
+
+	if (isDefaultCasePresent(stmt->val.switchStmt.clauseList,functionName)){
+		return clauseListBreakCheck(stmt->val.switchStmt.clauseList,functionName);
+
+	}else{
+		fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [no default case]\n",stmt->val.switchStmt.clauseList->lineno,functionName);
+		exit(1);
+	}
+
+
+
+}
+
+
+//Needs to be used as a heler function for a function weeder
+// Remember NULL statement has a specific error 
+int statementIsProperlyTerminated(Stmt* stmt, char* funcName){
+	if (stmt == NULL){
+		return 0;
+	}
+
+
+	if (stmt->next != NULL){
+		return statementIsProperlyTerminated(stmt->next,funcName);
+	}
+
+	switch(stmt->kind)
+	{
+		case StmtKindReturn :
+			return 1;
+		case StmtKindBlock :
+			return statementIsProperlyTerminated(stmt->val.block.stmt,funcName);
+		case StmtKindIf :
+			return statementIsProperlyTerminated(stmt->val.ifStmt.elseBlock,funcName) && statementIsProperlyTerminated(stmt->val.ifStmt.block,funcName) ;
+		case StmtKindElse :
+			return statementIsProperlyTerminated(stmt->val.elseStmt.block,funcName);
+		case StmtKindInfLoop : 
+			if ( isLocalBreakPresent(stmt->val.infLoop.block) ){
+				fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [loop cannot break]\n",stmt->lineno,funcName);
+				exit(1);
+			}else{
+				return 1;
+			}
+		case StmtKindWhileLoop : 
+			if (stmt->val.whileLoop.conditon == NULL){
+				fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [loop condition not empty]\n",stmt->lineno,funcName);
+				exit(1);
+			}
+			if ( isLocalBreakPresent(stmt->val.whileLoop.block) ){
+				fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [loop cannot break]\n",stmt->lineno,funcName);
+				exit(1);
+			}else{
+				return 1;
+			}
+		case StmtKindThreePartLoop : 
+			if (stmt->val.forLoop.condition == NULL){
+				fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [loop condition not empty]\n",stmt->lineno,funcName);
+				exit(1);
+			}
+			if ( isLocalBreakPresent(stmt->val.forLoop.block) ){
+				fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [loop cannot break]\n",stmt->lineno,funcName);
+				exit(1);
+			}else{
+				return 1;
+			}
+
+
+
+
+		case StmtKindSwitch : 
+				return weedSwitchStatementClauseList(stmt,funcName);
+				break; //TODO
+
+
+
+
+
+		default:
+			return 0;
+		
+	}
+
+	
+}
+
+
+
+
+int forAll (ExpList* list,int(*predicate)(Exp*) ){
+	if (list == NULL){
+		return 1;
+	}
+
+	if (predicate(list->cur)){
+		return forAll(list->next,predicate);
+	}else{
+		return 0;
+	}
+}
+

@@ -97,6 +97,7 @@ struct Stmt{
 struct switchCaseClause {
     ExpList* expressionList; // NULL corresponds to the default case
     Stmt* statementList;
+	int lineno;
     struct switchCaseClause* next;
 
 } ;
