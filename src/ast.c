@@ -803,14 +803,14 @@ Stmt* makeTypeDeclStatement(TypeDeclNode* declaration, int lineNomber){
 }
 
 IdChain* extractIdList(ExpList* expressions, int lineno) {
-	if (expressions == NULL) return NULL;
+	ExpList* expIter = reverseList(expressions);
+	if (expIter == NULL) return NULL;
 	IdChain* base = malloc(sizeof(IdChain));
-	if (expressions -> cur -> kind != expKindIdentifier) {
+	if (expIter -> cur -> kind != expKindIdentifier) {
 		fprintf(stderr, "Error: expected identifier, found something else on line %d\n", lineno);
 		exit(1);
 	}
-	base -> identifier = expressions -> cur -> val.id;
-	ExpList* expIter = expressions;
+	base -> identifier = expIter -> cur -> val.id;
 	IdChain* idIter = base;
 	while (expIter -> next != NULL) {
 		expIter = expIter -> next;

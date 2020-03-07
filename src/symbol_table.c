@@ -57,7 +57,7 @@ int addSymbolEntry(Context *c, STEntry *s)
 		if ( strcmp(head->id, s->id) == 0 ) return 1;
 		
 	}
-	STEntry *head = c->curSymbolTable->entries[pos]
+	STEntry *head = c->curSymbolTable->entries[pos];
 	if (head == NULL) {
 		c->curSymbolTable->entries[pos] = s;
 		return 0;
@@ -65,7 +65,7 @@ int addSymbolEntry(Context *c, STEntry *s)
 	while (head -> next != NULL)
 	{
 		if ( strcmp(head->id, s->id) == 0 ) return 1; 
-		head = head->next 
+		head = head->next;
 	}
 	if ( strcmp(head->id, s->id) == 0 ) return 1;
 	head -> next = s;
@@ -74,13 +74,13 @@ int addSymbolEntry(Context *c, STEntry *s)
 
 int addTypeEntry(Context *c, TTEntry *t)
 {
-	int pos = hashCode(s->id);
+	int pos = hashCode(t->id);
 	
 	for(STEntry*head=c->curSymbolTable->entries[pos];head;head=head->next) {
 		if ( strcmp(head->id, t->id) == 0 ) return 1;
 		
 	}
-	TTEntry *head = c->curTypeTable->entries[pos]
+	TTEntry *head = c->curTypeTable->entries[pos];
 	if (head == NULL) {
 		c->curTypeTable->entries[pos] = t;
 		return 0;
@@ -88,7 +88,7 @@ int addTypeEntry(Context *c, TTEntry *t)
 	while (head -> next != NULL)
 	{
 		if ( strcmp(head->id, t->id) == 0 ) return 1; 
-		head = head->next 
+		head = head->next;
 	}
 	if ( strcmp(head->id, t->id) == 0 ) return 1;
 	head -> next = t;
@@ -281,9 +281,10 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 
 		//For Denali to implement (Probably want to modify declaration nodes to include symbol references)
 		case StmtKindTypeDeclaration :
+			while(0) {}
 			TTEntry *t = makeTTEntry(context, stmt -> val.typeDeclaration);
 			if (t -> underlyingTypeType == inferType) {
-				fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", stmt -> lineno, holder -> actualType -> identification, t -> id);
+				fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", stmt -> lineno, stmt -> val.typeDeclaration -> actualType -> identification, t -> id);
 				exit(1);
 			}
 			
@@ -334,7 +335,7 @@ TTEntry *makeTTEntry(Context* contx, TypeDeclNode *holder){
 		||
 		holder -> actualType -> kind == sliceType
 	) {
-		PolymorphicEntry *assignee = getEntry(context, holder -> actualType -> identification);
+		PolymorphicEntry *assignee = getEntry(contx, holder -> actualType -> identification);
 		if (assignee == NULL) {
 			t -> id = "has not been declared";
 			t -> underlyingTypeType = inferType;
@@ -349,7 +350,7 @@ TTEntry *makeTTEntry(Context* contx, TypeDeclNode *holder){
 		t -> underlyingType = t -> val.normalType.type -> underlyingType;
 		return t;
 	} else if (holder -> actualType -> kind == structType){
-		t -> underlyingType = NULL;
+		t -> underlyingType = baseStruct;
 		TypeDeclNode *sMembs = holder -> actualType -> structMembers;
 		if (sMembs == NULL) {
 			t -> val.structType.fields = NULL;
@@ -358,9 +359,9 @@ TTEntry *makeTTEntry(Context* contx, TypeDeclNode *holder){
 		t -> val.structType.fields = malloc(sizeof(EntryTupleList));
 		EntryTupleList *iter = t -> val.structType.fields;
 //		EntryTupleList auxIter;
-		while (sMembs -> next != NULL) {
-			iter -> TTEntry = makeTTEntry(contx, sMembs);
-			sMembs = sMembs -> next;
+		while (sMembs -> nextDecl != NULL) {
+			iter -> type = makeTTEntry(contx, sMembs);
+			sMembs = sMembs -> nextDecl;
 			/*
 			iter -> next = NULL;
 			for (auxIter = t -> val.structType.fields; auxIter != NULL; auxIter = auxIter -> next) {
@@ -370,7 +371,7 @@ TTEntry *makeTTEntry(Context* contx, TypeDeclNode *holder){
 			iter -> next = malloc(sizeof(EntryTupleList));
 			iter = iter -> next;
 		}
-		iter -> TTEntry = makeTTEntry(contx, sMembs);
+		iter -> type = makeTTEntry(contx, sMembs);
 		iter -> next = NULL;
 		return t;
 	} else {

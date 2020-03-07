@@ -83,8 +83,8 @@ struct Stmt{
 
         //Break and continue are encoded in kind
 
-	VarDeclNode* varDeclaration;
-	TypeDeclNode* typeDeclaration;
+		VarDeclNode* varDeclaration;
+		TypeDeclNode* typeDeclaration;
 
         // TODO Declaration, short declaration
 

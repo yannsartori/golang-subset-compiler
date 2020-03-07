@@ -539,10 +539,20 @@ void prettyVarDecl(VarDeclNode *var, int indentLevel)
 void prettyShortVarDecl(VarDeclNode *var, int indentLevel)
 {
 	indent(indentLevel);
-	printf("%s := ", var->identifier);
-	prettyExp(var->value);
+	VarDeclNode *iter = var;
+	while(iter -> nextDecl != NULL){
+		printf("%s, ", iter->identifier);
+		iter = iter -> nextDecl;
+	}
+	printf("%s := ", iter->identifier);
+	iter = var;
+	while(iter -> nextDecl != NULL){
+		prettyExp(iter->value);
+		printf(", ");
+		iter = iter -> nextDecl;
+	}
+	prettyExp(iter->value);
 	printf("\n");
-	prettyVarDecl(var->nextDecl, indentLevel);
 }
 void prettyTopDeclaration(TopDeclarationNode *topDecl, int indentLevel)
 {
@@ -554,7 +564,7 @@ void prettyTopDeclaration(TopDeclarationNode *topDecl, int indentLevel)
 			prettyVarDecl(topDecl->actualRealDeclaration.varDecl, indentLevel);
 			break;
 		case typeDeclType:
-			if ( topDecl->actualRealDeclaration.typeDecl == NULL ) puts("FUCK");
+			if ( topDecl->actualRealDeclaration.typeDecl == NULL ) puts("something went wrong");
 			prettyTypeDecl(topDecl->actualRealDeclaration.typeDecl, indentLevel);
 			break;
 		case funcDeclType:
