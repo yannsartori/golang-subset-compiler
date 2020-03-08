@@ -376,6 +376,7 @@ void typeCheckStatement(Stmt* stmt){
 			break;
 
 		//TODO, lots todo
+		//lvalue assignability checks
 		case StmtKindAssignment:
 			break;
 

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "ast.h"
 #include "globalEnum.h"
 #include "symbol_table.h"
@@ -151,6 +152,9 @@ void symbolCheckExpression(Exp *e, Context *c)
 		symbolCheckExpression(e->val.append.elem, c);
 	}
 }
+
+int expressionIsAFunctionCall(Exp* exp, Context* context);
+
 void symbolCheckStatement(Stmt* stmt, Context* context){
 	if (stmt == NULL){
 		return;
@@ -188,7 +192,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 
 
     	case StmtKindExpression: //TODO Needs to be an actual function call(distinguish between type casts and function calls) cannot be append, len or cap either
-						symbolCheckExpression(stmt->val.expression.expr,context);
+						expressionIsAFunctionCall(stmt->val.expression.expr,context);
 						break;
 
 
@@ -400,3 +404,32 @@ void printClauseListSymbol(switchCaseClause* clauseList,int indentLevel){
 	printClauseListSymbol(clauseList->next,indentLevel);
 }
 
+
+int expressionIsAFunctionCall(Exp* exp, Context* context){
+	if (exp == NULL){
+		return 0;
+	}
+
+	if (exp->kind != expKindFuncCall){
+		return 0;
+	}
+
+	PolymorphicEntry* entry = getEntry(context,exp->val.funcCall.base->val.id);
+
+	if (entry == NULL){ //Should not symbol check, let the expression symbol checker throw the error
+		symbolCheckExpression(exp,context);
+	}else if (entry->isSymbol != 1) {//not a symbol => is a type{
+		fprintf(stderr, "Error: (line %d) expression statement must be a function call \n", exp->lineno);
+		exit(1);
+	}
+
+	//Should symbolcheck by now (unless something is up with the args)
+	symbolCheckExpression(exp,context);
+
+
+	return 1;
+
+
+
+
+}
