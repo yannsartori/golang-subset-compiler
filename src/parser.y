@@ -68,7 +68,9 @@ void blankSwitchCaseClauseError(){
 
 Stmt* compoundOperator(Exp* left,Exp* right,ExpressionKind kind){
 	compoundOperatorError(left,right);
-	return makeAssignmentStmt(createArgumentList(left) ,createArgumentList(makeExpBinary(left,right,kind) ) );
+	Stmt* stmt = makeAssignmentStmt(createArgumentList(left) ,createArgumentList(makeExpBinary(left,right,kind) ) );
+	stmt->val.assignment.isCompoundAssignment = 1;
+	return stmt;
 
 	
 }
@@ -411,9 +413,9 @@ assignmentStatement :
 							//AVOID BLANK IDENTIFIER LHS AND RHS
 					
 							|expression tPlusEq expression {$$ = compoundOperator($1,$3,expKindAddition);}
-							|expression tAndEq expression {$$ = compoundOperator($1,$3,expKindLogicAnd);}
+							|expression tAndEq expression {$$ = compoundOperator($1,$3,expKindBitAnd);}
 							|expression tMinusEquals expression {$$ = compoundOperator($1,$3,expKindSubtraction);}
-							|expression tOrEquals expression {$$ = compoundOperator($1,$3,expKindLogicOr);}
+							|expression tOrEquals expression {$$ = compoundOperator($1,$3,expKindBitOr);}
 							|expression tTimesEquals expression {$$ = compoundOperator($1,$3,expKindMultiplication);}
 							|expression tHatEquals expression {$$ = compoundOperator($1,$3,expKindBitNotBinary);}
 							|expression tLShiftEquals expression {$$ = compoundOperator($1,$3,expKindBitShiftLeft);}

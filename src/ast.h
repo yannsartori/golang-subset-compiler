@@ -61,7 +61,7 @@ struct Stmt{
     union {
         struct {Stmt* stmt;} block;
         struct {Exp* expr;} expression;
-        struct {ExpList* lhs; ExpList* rhs;} assignment;
+        struct {ExpList* lhs; ExpList* rhs;int isCompoundAssignment;} assignment;
 
 
         struct {ExpList* list;} print;
@@ -83,8 +83,8 @@ struct Stmt{
 
         //Break and continue are encoded in kind
 
-	VarDeclNode* varDeclaration;
-	TypeDeclNode* typeDeclaration;
+		VarDeclNode* varDeclaration;
+		TypeDeclNode* typeDeclaration;
 
         // TODO Declaration, short declaration
 
