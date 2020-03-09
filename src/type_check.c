@@ -28,7 +28,7 @@ int isBool(TTEntry *t) { return t != NULL && isNonCompositeType(t) && t->underly
 int isOrdered(TTEntry *t) { return isNumericType(t) || (isNonCompositeType(t) && t->underlyingType == baseString); }
 int isComparable(TTEntry *t) { 
 	if ( t->underlyingTypeType == funcType || t->underlyingTypeType == sliceType ) return 0;
-	if ( t->underlyingTypeType == arrayType ) return isComparable(t->val.normalType.type);
+	if ( t->underlyingTypeType == arrayType ) return isComparable(t->val.arrayType.type);
 	if ( t->underlyingTypeType == structType )
 	{
 		for ( EntryTupleList *curField = t->val.structType.fields; curField != NULL; curField = curField->next ) 
@@ -37,6 +37,14 @@ int isComparable(TTEntry *t) {
 		}
 	}
 	return 1;
+}
+int typeEquality(TTEntry *t1, TTEntry *t2) //only used for comparison operations
+{
+	if ( t1->underlyingTypeType == arrayType && t2->underlyingTypeType == arrayType )
+	{
+		return typeEquality(t1->val.arrayType.type, t2->val.arrayType.type) && t1->val.arrayType.size == t2->val.arrayType.size;
+	}
+	return t1 == t2;
 }
 
 void numericTypeError(TTEntry *t, char *operation, int lineno)
@@ -127,116 +135,116 @@ TTEntry *typeCheckExpression(Exp *e)
 				{
 					case expKindLogicOr:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "||", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("||", e->lineno); //1.2.2 "For two defined types to be identical, they must point to the same type specification
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("||", e->lineno); //1.2.2 "For two defined types to be identical, they must point to the same type specification
 						
 						else if ( isBool(typeLeft) ) return typeLeft; //since we do the equality check, this is safe. Also this is the behaviour the ref compiler (returning the overarching type, not base type) follows
 						boolTypeError(typeLeft, "||", e->lineno);
 					case expKindLogicAnd:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "&&", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("&&", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("&&", e->lineno);
 						
 						else if ( isBool(typeLeft) ) return typeLeft;
 						boolTypeError(typeLeft, "&&", e->lineno);
 					case expKindEQ:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "==", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("==", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("==", e->lineno);
 
 						else if ( isComparable(typeLeft) ) return BOOL_HOLDER;
 						comparableTypeError(typeLeft, "==", e->lineno);
 					case expKindNEQ:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "!=", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("!=", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("!=", e->lineno);
 
 						else if ( isComparable(typeLeft) ) return BOOL_HOLDER;
 						comparableTypeError(typeLeft, "!=", e->lineno);
 					case expKindLess:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "<", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("<", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("<", e->lineno);
 
 						else if ( isOrdered(typeLeft) ) return BOOL_HOLDER;
 						orderedTypeError(typeLeft, "<", e->lineno); 
 					case expKindLEQ:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "<=", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("<=", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("<=", e->lineno);
 
 						else if ( isOrdered(typeLeft) ) return BOOL_HOLDER;
 						orderedTypeError(typeLeft, "<=", e->lineno); 
 					case expKindGreater:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, ">", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes(">", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes(">", e->lineno);
 
 						else if ( isOrdered(typeLeft) ) return BOOL_HOLDER;
 						orderedTypeError(typeLeft, ">", e->lineno); 
 					case expKindGEQ:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, ">=", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes(">=", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes(">=", e->lineno);
 
 						else if ( isOrdered(typeLeft) ) return BOOL_HOLDER;
 						orderedTypeError(typeLeft, ">=", e->lineno); 
 					case expKindAddition:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "+", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("+", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("+", e->lineno);
 						
 						else if ( isOrdered(typeLeft) ) return typeLeft; //equivalent to being numeric or string
 						fprintf(stderr, "Error: (%d) %s is not a numeric type, nor string, incompatiable with +\n", e->lineno, typeLeft->id);
 						exit(1);
 					case expKindSubtraction:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "-", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("-", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("-", e->lineno);
 						
 						else if ( isNumericType(typeLeft) ) return typeLeft;
 						numericTypeError(typeLeft, "-", e->lineno);
 					case expKindMultiplication:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "*", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("*", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("*", e->lineno);
 						
 						else if ( isNumericType(typeLeft) ) return typeLeft;
 						numericTypeError(typeLeft, "*", e->lineno);
 					case expKindDivision:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "/", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("/", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("/", e->lineno);
 						
 						else if ( isNumericType(typeLeft) ) return typeLeft;
 						numericTypeError(typeLeft, "/", e->lineno);
 					case expKindMod:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "%", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("%", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("%", e->lineno);
 
 						else if ( isIntegerType(typeLeft) ) return typeLeft;
 						integerTypeError(typeLeft, "%", e->lineno);
 					case expKindBitOr:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "|", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("|", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("|", e->lineno);
 
 						else if ( isIntegerType(typeLeft) ) return typeLeft;
 						integerTypeError(typeLeft, "|", e->lineno);
 					case expKindBitAnd:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "&", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("&", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("&", e->lineno);
 
 						else if ( isIntegerType(typeLeft) ) return typeLeft;
 						integerTypeError(typeLeft, "&", e->lineno);
 					case expKindBitShiftLeft:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "<<", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("<<", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("<<", e->lineno);
 
 						else if ( isIntegerType(typeLeft) ) return typeLeft;
 						integerTypeError(typeLeft, "<<", e->lineno);
 					case expKindBitShiftRight:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, ">>", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes(">>", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes(">>", e->lineno);
 
 						else if ( isIntegerType(typeLeft) ) return typeLeft;
 						integerTypeError(typeLeft, ">>", e->lineno);
 					case expKindBitAndNot:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "&^", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("&^", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("&^", e->lineno);
 
 						else if ( isIntegerType(typeLeft) ) return typeLeft;
 						integerTypeError(typeLeft, "&^", e->lineno);
 					case expKindBitNotBinary:
 						if ( !leftExp->contextEntry->isSymbol || !rightExp->contextEntry->isSymbol ) notExpressionError(typeLeft, "^", e->lineno);
-						else if ( typeLeft != typeRight ) notMatchingTypes("^", e->lineno);
+						else if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes("^", e->lineno);
 
 						else if ( isIntegerType(typeLeft) ) return typeLeft;
 						integerTypeError(typeLeft, "^", e->lineno);
@@ -311,7 +319,8 @@ TTEntry *typeCheckExpression(Exp *e)
 						fprintf(stderr, "Error: (%d) Trying to index an un-indexable type %s\n", e->lineno, baseType->id);
 						exit(1);
 					}
-					return baseType->val.normalType.type;
+					if ( baseType->underlyingTypeType == arrayType ) return baseType->val.arrayType.type;
+					return baseType->val.sliceType.type;
 
 				}
 				else if ( e->kind == expKindFieldSelect )
@@ -338,7 +347,7 @@ TTEntry *typeCheckExpression(Exp *e)
 						fprintf(stderr, "Error: (%d) Append requires an expression with underlying type slice, received %s\n", e->lineno, listType->id);
 						exit(1);
 					}
-					if ( elemType != listType->val.normalType.type )
+					if ( elemType != listType->val.sliceType.type )
 					{
 						fprintf(stderr, "Error: (%d) Cannot append elements of type %s to types %s", e->lineno, elemType->id, listType->id);
 						exit(1);
