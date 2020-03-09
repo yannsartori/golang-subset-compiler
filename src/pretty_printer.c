@@ -29,6 +29,8 @@ void prettyTopDeclaration(TopDeclarationNode *topDecl, int indentLevel);
 void prettyVarDeclSimpleStatement(VarDeclNode *var);
 void printPartiallyIndentedBlock(Stmt* stmt,int indentLevel);
 
+void printAssignmentStmt(Stmt* stmt);
+
 void indent(int indentLevel){
     for(int i = 0 ; i < indentLevel; i++){
         printf("    ");
@@ -217,10 +219,7 @@ void printSimpleStatement(Stmt* stmt){
                                     
                                     break;
                                     
-        case StmtKindAssignment : prettyExpList(stmt->val.assignment.lhs);
-                                    printf(" = ");
-                                    prettyExpList(stmt->val.assignment.rhs);
-                                    
+        case StmtKindAssignment : printAssignmentStmt(stmt);
                                     break;
 		case StmtKindShortDeclaration : prettyVarDeclSimpleStatement(stmt->val.varDeclaration);
 										break;
@@ -615,3 +614,57 @@ void printPartiallyIndentedBlock(Stmt* stmt,int indentLevel){
 	printf("}\n");
 
 }
+
+
+void printAssignmentStmt(Stmt* stmt){
+	if (stmt->val.assignment.isCompoundAssignment == 1){
+		
+		Exp* exp = stmt->val.assignment.rhs->cur;
+		prettyExp(exp->val.binary.left);
+
+
+		switch (exp->kind) {
+				case expKindAddition:
+					printf(" += " );
+					break;
+				case expKindSubtraction:
+					printf(" -= " );
+					break;
+				case expKindMultiplication:
+					printf(" *= " );
+					break;
+				case expKindDivision:
+					printf(" /= " );
+					break;
+				case expKindMod:
+					fputs(" %= ", stdout); //for denali <3
+					break;
+				case expKindBitAnd:
+					printf(" &= " );
+					break;
+				case expKindBitOr:
+					printf(" |= " );
+					break;
+				case expKindBitNotBinary:
+					printf(" ^= " );
+					break;
+				case expKindBitShiftLeft:
+					printf(" <<= " );
+					break;
+				case expKindBitShiftRight:
+					printf(" >>= " );
+					break;
+				case expKindBitAndNot:
+					printf(" &^= " );
+					break;
+			}
+
+		prettyExp(exp->val.binary.right);
+
+	}else{
+		prettyExpList(stmt->val.assignment.lhs);
+        printf(" = ");
+        prettyExpList(stmt->val.assignment.rhs);
+	}
+}
+

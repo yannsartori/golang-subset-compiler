@@ -369,13 +369,16 @@ void typeCheckStatement(Stmt* stmt){
 
 	switch (stmt->kind){
 		case StmtKindBlock:
+			typeCheckStatement(stmt->val.block.stmt);
 			break;
 
 		
 		case StmtKindExpression: 
+			typeCheckExpression(stmt->val.expression.expr);
 			break;
 
 		//TODO, lots todo
+		//lvalue assignability checks
 		case StmtKindAssignment:
 			break;
 
