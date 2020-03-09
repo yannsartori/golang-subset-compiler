@@ -25,9 +25,19 @@ int isNonCompositeType(TTEntry *t) { return t != NULL && (t->underlyingTypeType 
 int isNumericType(TTEntry *t) { return t != NULL && isNonCompositeType(t) && (t->underlyingType == baseInt || t->underlyingType == baseFloat64 || t->underlyingType == baseRune); }
 int isIntegerType(TTEntry *t) { return t != NULL && isNonCompositeType(t) && (t->underlyingType == baseInt || t->underlyingType == baseRune); }
 int isBool(TTEntry *t) { return t != NULL && isNonCompositeType(t) && t->underlyingType == baseBool; }
-int isComparable(TTEntry *t) { return isNonCompositeType(t); }
 int isOrdered(TTEntry *t) { return isNumericType(t) || (isNonCompositeType(t) && t->underlyingType == baseString); }
-
+int isComparable(TTEntry *t) { 
+	if ( t->underlyingTypeType == funcType || t->underlyingTypeType == sliceType ) return 0;
+	if ( t->underlyingTypeType == arrayType ) return isComparable(t->val.normalType.type);
+	if ( t->underlyingTypeType == structType )
+	{
+		for ( EntryTupleList *curField = t->val.structType.fields; curField != NULL; curField = curField->next ) 
+		{
+			if ( !isComparable(curField->type) ) return 0; 
+		}
+	}
+	return 1;
+}
 
 void numericTypeError(TTEntry *t, char *operation, int lineno)
 {
