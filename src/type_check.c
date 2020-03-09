@@ -44,6 +44,10 @@ int typeEquality(TTEntry *t1, TTEntry *t2) //only used for comparison operations
 	{
 		return typeEquality(t1->val.arrayType.type, t2->val.arrayType.type) && t1->val.arrayType.size == t2->val.arrayType.size;
 	}
+	if ( t1->underlyingTypeType == sliceType && t2->underlyingTypeType == sliceType )
+	{
+		return typeEquality(t1->val.sliceType.type, t2->val.sliceType.type);
+	}
 	return t1 == t2;
 }
 
