@@ -362,11 +362,11 @@ statement:
 
 
 			| simpleStatement ';' {$$ = $1;}
-			| block {$$ = $1;}
-			| switch //2.8.11 {$$ = $1;}
-			| ifStatement //2.8.10 {$$ = $1;}
-			| loop //2.8.12 {$$ = $1;}
-			| typeDecl				{$$ = makeTypeDeclStatement($1, yylineno);}
+			| block ';' {$$ = $1;}
+			| switch ';' //2.8.11 {$$ = $1;}
+			| ifStatement ';' //2.8.10 {$$ = $1;}
+			| loop ';' //2.8.12 {$$ = $1;}
+			| typeDecl 				{$$ = makeTypeDeclStatement($1, yylineno);}
 			| variableDecl			{$$ = makeVarDeclStatement($1, 0, yylineno);}
 
 
