@@ -139,13 +139,13 @@ void symbolCheckExpression(Exp *e, Context *c)
 	else if ( e->kind == expKindFieldSelect || e->kind == expKindIndexing )
 	{
 		symbolCheckExpression(e->val.access.base, c);
-		symbolCheckExpression(e->val.access.accessor, c); //problmeatic: how does field selection of a struct work?
+		symbolCheckExpression(e->val.access.accessor, c);
 	}
 	else if ( e->kind == expKindFuncCall )
 	{ //All that matters in this stage is that it exists in A table. Which will matter in typecheck and codegen                   
 		if ( getEntry(c, e->val.funcCall.base->val.id) == NULL ) //we did yardwork to ensure that base is an identifier
 		{
-			fprintf(stderr, "Error: (%d) %s not declared as a variable, nor variable", e->lineno, e->val.funcCall.base->val.id); 
+			fprintf(stderr, "Error: (%d) %s not declared as a variable, nor type", e->lineno, e->val.funcCall.base->val.id); 
 			exit(1);
 		}
 		e->contextEntry = getEntry(c, e->val.funcCall.base->val.id);
