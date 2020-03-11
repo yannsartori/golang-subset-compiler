@@ -3,5 +3,5 @@
 
 package main
 func main() {
-	x := 1 + true
+	x := false + true
 }
