@@ -7,9 +7,7 @@
 Context *globalContext;
 STEntry * symbolLookup(char *id, SymbolTable *s);
 TTEntry * typeLookup(char *id, TypeTable *t);
-int main(void) { 
-	return 0; 
-} // to compile
+
 
 
 
@@ -141,13 +139,13 @@ void symbolCheckExpression(Exp *e, Context *c)
 	else if ( e->kind == expKindFieldSelect || e->kind == expKindIndexing )
 	{
 		symbolCheckExpression(e->val.access.base, c);
-		symbolCheckExpression(e->val.access.accessor, c); //problmeatic: how does field selection of a struct work?
+		symbolCheckExpression(e->val.access.accessor, c);
 	}
 	else if ( e->kind == expKindFuncCall )
 	{ //All that matters in this stage is that it exists in A table. Which will matter in typecheck and codegen                   
 		if ( getEntry(c, e->val.funcCall.base->val.id) == NULL ) //we did yardwork to ensure that base is an identifier
 		{
-			fprintf(stderr, "Error: (%d) %s not declared as a variable, nor variable", e->lineno, e->val.funcCall.base->val.id); 
+			fprintf(stderr, "Error: (%d) %s not declared as a variable, nor type", e->lineno, e->val.funcCall.base->val.id); 
 			exit(1);
 		}
 		e->contextEntry = getEntry(c, e->val.funcCall.base->val.id);
@@ -177,6 +175,9 @@ void symbolCheckExpression(Exp *e, Context *c)
 		symbolCheckExpression(e->val.append.elem, c);
 	}
 }
+
+int expressionIsAFunctionCall(Exp* exp, Context* context);
+
 void symbolCheckStatement(Stmt* stmt, Context* context){
 	if (stmt == NULL){
 		return;
@@ -213,8 +214,8 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 
 
 
-    	case StmtKindExpression: //TODO (symbolCheckExpression signature, implementation need to change)
-						symbolCheckExpression(stmt->val.expression.expr,context);
+    	case StmtKindExpression: //TODO Needs to be an actual function call(distinguish between type casts and function calls) cannot be append, len or cap either
+						expressionIsAFunctionCall(stmt->val.expression.expr,context);
 						break;
 
 
@@ -540,3 +541,32 @@ void printClauseListSymbol(switchCaseClause* clauseList,int indentLevel){
 	printClauseListSymbol(clauseList->next,indentLevel);
 }
 
+
+int expressionIsAFunctionCall(Exp* exp, Context* context){
+	if (exp == NULL){
+		return 0;
+	}
+
+	if (exp->kind != expKindFuncCall){
+		return 0;
+	}
+
+	PolymorphicEntry* entry = getEntry(context,exp->val.funcCall.base->val.id);
+
+	if (entry == NULL){ //Should not symbol check, let the expression symbol checker throw the error
+		symbolCheckExpression(exp,context);
+	}else if (entry->isSymbol != 1) {//not a symbol => is a type{
+		fprintf(stderr, "Error: (line %d) expression statement must be a function call \n", exp->lineno);
+		exit(1);
+	}
+
+	//Should symbolcheck by now (unless something is up with the args)
+	symbolCheckExpression(exp,context);
+
+
+	return 1;
+
+
+
+
+}

@@ -46,9 +46,11 @@ Stmt* makeAssignmentStmt(ExpList* lhs, ExpList* rhs){
 
     ptr->kind = StmtKindAssignment;
     ptr->val.assignment.lhs = lhs;
-     ptr->val.assignment.rhs = rhs;
+    ptr->val.assignment.rhs = rhs;
 
-     ptr->lineno = yylineno;
+    ptr->val.assignment.isCompoundAssignment = 0;
+
+    ptr->lineno = yylineno;
 
     return ptr;
 }
@@ -104,8 +106,6 @@ Stmt* makeIfStmt(Stmt* statement, Exp* expression, Stmt* block,Stmt* elseBlock){
     if (ptr == NULL){
         return NULL;
     }
-
- 
 
     ptr->kind = StmtKindIf;
     ptr->val.ifStmt.statement = statement;
@@ -256,6 +256,8 @@ switchCaseClause* makeSwitchCaseClause(ExpList* expressionList, Stmt* statementL
 
     ptr->expressionList = expressionList;
     ptr->statementList = statementList;
+
+    ptr->lineno = yylineno;
 
     return ptr;
 }

@@ -61,7 +61,7 @@ struct Stmt{
     union {
         struct {Stmt* stmt;} block;
         struct {Exp* expr;} expression;
-        struct {ExpList* lhs; ExpList* rhs;} assignment;
+        struct {ExpList* lhs; ExpList* rhs;int isCompoundAssignment;} assignment;
 
 
         struct {ExpList* list;} print;
@@ -97,6 +97,7 @@ struct Stmt{
 struct switchCaseClause {
     ExpList* expressionList; // NULL corresponds to the default case
     Stmt* statementList;
+	int lineno;
     struct switchCaseClause* next;
 
 } ;

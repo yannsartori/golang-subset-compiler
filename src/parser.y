@@ -68,11 +68,22 @@ void blankSwitchCaseClauseError(){
 
 Stmt* compoundOperator(Exp* left,Exp* right,ExpressionKind kind){
 	compoundOperatorError(left,right);
-	return makeAssignmentStmt(createArgumentList(left) ,createArgumentList(makeExpBinary(left,right,kind) ) );
+	Stmt* stmt = makeAssignmentStmt(createArgumentList(left) ,createArgumentList(makeExpBinary(left,right,kind) ) );
+	stmt->val.assignment.isCompoundAssignment = 1;
+	return stmt;
 
 	
 }
 
+int containsBrackets(ExpList *e)
+{
+	while ( e != NULL )
+	{
+		if ( e->cur->isBracketed ) return 1;
+		e = e->next;
+	}
+	return 0;
+}
 
 void builtInBlankError(char * func)
 {
@@ -292,7 +303,7 @@ primaryExpression:
 operand: 
 			  literal										{ $$ = $1; } /*2.9.3*/
 			| tIDENTIFIER									{ $$ = makeExpIdentifier($1); } /*2.9.2*/ 
-			| '(' expression ')'							{ $$ = $2; }
+			| '(' expression ')'							{ $$ = $2; $$->isBracketed = 1;}
 			; /*2.9.1*/ 
 			
 literal:
@@ -351,11 +362,11 @@ statement:
 
 
 			| simpleStatement ';' {$$ = $1;}
-			| block {$$ = $1;}
-			| switch //2.8.11 {$$ = $1;}
-			| ifStatement //2.8.10 {$$ = $1;}
-			| loop //2.8.12 {$$ = $1;}
-			| typeDecl				{$$ = makeTypeDeclStatement($1, yylineno);}
+			| block ';' {$$ = $1;}
+			| switch ';' //2.8.11 {$$ = $1;}
+			| ifStatement ';' //2.8.10 {$$ = $1;}
+			| loop ';' //2.8.12 {$$ = $1;}
+			| typeDecl 				{$$ = makeTypeDeclStatement($1, yylineno);}
 			| variableDecl			{$$ = makeVarDeclStatement($1, 0, yylineno);}
 
 
@@ -375,7 +386,14 @@ simpleStatement:
 
 
 			| expressionList tDefined expressionList   
-				{$$ = 
+				{ 
+				if ( containsBrackets($1) )
+				{
+					fprintf(stderr, "Error: (%d) short declarations cannot contain parantheses\n", yylineno);
+					exit(1);
+				}
+		
+				$$ = 
 					makeVarDeclStatement(
 						makeSingleVarDeclWithExps(
 							extractIdList($1, yylineno), 
@@ -411,9 +429,9 @@ assignmentStatement :
 							//AVOID BLANK IDENTIFIER LHS AND RHS
 					
 							|expression tPlusEq expression {$$ = compoundOperator($1,$3,expKindAddition);}
-							|expression tAndEq expression {$$ = compoundOperator($1,$3,expKindLogicAnd);}
+							|expression tAndEq expression {$$ = compoundOperator($1,$3,expKindBitAnd);}
 							|expression tMinusEquals expression {$$ = compoundOperator($1,$3,expKindSubtraction);}
-							|expression tOrEquals expression {$$ = compoundOperator($1,$3,expKindLogicOr);}
+							|expression tOrEquals expression {$$ = compoundOperator($1,$3,expKindBitOr);}
 							|expression tTimesEquals expression {$$ = compoundOperator($1,$3,expKindMultiplication);}
 							|expression tHatEquals expression {$$ = compoundOperator($1,$3,expKindBitNotBinary);}
 							|expression tLShiftEquals expression {$$ = compoundOperator($1,$3,expKindBitShiftLeft);}
