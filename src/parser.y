@@ -75,6 +75,15 @@ Stmt* compoundOperator(Exp* left,Exp* right,ExpressionKind kind){
 	
 }
 
+int containsBrackets(ExpList *e)
+{
+	while ( e != NULL )
+	{
+		if ( e->cur->isBracketed ) return 1;
+		e = e->next;
+	}
+	return 0;
+}
 
 void builtInBlankError(char * func)
 {
@@ -294,7 +303,7 @@ primaryExpression:
 operand: 
 			  literal										{ $$ = $1; } /*2.9.3*/
 			| tIDENTIFIER									{ $$ = makeExpIdentifier($1); } /*2.9.2*/ 
-			| '(' expression ')'							{ $$ = $2; }
+			| '(' expression ')'							{ $$ = $2; $$->isBracketed = 1;}
 			; /*2.9.1*/ 
 			
 literal:
@@ -353,11 +362,11 @@ statement:
 
 
 			| simpleStatement ';' {$$ = $1;}
-			| block {$$ = $1;}
-			| switch //2.8.11 {$$ = $1;}
-			| ifStatement //2.8.10 {$$ = $1;}
-			| loop //2.8.12 {$$ = $1;}
-			| typeDecl				{$$ = makeTypeDeclStatement($1, yylineno);}
+			| block ';' {$$ = $1;}
+			| switch ';' //2.8.11 {$$ = $1;}
+			| ifStatement ';' //2.8.10 {$$ = $1;}
+			| loop ';' //2.8.12 {$$ = $1;}
+			| typeDecl 				{$$ = makeTypeDeclStatement($1, yylineno);}
 			| variableDecl			{$$ = makeVarDeclStatement($1, 0, yylineno);}
 
 
@@ -377,7 +386,14 @@ simpleStatement:
 
 
 			| expressionList tDefined expressionList   
-				{$$ = 
+				{ 
+				if ( containsBrackets($1) )
+				{
+					fprintf(stderr, "Error: (%d) short declarations cannot contain parantheses\n", yylineno);
+					exit(1);
+				}
+		
+				$$ = 
 					makeVarDeclStatement(
 						makeSingleVarDeclWithExps(
 							extractIdList($1, yylineno), 

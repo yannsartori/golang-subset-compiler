@@ -107,8 +107,6 @@ Stmt* makeIfStmt(Stmt* statement, Exp* expression, Stmt* block,Stmt* elseBlock){
         return NULL;
     }
 
- 
-
     ptr->kind = StmtKindIf;
     ptr->val.ifStmt.statement = statement;
     ptr->val.ifStmt.expression= expression;

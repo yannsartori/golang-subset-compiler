@@ -15,7 +15,7 @@ void symbolCheckExpressionList(ExpList* expressionList,Context* context);
 void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* context);
 
 void printClauseListSymbol(switchCaseClause* clauseList,int indentLevel);
-TTEntry *makeTTEntry(Context* contx, TypeDeclNode *holder);
+TTEntry *makeTTEntry(Context* contx, TypeHolderNode *holder, char* typeName);
 
 int hashCode(char * id)
 
@@ -52,7 +52,7 @@ int addSymbolEntry(Context *c, STEntry *s)
 	int pos = hashCode(s->id);
 	
 	for ( TTEntry *head = c->curTypeTable->entries[pos]; head; head = head->next ) {
-		if ( strcmp(head->id, s->id) == 0 ) return 1;
+		if ( strcmp(head->id, s->id) == 0 ) return 2;
 		
 	}
 	STEntry *head = c->curSymbolTable->entries[pos];
@@ -139,13 +139,13 @@ void symbolCheckExpression(Exp *e, Context *c)
 	else if ( e->kind == expKindFieldSelect || e->kind == expKindIndexing )
 	{
 		symbolCheckExpression(e->val.access.base, c);
-		symbolCheckExpression(e->val.access.accessor, c); //problmeatic: how does field selection of a struct work?
+		symbolCheckExpression(e->val.access.accessor, c);
 	}
 	else if ( e->kind == expKindFuncCall )
 	{ //All that matters in this stage is that it exists in A table. Which will matter in typecheck and codegen                   
 		if ( getEntry(c, e->val.funcCall.base->val.id) == NULL ) //we did yardwork to ensure that base is an identifier
 		{
-			fprintf(stderr, "Error: (%d) %s not declared as a variable, nor variable", e->lineno, e->val.funcCall.base->val.id); 
+			fprintf(stderr, "Error: (%d) %s not declared as a variable, nor type", e->lineno, e->val.funcCall.base->val.id); 
 			exit(1);
 		}
 		e->contextEntry = getEntry(c, e->val.funcCall.base->val.id);
@@ -282,21 +282,66 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 
 		//For Denali to implement (Probably want to modify declaration nodes to include symbol references)
 		case StmtKindTypeDeclaration :
-			while(0) {}
-			TTEntry *t = makeTTEntry(context, stmt -> val.typeDeclaration);
-			if (t -> underlyingTypeType == inferType) {
-				fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", stmt -> lineno, stmt -> val.typeDeclaration -> actualType -> identification, t -> id);
-				exit(1);
-			}
-			
-			if (addTypeEntry(context, t) != 0) {
-				fprintf(stderr, "Error: (on line %d) identifier (%s) has already ben declared in this scope\n", stmt -> lineno, t -> id);
-				exit(1);
+			if(0) {}
+			TypeDeclNode *typeDeclIter = stmt -> val.typeDeclaration;
+			TTEntry *t;
+			while (typeDeclIter != NULL) {
+				t = makeTTEntry(context, stmt -> val.typeDeclaration -> actualType, stmt -> val.typeDeclaration -> identifier);
+				if (t -> underlyingTypeType == badType) {
+					fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", stmt -> lineno, stmt -> val.typeDeclaration -> actualType -> identification, t -> id);
+					exit(1);
+				}
+				
+				if (addTypeEntry(context, t) != 0) {
+					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", stmt -> lineno, t -> id);
+					exit(1);
+				}
+				typeDeclIter = typeDeclIter -> nextDecl;
 			}
 			
 			break;
-		case StmtKindVarDeclaration :break;
-		case StmtKindShortDeclaration : break; //Short declaration needs to contain a new variable
+		case StmtKindVarDeclaration :
+			if(0) {}
+			VarDeclNode* varDeclIter = stmt -> val.varDeclaration;
+			STEntry *s;
+			while (varDeclIter != NULL) {
+				s = malloc(sizeof(STEntry));
+				s -> id = varDeclIter -> identifier;
+				s -> type = makeTTEntry(context, varDeclIter -> typeThing, "anon");
+				if (s -> type -> underlyingTypeType == badType) {
+					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration\n", stmt -> lineno);
+				exit(1);
+				}
+				if (addSymbolEntry(context, s) != 0) {
+					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", stmt -> lineno, s -> id);
+					exit(1);
+				}
+				varDeclIter = varDeclIter -> nextDecl;
+			}
+			break;
+		case StmtKindShortDeclaration : 
+			if(0) {}
+			int shortDeclMustDecl = 0;
+			VarDeclNode* varDeclIter = stmt -> val.varDeclaration;
+			STEntry *s;
+			while (varDeclIter != NULL) {
+				s = malloc(sizeof(STEntry));
+				s -> id = varDeclIter -> identifier;
+				s -> type = makeTTEntry(context, varDeclIter -> typeThing, "anon");
+				if (s -> type -> underlyingTypeType == badType) {
+					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration\n", stmt -> lineno);
+					exit(1);
+				}
+				if (addSymbolEntry(context, s) == 0) {
+					shortDeclMustDecl ++;
+				}
+				varDeclIter = varDeclIter -> nextDecl;
+			}
+			if (shortDeclMustDecl == 0) {
+				fprintf(stderr, "Error: (line %d) short declarations must declare at least one new variable\n", stmt -> lineno);
+				exit(1);
+			}
+			break;
 	}
 
 	symbolCheckStatement(stmt->next,context);
@@ -326,33 +371,37 @@ void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* cont
 }
 
 
-TTEntry *makeTTEntry(Context* contx, TypeDeclNode *holder){
+TTEntry *makeTTEntry(Context* contx, TypeHolderNode *holder, char* typeName){
 	TTEntry *t = malloc(sizeof(TTEntry));
-	t -> id = holder -> identifier;
-	t -> underlyingTypeType = holder -> actualType -> kind;
-	if (holder -> actualType -> kind == identifierType 
+	t -> id = typeName;
+	if (holder == NULL) {
+		t -> underlyingTypeType = inferType;
+		return t;
+	}
+	t -> underlyingTypeType = holder -> kind;
+	if (holder -> kind == identifierType 
 		||
-		holder -> actualType -> kind == arrayType
+		holder -> kind == arrayType
 		||
-		holder -> actualType -> kind == sliceType
+		holder -> kind == sliceType
 	) {
-		PolymorphicEntry *assignee = getEntry(contx, holder -> actualType -> identification);
+		PolymorphicEntry *assignee = getEntry(contx, holder -> identification);
 		if (assignee == NULL) {
 			t -> id = "has not been declared";
-			t -> underlyingTypeType = inferType;
+			t -> underlyingTypeType = badType;
 			return t;
 		}
 		if (assignee -> isSymbol == 1) {
 			t -> id = "was previoiusly declared as a symbol, cannot be used to declare a type";
-			t -> underlyingTypeType = inferType;
+			t -> underlyingTypeType = badType;
 			return t;
 		}
 		t -> val.normalType.type = assignee -> entry.t;
 		t -> underlyingType = t -> val.normalType.type -> underlyingType;
 		return t;
-	} else if (holder -> actualType -> kind == structType){
+	} else if (holder -> kind == structType){
 		t -> underlyingType = baseStruct;
-		TypeDeclNode *sMembs = holder -> actualType -> structMembers;
+		TypeDeclNode *sMembs = holder -> structMembers;
 		if (sMembs == NULL) {
 			t -> val.structType.fields = NULL;
 			return t;
@@ -361,7 +410,7 @@ TTEntry *makeTTEntry(Context* contx, TypeDeclNode *holder){
 		EntryTupleList *iter = t -> val.structType.fields;
 //		EntryTupleList auxIter;
 		while (sMembs -> nextDecl != NULL) {
-			iter -> type = makeTTEntry(contx, sMembs);
+			iter -> type = makeTTEntry(contx, sMembs -> actualType, sMembs -> identifier);
 			sMembs = sMembs -> nextDecl;
 			/*
 			iter -> next = NULL;
@@ -372,7 +421,7 @@ TTEntry *makeTTEntry(Context* contx, TypeDeclNode *holder){
 			iter -> next = malloc(sizeof(EntryTupleList));
 			iter = iter -> next;
 		}
-		iter -> type = makeTTEntry(contx, sMembs);
+		iter -> type = makeTTEntry(contx, sMembs -> actualType, sMembs -> identifier);
 		iter -> next = NULL;
 		return t;
 	} else {

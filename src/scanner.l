@@ -127,7 +127,12 @@
 "<"				RETURN( '<' )
 
 "//"[^\n]*				{if ( printTokens ) printf("sing-comm\n"); }
-"/*"([^\*]|\*[^/]|\n)*"*/"		{if ( printTokens ) printf("multi-comm\n" ); }
+"/*"([^\*]|\*[^/]|\n)*"*/"	{
+	if ( printTokens ) printf("multi-comm\n" ); 
+	if (needsSemiColon()) {
+		RETURN( ';' )
+	}
+}
 
 
 "/*" {
@@ -151,18 +156,13 @@
 
 
 
-\"([^\"]|(\\\"))*\" {
+\"(([^\\"\n])|(\\[abfnrtv\\\"]))*\" {
 	yylval.stringval = strdup(yytext); 
 	if ( printTokens ) printf("tInterpretedStringLit(%s)\n", yytext);
 	RETURN_NO_PRINT( tINTERPRETEDSTRINGLIT )
 }
 
-\" {
-	fprintf(stderr, "Error: unmatched quote found on line %d\n", yylineno);
-	exit(1);
-}
-
-"`"[^\`]*"`" {
+`(([^\\`])|(\\[abfnrtv\\`"]))*` {
 	yylval.stringval = strdup(yytext); 
 	if ( printTokens ) printf("tRawStringLit(%s)\n", yytext);
 	RETURN_NO_PRINT( tRAWSTRINGLIT)
@@ -182,9 +182,9 @@
 	RETURN_NO_PRINT( tINTLIT )
 }
 
-0([1-7][0-7])* {
+00|0[1-7][0-7]* {
 	char* ptr;
-	yylval.intval = strtol(yytext + 2, &ptr, 8);  
+	yylval.intval = strtol(yytext + 1, &ptr, 8);  
 	if ( printTokens ) printf("tIntLit(%s)\n", yytext);
 	RETURN_NO_PRINT( tINTLIT )
 }
@@ -218,3 +218,10 @@
 }
 
 %%
+/*
+
+\" {
+	fprintf(stderr, "Error: unmatched quote found on line %d\n", yylineno);
+	exit(1);
+}
+*/
