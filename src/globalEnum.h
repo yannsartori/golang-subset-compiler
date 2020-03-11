@@ -117,6 +117,7 @@ typedef enum {
 	sliceType,
 	identifierType,
 	inferType,
+	badType,
 } TypeType;
 typedef enum {
 	baseInt,
