@@ -21,15 +21,15 @@ TTEntry *getExpressionType(Exp *e)
 	if ( e->contextEntry->isSymbol ) return e->contextEntry->entry.s->type;
 	return e->contextEntry->entry.t;
 }
-int isNonCompositeType(TTEntry *t) { return t != NULL && t->underlyingTypeType == identifierType;}
-int isNumericType(TTEntry *t) { return t != NULL && isNonCompositeType(t) && (t->underlyingType == baseInt || t->underlyingType == baseFloat64 || t->underlyingType == baseRune); }
-int isIntegerType(TTEntry *t) { return t != NULL && isNonCompositeType(t) && (t->underlyingType == baseInt || t->underlyingType == baseRune); }
-int isBool(TTEntry *t) { return t != NULL && isNonCompositeType(t) && t->underlyingType == baseBool; }
-int isOrdered(TTEntry *t) { return isNumericType(t) || (isNonCompositeType(t) && t->underlyingType == baseString); }
+int isNonCompositeType(TTEntry *t) { return t != NULL && t->underlyingType == identifierType;}
+int isNumericType(TTEntry *t) { return t != NULL && isNonCompositeType(t) && (t->val.nonCompositeType.type == baseInt || t->val.nonCompositeType.type == baseFloat64 || t->val.nonCompositeType.type == baseRune); }
+int isIntegerType(TTEntry *t) { return t != NULL && isNonCompositeType(t) && (t->val.nonCompositeType.type == baseInt || t->val.nonCompositeType.type == baseRune); }
+int isBool(TTEntry *t) { return t != NULL && isNonCompositeType(t) && t->val.nonCompositeType.type == baseBool; }
+int isOrdered(TTEntry *t) { return isNumericType(t) || (isNonCompositeType(t) && t->val.nonCompositeType.type == baseString); }
 int isComparable(TTEntry *t) { 
-	if ( t->underlyingTypeType == funcType || t->underlyingTypeType == sliceType ) return 0;
-	if ( t->underlyingTypeType == arrayType ) return isComparable(t->val.arrayType.type);
-	if ( t->underlyingTypeType == structType )
+	if ( t->underlyingType == funcType || t->underlyingType == sliceType ) return 0;
+	if ( t->underlyingType == arrayType ) return isComparable(t->val.arrayType.type);
+	if ( t->underlyingType == structType )
 	{
 		for ( EntryTupleList *curField = t->val.structType.fields; curField != NULL; curField = curField->next ) 
 		{
@@ -40,11 +40,11 @@ int isComparable(TTEntry *t) {
 }
 int typeEquality(TTEntry *t1, TTEntry *t2) //only used for comparison operations
 {
-	if ( t1->underlyingTypeType == arrayType && t2->underlyingTypeType == arrayType )
+	if ( t1->underlyingType == arrayType && t2->underlyingType == arrayType )
 	{
 		return typeEquality(t1->val.arrayType.type, t2->val.arrayType.type) && t1->val.arrayType.size == t2->val.arrayType.size;
 	}
-	if ( t1->underlyingTypeType == sliceType && t2->underlyingTypeType == sliceType )
+	if ( t1->underlyingType == sliceType && t2->underlyingType == sliceType )
 	{
 		return typeEquality(t1->val.sliceType.type, t2->val.sliceType.type);
 	}
@@ -53,11 +53,11 @@ int typeEquality(TTEntry *t1, TTEntry *t2) //only used for comparison operations
 char * typeToString(TTEntry *t)
 { //this might freak out pointers spook me
 	char * str = (char *) calloc(100, sizeof(char));
-	if ( t->underlyingTypeType == arrayType )
+	if ( t->underlyingType == arrayType )
 	{
 		sprintf(str, "[%d]%s", t->val.arrayType.size, typeToString(t->val.arrayType.type));
 	}
-	else if ( t->underlyingTypeType == sliceType )
+	else if ( t->underlyingType == sliceType )
 	{
 		sprintf(str, "[]%s", typeToString(t->val.sliceType.type));
 	}
@@ -238,12 +238,12 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 				if ( e->kind == expKindFuncCall )
 				{
 					TTEntry *baseType = typeCheckExpression(e->val.funcCall.base);
-					if ( strcmp(baseType->id, "init") == 0 )
+					if ( strcmp(e->val.funcCall.base->val.id, "init") == 0 ) //we did yardwork-- this is safe
 					{
 						fprintf(stderr, "Error: (%d) init(.) may not be called\n", e->lineno);
 						exit(1);
 					}
-					if ( baseType->underlyingTypeType == identifierType ) /**TYPECAST**/
+					if ( baseType->underlyingType == identifierType ) /**TYPECAST**/
 					{
 						if ( !(e->val.funcCall.arguments != NULL && e->val.funcCall.arguments->next == NULL ) )
 						{
@@ -252,14 +252,14 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 						}
 						TTEntry *toCast = typeCheckExpression(e->val.funcCall.arguments->cur);
 						//TODO check if we can type cast arrays and stuff. Not specified in documentation, but
-						if ( (toCast->underlyingType == baseType->underlyingType) || (isNumericType(toCast) && isNumericType(baseType)) || (isIntegerType(toCast) && baseType->underlyingType == baseString) )
+						if ( toCast->val.nonCompositeType.type == baseType->val.nonCompositeType.type  || (isNumericType(toCast) && isNumericType(baseType)) || (isIntegerType(toCast) && baseType->val.nonCompositeType.type == baseString) )
 						{
 							return baseType;
 						}
 						fprintf(stderr, "Error: (%d) Typecasts need to occur with either identical underlying types, numeric types, or an integer type to a string. Received types of %s and %s\n", e->lineno, typeToString(baseType), typeToString(toCast)); 
 						exit(1);
 					}
-					else if ( baseType->underlyingTypeType != funcType ) 
+					else if ( baseType->underlyingType != funcType ) 
 					{
 						fprintf(stderr, "Error: (%d) Can't pass arguments to something of type %s\n", e->lineno, typeToString(baseType)); 
 						exit(1);
@@ -292,24 +292,24 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 				{
 					TTEntry * indexType = typeCheckExpression(e->val.access.accessor);
 					TTEntry * baseType = typeCheckExpression(e->val.access.base);
-					if ( !(isNonCompositeType(indexType) && indexType->underlyingType == baseInt) )
+					if ( !(isNonCompositeType(indexType) && indexType->val.nonCompositeType.type == baseInt) )
 					{
 						fprintf(stderr, "Error: (%d) The type of the index was %s, expecting underlying type int\n", e->lineno, typeToString(indexType));
 						exit(1);
 					}
-					if ( !(baseType->underlyingTypeType == arrayType || baseType->underlyingTypeType == sliceType) )
+					if ( !(baseType->underlyingType == arrayType || baseType->underlyingType == sliceType) )
 					{
 						fprintf(stderr, "Error: (%d) Trying to index an un-indexable type %s\n", e->lineno, typeToString(baseType));
 						exit(1);
 					}
-					if ( baseType->underlyingTypeType == arrayType ) return baseType->val.arrayType.type;
+					if ( baseType->underlyingType == arrayType ) return baseType->val.arrayType.type;
 					return baseType->val.sliceType.type;
 
 				}
 				else if ( e->kind == expKindFieldSelect )
 				{
 					TTEntry *baseType = typeCheckExpression(e->val.access.base);
-					if ( !(baseType->underlyingTypeType == structType) )
+					if ( !(baseType->underlyingType == structType) )
 					{
 						fprintf(stderr, "Error (%d) Field selection requires a base expression with underlying type struct, received %s\n", e->lineno, typeToString(baseType));
 						exit(1);
@@ -325,7 +325,7 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 				{
 					TTEntry *listType = typeCheckExpression(e->val.append.list);
 					TTEntry *elemType = typeCheckExpression(e->val.append.elem);
-					if ( !listType->underlyingTypeType == sliceType )
+					if ( !listType->underlyingType == sliceType )
 					{
 						fprintf(stderr, "Error: (%d) Append requires an expression with underlying type slice, received %s\n", e->lineno, typeToString(listType));
 						exit(1);
@@ -340,7 +340,7 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 				else if ( e->kind == expKindLength )
 				{
 					TTEntry *bodyType = typeCheckExpression(e->val.builtInBody);
-					if ( !(bodyType->underlyingTypeType == sliceType || bodyType->underlyingTypeType == arrayType || (bodyType->underlyingTypeType == identifierType && bodyType->underlyingType == baseString)) )
+					if ( !(bodyType->underlyingType == sliceType || bodyType->underlyingType == arrayType || (bodyType->underlyingType == identifierType && bodyType->val.nonCompositeType.type == baseString)) )
 					{
 						fprintf(stderr, "Error: (%d) Length requires an expression with underlying type slice or array or string, received %s\n", e->lineno, typeToString(bodyType));
 						exit(1);
@@ -350,7 +350,7 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 				else if (e->kind == expKindCapacity )
 				{
 					TTEntry *bodyType = typeCheckExpression(e->val.builtInBody);
-					if ( !(bodyType->underlyingTypeType == sliceType || bodyType->underlyingTypeType == arrayType) )
+					if ( !(bodyType->underlyingType == sliceType || bodyType->underlyingType == arrayType) )
 					{
 						fprintf(stderr, "Error: (%d) Capacity requires an expression with underlying type slice or array, received %s\n", e->lineno, typeToString(bodyType));
 						exit(1);
