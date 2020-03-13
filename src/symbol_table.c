@@ -281,6 +281,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 
 
 		//For Denali to implement (Probably want to modify declaration nodes to include symbol references)
+		//t->underlyingTypeType became t->underlyingType and t->underlyingType became t->val.nonCompositeType.type
 		case StmtKindTypeDeclaration :
 			if(0) {}
 			TypeDeclNode *typeDeclIter = stmt -> val.typeDeclaration;
@@ -417,7 +418,7 @@ TTEntry *makeTTEntry(Context* contx, TypeHolderNode *holder, char* typeName){
 			for (auxIter = t -> val.structType.fields; auxIter != NULL; auxIter = auxIter -> next) {
 				
 			}
-			*/
+			*/	
 			iter -> next = malloc(sizeof(EntryTupleList));
 			iter = iter -> next;
 		}
