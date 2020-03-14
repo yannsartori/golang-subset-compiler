@@ -31,9 +31,10 @@ int isComparable(TTEntry *t) {
 	if ( t->underlyingType == arrayType ) return isComparable(t->val.arrayType.type);
 	if ( t->underlyingType == structType )
 	{
-		for ( EntryTupleList *curField = t->val.structType.fields; curField != NULL; curField = curField->next ) 
+		for ( int i = 0; i < TABLE_SIZE; i++ ) 
 		{
-			if ( !isComparable(curField->type) ) return 0; 
+			for ( STEntry * cur = t->val.structType.fields->curSymbolTable->entries[i]; cur; cur = cur->next)
+				if ( !isComparable(cur->type) ) return 0; 
 		}
 	}
 	return 1;
@@ -266,7 +267,7 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 					}
 					/**FUNCCALL**/
 					ExpList * curArgPassed = e->val.funcCall.arguments;
-					for ( TTEntryList *curArgType = baseType->val.functionType.args; curArgType; curArgType = curArgType->next )
+					for ( STEntry *curArgSymbolEntry = baseType->val.functionType.args; curArgSymbolEntry; curArgSymbolEntry = curArgSymbolEntry->next )
 					{
 						if ( curArgPassed == NULL )
 						{
@@ -274,9 +275,9 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 							exit(1);
 						}
 						TTEntry *curArgPassedType = typeCheckExpression(curArgPassed->cur);
-						if ( curArgPassedType != curArgType->cur )
+						if ( curArgPassedType != curArgSymbolEntry->type )
 						{
-							fprintf(stderr, "Error: (%d) Expected parameter of type %s, received %s\n", e->lineno, typeToString(curArgType->cur), typeToString(curArgPassedType));
+							fprintf(stderr, "Error: (%d) Expected parameter of type %s, received %s\n", e->lineno, typeToString(curArgSymbolEntry->type), typeToString(curArgPassedType));
 							exit(1);
 						}
 						curArgPassed = curArgPassed->next;
@@ -314,9 +315,11 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 						fprintf(stderr, "Error (%d) Field selection requires a base expression with underlying type struct, received %s\n", e->lineno, typeToString(baseType));
 						exit(1);
 					}
-					for ( EntryTupleList *curField = baseType->val.structType.fields; curField != NULL; curField = curField->next ) 
+					//cant use getEntry because that searches up the stack-- We only want this context.
+					int pos = hashCode(e->val.access.accessor->val.id);
+					for ( STEntry *head = baseType->val.structType.fields->curSymbolTable->entries[pos]; head; head = head->next )
 					{
-						if ( strcmp(e->val.access.accessor->val.id, curField->id) == 0 ) return curField->type; //safe field access-- ensured to be id in past passes
+							if ( strcmp(e->val.access.accessor->val.id, head->id) == 0 ) return head->type;
 					}
 					fprintf(stderr, "Error: (%d) Struct %s has no field called %s", e->lineno, typeToString(baseType), e->val.access.accessor->val.id);
 					exit(1);
