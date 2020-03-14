@@ -177,6 +177,7 @@ struct FuncDeclNode {
 	VarDeclNode* argsDecls;
 	TypeHolderNode* returnType;
 	Stmt* blockStart;
+	int lineno;
 };
 
 struct TypeHolderNode {
@@ -205,7 +206,7 @@ void appendTypeDecls(TypeDeclNode* baseDecl, TypeDeclNode* leafDecl);
 void appendVarDecls(VarDeclNode* baseDecl, VarDeclNode* leafDecl);
 VarDeclNode* makeSingleVarDeclNoExps(IdChain* identifiers, TypeHolderNode* givenType);
 VarDeclNode* makeSingleVarDeclWithExps(IdChain* identifiers, TypeHolderNode* givenType, ExpList* values, int lineno);
-FuncDeclNode* makeFuncDecl(char* funcName, VarDeclNode* argsDecls, TypeHolderNode* returnType, Stmt* blockStart);
+FuncDeclNode* makeFuncDecl(char* funcName, VarDeclNode* argsDecls, TypeHolderNode* returnType, int lineno);
 TopDeclarationNode* makeTopFuncDecl(FuncDeclNode* funcDecl, TopDeclarationNode* nextTopDecl);
 Stmt* makeVarDeclStatement(VarDeclNode* declaration, int isShort, int lineNomber);
 Stmt* makeTypeDeclStatement(TypeDeclNode* declaration, int lineNomber);

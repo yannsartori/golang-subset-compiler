@@ -160,7 +160,7 @@ void shortDeclarationPostError(Stmt* stmt){
 %type <topDeclNode> topDeclarationList
 %type <varDeclNode> variableDecl singleVarDecl innerVarDecls singleVarDeclNoExps funcArgDecls structMemDecls
 %type <typeDeclNode> typeDecl singleTypeDecl innerTypeDecls
-%type <funcDeclNode> funcDecl
+%type <funcDeclNode> funcDecl funcFrontDecl
 %type <declType> declType sliceDeclType arrayDeclType structDeclType
 %type <tempIdChain> identifierList
 %type <clause> expressionCaseClauseList expressionCaseClause
@@ -222,15 +222,20 @@ innerTypeDecls	: singleTypeDecl ';'				{$$ = $1;}
 singleTypeDecl	: tIDENTIFIER declType			{$$ = makeSingleTypeDecl($1, $2); $$ -> lineno = yylineno;}
 ;
 
-funcDecl		: tFunc tIDENTIFIER '(' funcArgDecls ')' declType block ';'
-						{$$ = makeFuncDecl($2, $4, $6, $7);}
-			| tFunc tIDENTIFIER '(' ')' declType block ';'
-						{$$ = makeFuncDecl($2, NULL, $5, $6);}
-			| tFunc tIDENTIFIER '(' funcArgDecls ')' block ';'
-						{$$ = makeFuncDecl($2, $4, NULL, $6);}
-			| tFunc tIDENTIFIER '(' ')' block ';'
-						{$$ = makeFuncDecl($2, NULL, NULL, $5);}
+funcDecl		: funcFrontDecl block ';'
+						{$$ = $1; $$ -> blockStart = $2;}
 ;
+
+funcFrontDecl		: tFunc tIDENTIFIER '(' funcArgDecls ')' declType
+						{$$ = makeFuncDecl($2, $4, $6, yylineno);}
+			| tFunc tIDENTIFIER '(' ')' declType
+						{$$ = makeFuncDecl($2, NULL, $5, yylineno);}
+			| tFunc tIDENTIFIER '(' funcArgDecls ')'
+						{$$ = makeFuncDecl($2, $4, NULL, yylineno);}
+			| tFunc tIDENTIFIER '(' ')'
+						{$$ = makeFuncDecl($2, NULL, NULL, yylineno);}
+;
+
 
 funcArgDecls		: singleVarDeclNoExps ',' funcArgDecls	{appendVarDecls($1, $3); $$ = $1;}
 			| singleVarDeclNoExps			{$$ = $1;}

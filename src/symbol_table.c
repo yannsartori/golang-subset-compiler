@@ -395,16 +395,19 @@ void symbolCheckProgram(RootNode* root) {
 	builtInTypes -> id = "int";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseInt;
+	builtInTypes -> comparable = 1;
 	addTypeEntry(masterContx, builtInTypes);
 	builtInTypes ++;
 	builtInTypes -> id = "float64";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseFloat64;
+	builtInTypes -> comparable = 1;
 	addTypeEntry(masterContx, builtInTypes);
 	builtInTypes ++;
 	builtInTypes -> id = "bool";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseBool;
+	builtInTypes -> comparable = 1;
 	addTypeEntry(masterContx, builtInTypes);
 	STEntry *builtInVals = malloc(2*sizeof(STEntry));
 	builtInVals -> id = "true";
@@ -418,11 +421,13 @@ void symbolCheckProgram(RootNode* root) {
 	builtInTypes -> id = "rune";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseRune;
+	builtInTypes -> comparable = 1;
 	addTypeEntry(masterContx, builtInTypes);
 	builtInTypes ++;
 	builtInTypes -> id = "string";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseString;
+	builtInTypes -> comparable = 1;
 	addTypeEntry(masterContx, builtInTypes);
 	masterContx = scopedContext(masterContx);
 	TopDeclarationNode *iter = root -> startDecls;
@@ -431,6 +436,9 @@ void symbolCheckProgram(RootNode* root) {
 			TypeDeclNode *typeDeclIter = iter -> actualRealDeclaration.typeDecl;
 			TTEntry *t;
 			while (typeDeclIter != NULL) {
+				if (strcmp(typeDeclIter -> identifier, "main") == 0 || strcmp(typeDeclIter -> identifier, "init") == 0) {
+					fprintf(stderr, "Error: (line %d) can only declare %s as a funciton at toplevel\n", typeDeclIter -> lineno, typeDeclIter -> identifier);
+				}
 				t = makeNamedTTEntry(masterContx, typeDeclIter);
 				if (t -> underlyingType == badType) {
 					fprintf(stderr, "Error: (line %d) %s\n", typeDeclIter -> lineno, t -> id);
@@ -445,6 +453,9 @@ void symbolCheckProgram(RootNode* root) {
 			}
 		} else if (iter -> declType == variDeclType) {
 			VarDeclNode* varDeclIter = iter -> actualRealDeclaration.varDecl;
+			if (strcmp(varDeclIter -> identifier, "main") == 0 || strcmp(varDeclIter -> identifier, "init") == 0) {
+				fprintf(stderr, "Error: (line %d) can only declare %s as a funciton at toplevel\n", varDeclIter -> lineno, varDeclIter -> identifier);
+			}
 			STEntry *s;
 			while (varDeclIter != NULL) {
 				s = malloc(sizeof(STEntry));
@@ -466,8 +477,15 @@ void symbolCheckProgram(RootNode* root) {
 				varDeclIter = varDeclIter -> nextDecl;
 			}
 		} else if (iter -> declType == funcDeclType){
+			
 			STEntry *s = malloc(sizeof(STEntry));
 			s -> id = iter -> actualRealDeclaration.funcDecl -> identifier;
+			
+			if (strcmp(s -> id, "init") == 0) {
+				if (iter -> actualRealDeclaration.funcDecl -> returnType != NULL || iter -> actualRealDeclaration.funcDecl -> argsDecls != NULL) {
+					fprintf(stderr, "Error (line %d) init must have no arguments and void return type", iter -> actualRealDeclaration.funcDecl -> lineno);
+				}
+			}
 			printf("%s\n", s -> id);
 			addSymbolEntry(masterContx, s);
 			s -> type = malloc(sizeof(TTEntry));
@@ -592,6 +610,7 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 		t -> val.arrayType.type = assignee -> entry.t -> val.arrayType.type;
 		t -> val.arrayType.size = assignee -> entry.t -> val.arrayType.size;
 		t -> val.structType.fields = assignee -> entry.t -> val.structType.fields;
+		t -> comparable = assignee -> entry.t -> comparable;
 		return t;
 	}
 	TTEntry *innerType;
@@ -614,6 +633,7 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 		}
 		t -> val.arrayType.type = innerType;
 		t -> val.arrayType.size = holder -> arrayDims;
+		t -> comparable = innerType -> comparable;
 	} else if (t -> underlyingType == sliceType) {
 		
 		if (head == NULL && identifier == NULL){
@@ -629,7 +649,9 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 			return t;
 		}
 		t -> val.sliceType.type = innerType;
+		t -> comparable = 0;
 	} else if (t -> underlyingType == structType){
+		t -> comparable = 1;
 		VarDeclNode *sMembs = holder -> structMembers;
 		Context *tentativeContext = newContext();
 		STEntry *memberEntry;
@@ -647,6 +669,8 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 				t -> underlyingType = badType;
 				return t;
 			}
+			t -> comparable *= innerType -> comparable;
+			
 			memberEntry = malloc(sizeof(STEntry));
 			memberEntry -> id = sMembs -> identifier;
 			memberEntry -> type = innerType;

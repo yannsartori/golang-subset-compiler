@@ -36,6 +36,7 @@ struct TTEntry { //base types have id = type and basetype = basetype to simplify
 		struct {Context *fields;} structType; // (id, type)1, (id,type)2, ...
 		struct {STEntry *args; TTEntry *ret;} functionType; //(Type1, Type2, ...) : TypeRet
 	} val;
+	int comparable;
 	TTEntry *next;
 };
 struct EntryTupleList {

@@ -760,12 +760,12 @@ VarDeclNode* makeSingleVarDeclWithExps(IdChain* identifiers, TypeHolderNode* giv
 	return t;
 }
 
-FuncDeclNode* makeFuncDecl(char* funcName, VarDeclNode* argsDecls, TypeHolderNode* returnType, Stmt* blockStart) {
+FuncDeclNode* makeFuncDecl(char* funcName, VarDeclNode* argsDecls, TypeHolderNode* returnType, int lineno) {
 	FuncDeclNode* f = malloc(sizeof(FuncDeclNode));
 	f -> identifier = funcName;
 	f -> argsDecls = argsDecls;
 	f -> returnType = returnType;
-	f -> blockStart = blockStart;
+	f -> lineno = lineno;
 	return f;
 }
 
