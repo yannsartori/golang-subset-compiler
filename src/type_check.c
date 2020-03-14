@@ -527,7 +527,7 @@ int clauseListBreakCheck(switchCaseClause* clauseList,char* functionName){
 int weedSwitchStatementClauseList(Stmt* stmt, char* functionName){
 
 
-	if (isDefaultCasePresent(stmt->val.switchStmt.clauseList,functionName)){
+	if (isDefaultCasePresent(stmt->val.switchStmt.clauseList)){
 		return clauseListBreakCheck(stmt->val.switchStmt.clauseList,functionName);
 
 	}else{
@@ -625,4 +625,6 @@ int forAll (ExpList* list,int(*predicate)(Exp*) ){
 		return 0;
 	}
 }
+
+
 

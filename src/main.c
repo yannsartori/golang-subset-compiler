@@ -4,6 +4,7 @@
 #include "ast.h"
 #include "pretty_printer.h"
 void symbolCheckProgram(RootNode* root);
+void symbolTest(Stmt* stmt);
 void yyparse();
 int yylex();
 RootNode * rootNode;
@@ -31,7 +32,12 @@ int main(int argc, char * argv[])
 	} else if ( !strcmp(argv[1], "symbol") )
 	{
 		yyparse();
-		symbolCheckProgram(rootNode);
+		Stmt* temp = rootNode->startDecls->actualRealDeclaration.funcDecl->blockStart;
+
+		symbolTest(temp);
+
+		
+		//symbolCheckProgram(rootNode);
 	} else if ( !strcmp(argv[1], "typecheck") )
 	{
 		yyparse();
