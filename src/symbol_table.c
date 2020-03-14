@@ -549,11 +549,7 @@ void symbolCheckProgram(RootNode* root) {
 					argEntryIter -> next = NULL;
 				}
 				
-				printf("initialized function\n");
-				
 				symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
-				
-				printf("checked body\n");
 			}
 			
 		} else {
@@ -790,7 +786,7 @@ void printStatementSymbol(Stmt* stmt,int indentLevel){
 										printStatementSymbol(stmt->val.forLoop.init,indentLevel+1);
 										printStatementSymbol(stmt->val.forLoop.inc,indentLevel+1);
 
-										printStatementSymbol(stmt->val.forLoop.block,indentLevel+2);
+										printStatementSymbol(stmt->val.forLoop.block,indentLevel+1);
 
 										printf("\n");
 										indent(indentLevel);
