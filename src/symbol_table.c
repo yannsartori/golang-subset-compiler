@@ -477,75 +477,84 @@ void symbolCheckProgram(RootNode* root) {
 			STEntry *s = malloc(sizeof(STEntry));
 			s -> id = iter -> actualRealDeclaration.funcDecl -> identifier;
 			
+			Context* functionContext = scopedContext(masterContx);
+			
 			if (strcmp(s -> id, "init") == 0) {
 				if (iter -> actualRealDeclaration.funcDecl -> returnType != NULL || iter -> actualRealDeclaration.funcDecl -> argsDecls != NULL) {
 					fprintf(stderr, "Error: (line %d) init must have no arguments and void return type", iter -> actualRealDeclaration.funcDecl -> lineno);
 					exit(1);
 				}
-			}
-			
-			
-			
-			addSymbolEntry(masterContx, s);
-			s -> type = malloc(sizeof(TTEntry));
-			s -> type -> id = NULL;
-			s -> type -> underlyingType = funcType;
-			s -> type -> comparable = 0;
-			
-			if (iter -> actualRealDeclaration.funcDecl -> returnType == NULL) {
-				s -> type -> val.functionType.ret = NULL;
-			} else {
-				s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
-				if (s -> type -> val.functionType.ret -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) problem with function return type: %s", iter -> actualRealDeclaration.funcDecl -> lineno, s -> type -> val.functionType.ret -> id);
-					exit(1);
-				}
-			}
-			Context* functionContext = scopedContext(masterContx);
-			
-			VarDeclNode* argsIter = iter -> actualRealDeclaration.funcDecl -> argsDecls;
-			if (argsIter != NULL){
-				int returnCode;
-				STEntry *argEntryIter = malloc(sizeof(STEntry));
-				argEntryIter -> id = argsIter -> identifier;
-				argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
-				if (argEntryIter -> type -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) %s\n", argsIter -> lineno, argEntryIter -> type -> id);
-					exit(1);
-				};
-				returnCode = addSymbolEntry(functionContext, argEntryIter);
-				if (returnCode != 0) {
-					fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", argsIter -> lineno);
-					exit(1);
-				}
-				s -> type -> val.functionType.args = argEntryIter;
+				symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
+			} else  {
 				
-				argsIter = argsIter -> nextDecl;
 				
-				while (argsIter != NULL) {
-					argEntryIter -> next = malloc(sizeof(STEntry));
-					argEntryIter = argEntryIter -> next;
+				if (strcmp(s -> id, "main") == 0) {
+					if (iter -> actualRealDeclaration.funcDecl -> returnType != NULL || iter -> actualRealDeclaration.funcDecl -> argsDecls != NULL) {
+						fprintf(stderr, "Error: (line %d) main must have no arguments and void return type", iter -> actualRealDeclaration.funcDecl -> lineno);
+						exit(1);
+					}
+				}
+				
+				addSymbolEntry(masterContx, s);
+				s -> type = malloc(sizeof(TTEntry));
+				s -> type -> id = NULL;
+				s -> type -> underlyingType = funcType;
+				s -> type -> comparable = 0;
+				
+				if (iter -> actualRealDeclaration.funcDecl -> returnType == NULL) {
+					s -> type -> val.functionType.ret = NULL;
+				} else {
+					s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
+					if (s -> type -> val.functionType.ret -> underlyingType == badType) {
+						fprintf(stderr, "Error: (line %d) problem with function return type: %s", iter -> actualRealDeclaration.funcDecl -> lineno, s -> type -> val.functionType.ret -> id);
+						exit(1);
+					}
+				}
+				
+				VarDeclNode* argsIter = iter -> actualRealDeclaration.funcDecl -> argsDecls;
+				if (argsIter != NULL){
+					int returnCode;
+					STEntry *argEntryIter = malloc(sizeof(STEntry));
 					argEntryIter -> id = argsIter -> identifier;
 					argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
 					if (argEntryIter -> type -> underlyingType == badType) {
-						fprintf(stderr, "Error: (line %d) %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> id);
+						fprintf(stderr, "Error: (line %d) %s\n", argsIter -> lineno, argEntryIter -> type -> id);
 						exit(1);
-					}
+					};
 					returnCode = addSymbolEntry(functionContext, argEntryIter);
 					if (returnCode != 0) {
 						fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", argsIter -> lineno);
 						exit(1);
 					}
+					s -> type -> val.functionType.args = argEntryIter;
+					
 					argsIter = argsIter -> nextDecl;
+					
+					while (argsIter != NULL) {
+						argEntryIter -> next = malloc(sizeof(STEntry));
+						argEntryIter = argEntryIter -> next;
+						argEntryIter -> id = argsIter -> identifier;
+						argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
+						if (argEntryIter -> type -> underlyingType == badType) {
+							fprintf(stderr, "Error: (line %d) %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> id);
+							exit(1);
+						}
+						returnCode = addSymbolEntry(functionContext, argEntryIter);
+						if (returnCode != 0) {
+							fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", argsIter -> lineno);
+							exit(1);
+						}
+						argsIter = argsIter -> nextDecl;
+					}
+					argEntryIter -> next = NULL;
 				}
-				argEntryIter -> next = NULL;
+				
+				printf("initialized function\n");
+				
+				symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
+				
+				printf("checked body\n");
 			}
-			
-			printf("initialized function\n");
-			
-			symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
-			
-			printf("checked body\n");
 			
 		} else {
 			fprintf(stderr, "I don't know what the fuck just happened, but I don't really care: I'm a get the fuck up out of here. Fuck this shit, I'm out.\n");
@@ -711,6 +720,8 @@ void symbolPrintTypeHolder(TypeHolderNode *node, int indentLevel);
 void symbolPrintStructMembers(VarDeclNode *type, int indentLevel);
 void symbolPrintVarDecl(VarDeclNode *var, int indentLevel);
 void symbolPrintShortVarDecl(VarDeclNode *var, int indentLevel);
+void symbolPrintFuncDecl(FuncDeclNode *func);
+void symbolPrintFuncArgs(VarDeclNode *args);
  
 void printStatementSymbol(Stmt* stmt,int indentLevel){
 
@@ -806,6 +817,38 @@ void printStatementSymbol(Stmt* stmt,int indentLevel){
 		printStatementSymbol(stmt->next,indentLevel);
 }
 
+void printSymbolProgram(RootNode* rootNode) {
+	printf("{\n");
+	printf("\t\"int\" type defined as: int\n");
+	printf("\t\"string\" type defined as: string\n");
+	printf("\t\"float64\" type defined as: float64\n");
+	printf("\t\"bool\" type defined as: bool\n");
+	printf("\t\"rune\" type defined as: rune\n");
+	
+	printf("\t\"true\" constant of type: bool\n");
+	printf("\t\"false\" constant of type: bool\n");
+	printf("\t{\n");
+	
+	TopDeclarationNode *iter = rootNode -> startDecls;
+	while (iter != NULL) {
+		if (iter -> declType == typeDeclType) {
+			symbolPrintTypeDecl(iter -> actualRealDeclaration.typeDecl, 2);
+		} else if (iter -> declType == variDeclType) {
+			symbolPrintVarDecl(iter -> actualRealDeclaration.varDecl, 2);
+		} else if (iter -> declType == funcDeclType) {
+			symbolPrintFuncDecl(iter -> actualRealDeclaration.funcDecl);
+		} else {
+			fprintf(stderr, "something went wrong, go fuck yourself\n");
+			exit(1);
+		}
+		iter = iter -> nextTopDecl;
+	}
+	printf("\t}\n");
+	printf("}\n");
+}
+
+
+
 
 void printClauseListSymbol(switchCaseClause* clauseList,int indentLevel){
 	if (clauseList == NULL){
@@ -854,7 +897,7 @@ void symbolPrintTypeDecl(TypeDeclNode *type, int indentLevel)
 {
 	if ( type == NULL ) return;
 	indent(indentLevel);
-	printf("type %s, defined by ", type->identifier);
+	printf("\"%s\" type defined as: ", type->identifier);
 	symbolPrintTypeHolder(type->actualType, indentLevel);
 	printf("\n");
 	symbolPrintTypeDecl(type->nextDecl, indentLevel);
@@ -874,7 +917,7 @@ void symbolPrintTypeHolder(TypeHolderNode *node, int indentLevel)
 			symbolPrintTypeHolder(node -> underlyingType, indentLevel);
 			break;
 		case identifierType:
-			printf(" %s", node->identification);
+			printf("%s", node->identification);
 			break;
 		case structType:
 			printf(" struct {\n");
@@ -906,7 +949,7 @@ void symbolPrintVarDecl(VarDeclNode *var, int indentLevel)
 {
 	if ( var == NULL ) return;
 	indent(indentLevel);
-	printf("variable %s of type", var->identifier);
+	printf("\"%s\" variable of type ", var->identifier);
 	symbolPrintTypeHolder(var->typeThing, indentLevel);
 	printf("\n");
 	symbolPrintVarDecl(var->nextDecl, indentLevel);
@@ -917,10 +960,42 @@ void symbolPrintShortVarDecl(VarDeclNode *var, int indentLevel)
 	if ( var == NULL ) return;
 	if (var -> iDoDeclare == 1) {
 		indent(indentLevel);
-		printf("variable %s of type <infer>", var->identifier);
+		printf("\"%s\" variable of type <infer>", var->identifier);
 		printf("\n");
 	}
 	symbolPrintShortVarDecl(var->nextDecl, indentLevel);
 }
 
+void symbolPrintFuncDecl(FuncDeclNode *func)
+{
+	if ( func == NULL ) return;
+	indent(2);
+	printf("func \"%s\" function: (", func->identifier);
+	symbolPrintFuncArgs(func -> argsDecls);
+	printf(") -> ");
+	if ( func->returnType != NULL )
+	{
+		symbolPrintTypeHolder(func->returnType, 2);
+	} else {
+		printf("void");
+	}
+	printf("\n\t\t{\n");
+	symbolPrintVarDecl(func -> argsDecls, 3);
+	printStatementSymbol(func->blockStart -> val.block.stmt, 3);
+	printf("\t\t}\n");
+}
+
+void symbolPrintFuncArgs(VarDeclNode *args)
+{
+	if ( args == NULL ) return;
+	if ( args->typeThing != NULL )
+	{
+		symbolPrintTypeHolder(args->typeThing, 2);
+	}
+	if ( args->nextDecl != NULL )
+	{
+		printf(", ");
+		symbolPrintFuncArgs(args->nextDecl);
+	}
+}
 
