@@ -461,6 +461,17 @@ void symbolCheckProgram(RootNode* root) {
 			s -> type -> id = NULL;
 			s -> type -> underlyingType = funcType;
 			s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
+			Context* functionContext = scopedContext(masterContx);
+			VarDeclNode* argsIter = iter -> actualRealDeclaration.funcDecl -> argsDecls;
+			TTEntry *argEntryIter;
+			while (argsIter != NULL) {
+				argEntryIter = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
+				if (argEntryIter -> underlyingType == badType) {
+					fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", iter -> lineno, argsIter -> identifier, argEntryIter -> id);
+					exit(1);
+				}
+			}
+			s -> type -> val.functionType.args = 
 			/*
 			 * Add the function to the symbol table
 			 * 
@@ -599,6 +610,8 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 	}
 	return t;
 }
+
+
 
 
 
