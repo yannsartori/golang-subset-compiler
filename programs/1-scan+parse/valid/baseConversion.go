@@ -15,7 +15,7 @@ func main() {
 func numToDecimal(num string, base int) int{
 	result := 0
 	for i := 0; i < len(num); i++ {
-		result = result * base + charToInt(char(num[i]));
+		result = result * base + charToInt(rune(num[i]));
 	}
 	return result;
 }
@@ -33,7 +33,7 @@ func decimalToBase(val int, base int) string {
 	return result;
 }
 
-func charToInt(c char) int {
+func charToInt(c rune) int {
 	if '0' <= c && c <= '9' {
 		return (int) (c - '0')
 	} else {
