@@ -479,19 +479,27 @@ void symbolCheckProgram(RootNode* root) {
 			
 			if (strcmp(s -> id, "init") == 0) {
 				if (iter -> actualRealDeclaration.funcDecl -> returnType != NULL || iter -> actualRealDeclaration.funcDecl -> argsDecls != NULL) {
-					fprintf(stderr, "Error (line %d) init must have no arguments and void return type", iter -> actualRealDeclaration.funcDecl -> lineno);
+					fprintf(stderr, "Error: (line %d) init must have no arguments and void return type", iter -> actualRealDeclaration.funcDecl -> lineno);
+					exit(1);
 				}
 			}
-			printf("%s\n", s -> id);
+			
+			
+			
 			addSymbolEntry(masterContx, s);
 			s -> type = malloc(sizeof(TTEntry));
 			s -> type -> id = NULL;
 			s -> type -> underlyingType = funcType;
+			s -> type -> comparable = 0;
 			
 			if (iter -> actualRealDeclaration.funcDecl -> returnType == NULL) {
 				s -> type -> val.functionType.ret = NULL;
 			} else {
 				s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
+				if (s -> type -> val.functionType.ret -> underlyingType == badType) {
+					fprintf(stderr, "Error: (line %d) problem with function return type: %s", iter -> actualRealDeclaration.funcDecl -> lineno, s -> type -> val.functionType.ret -> id);
+					exit(1);
+				}
 			}
 			Context* functionContext = scopedContext(masterContx);
 			
