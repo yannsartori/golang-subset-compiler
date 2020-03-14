@@ -15,7 +15,12 @@ void symbolCheckExpressionList(ExpList* expressionList,Context* context);
 void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* context);
 
 void printClauseListSymbol(switchCaseClause* clauseList,int indentLevel);
-TTEntry *makeTTEntry(Context* contx, TypeHolderNode *holder, char* typeName);
+TTEntry *makeNamedTTEntry(Context* contx, TypeDeclNode* declaration);
+TTEntry *makeSubTTEntry(Context* contx, TypeHolderNode *holder, TTEntry* head, int inSlice);
+TTEntry *makeAnonymousTTEntry(Context* contx, TypeHolderNode *holder);
+TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identifier, TTEntry* head, int inSlice);
+
+
 
 int hashCode(char * id)
 
@@ -286,9 +291,9 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 			TypeDeclNode *typeDeclIter = stmt -> val.typeDeclaration;
 			TTEntry *t;
 			while (typeDeclIter != NULL) {
-				t = makeTTEntry(context, stmt -> val.typeDeclaration -> actualType, stmt -> val.typeDeclaration -> identifier);
-				if (t -> underlyingTypeType == badType) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", stmt -> lineno, stmt -> val.typeDeclaration -> actualType -> identification, t -> id);
+				t = makeNamedTTEntry(context, typeDeclIter);
+				if (t -> underlyingType == badType) {
+					fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", stmt -> lineno, typeDeclIter -> actualType -> identification, t -> id);
 					exit(1);
 				}
 				
@@ -307,8 +312,8 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 			while (varDeclIter != NULL) {
 				s = malloc(sizeof(STEntry));
 				s -> id = varDeclIter -> identifier;
-				s -> type = makeTTEntry(context, varDeclIter -> typeThing, "anon");
-				if (s -> type -> underlyingTypeType == badType) {
+				s -> type = makeAnonymousTTEntry(context, varDeclIter -> typeThing);
+				if (s -> type -> underlyingType == badType) {
 					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration\n", stmt -> lineno);
 				exit(1);
 				}
@@ -316,26 +321,31 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", stmt -> lineno, s -> id);
 					exit(1);
 				}
+				symbolCheckExpression(varDeclIter -> value, context);
 				varDeclIter = varDeclIter -> nextDecl;
 			}
 			break;
 		case StmtKindShortDeclaration : 
 			if(0) {}
 			int shortDeclMustDecl = 0;
-			VarDeclNode* varDeclIter = stmt -> val.varDeclaration;
-			STEntry *s;
-			while (varDeclIter != NULL) {
-				s = malloc(sizeof(STEntry));
-				s -> id = varDeclIter -> identifier;
-				s -> type = makeTTEntry(context, varDeclIter -> typeThing, "anon");
-				if (s -> type -> underlyingTypeType == badType) {
+			VarDeclNode* varDeclIterS = stmt -> val.varDeclaration;
+			STEntry *sS;
+			while (varDeclIterS != NULL) {
+				sS = malloc(sizeof(STEntry));
+				sS -> id = varDeclIterS -> identifier;
+				sS -> type = makeAnonymousTTEntry(context, varDeclIterS -> typeThing);
+				if (sS -> type -> underlyingType == badType) {
 					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration\n", stmt -> lineno);
 					exit(1);
 				}
-				if (addSymbolEntry(context, s) == 0) {
+				if (addSymbolEntry(context, sS) == 0) {
 					shortDeclMustDecl ++;
+					varDeclIterS -> iDoDeclare = 1;
+				} else {
+					varDeclIterS -> iDoDeclare = 0;
 				}
-				varDeclIter = varDeclIter -> nextDecl;
+				symbolCheckExpression(varDeclIter -> value, context);
+				varDeclIterS = varDeclIterS -> nextDecl;
 			}
 			if (shortDeclMustDecl == 0) {
 				fprintf(stderr, "Error: (line %d) short declarations must declare at least one new variable\n", stmt -> lineno);
@@ -371,64 +381,227 @@ void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* cont
 }
 
 
-TTEntry *makeTTEntry(Context* contx, TypeHolderNode *holder, char* typeName){
-	TTEntry *t = malloc(sizeof(TTEntry));
-	t -> id = typeName;
-	if (holder == NULL) {
-		t -> underlyingTypeType = inferType;
-		return t;
+void symbolCheckProgram(RootNode* root) {
+	Context* masterContx = newContext();
+	TTEntry *builtInTypes = malloc(5*sizeof(TTEntry));
+	builtInTypes -> id = "int";
+	builtInTypes -> underlyingType = identifierType;
+	builtInTypes -> val.nonCompositeType.type = baseInt;
+	addTypeEntry(masterContx, builtInTypes);
+	builtInTypes ++;
+	builtInTypes -> id = "float64";
+	builtInTypes -> underlyingType = identifierType;
+	builtInTypes -> val.nonCompositeType.type = baseFloat64;
+	addTypeEntry(masterContx, builtInTypes);
+	builtInTypes ++;
+	builtInTypes -> id = "bool";
+	builtInTypes -> underlyingType = identifierType;
+	builtInTypes -> val.nonCompositeType.type = baseBool;
+	addTypeEntry(masterContx, builtInTypes);
+	STEntry *builtInVals = malloc(2*sizeof(STEntry));
+	builtInVals -> id = "true";
+	builtInVals -> type = builtInTypes;
+	addSymbolEntry(masterContx, builtInVals);
+	builtInVals ++;
+	builtInVals -> id = "false";
+	builtInVals -> type = builtInTypes;
+	addSymbolEntry(masterContx, builtInVals);
+	builtInTypes ++;
+	builtInTypes -> id = "rune";
+	builtInTypes -> underlyingType = identifierType;
+	builtInTypes -> val.nonCompositeType.type = baseRune;
+	addTypeEntry(masterContx, builtInTypes);
+	builtInTypes ++;
+	builtInTypes -> id = "string";
+	builtInTypes -> underlyingType = identifierType;
+	builtInTypes -> val.nonCompositeType.type = baseString;
+	addTypeEntry(masterContx, builtInTypes);
+	masterContx = scopedContext(masterContx);
+	TopDeclarationNode *iter = root -> startDecls;
+	while (iter -> nextTopDecl != NULL) {
+		if (iter -> declType == typeDeclType) {
+			TypeDeclNode *typeDeclIter = iter -> actualRealDeclaration.typeDecl;
+			TTEntry *t;
+			while (typeDeclIter != NULL) {
+				t = makeNamedTTEntry(masterContx, typeDeclIter);
+				if (t -> underlyingType == badType) {
+					fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", iter -> lineno, iter -> actualRealDeclaration.typeDecl -> actualType -> identification, t -> id);
+					exit(1);
+				}
+				
+				if (addTypeEntry(masterContx, t) != 0) {
+					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", iter -> lineno, t -> id);
+					exit(1);
+				}
+				typeDeclIter = typeDeclIter -> nextDecl;
+			}
+		} else if (iter -> declType == variDeclType) {
+			VarDeclNode* varDeclIter = iter -> actualRealDeclaration.varDecl;
+			STEntry *s;
+			while (varDeclIter != NULL) {
+				s = malloc(sizeof(STEntry));
+				s -> id = varDeclIter -> identifier;
+				s -> type = makeAnonymousTTEntry(masterContx, varDeclIter -> typeThing);
+				if (s -> type -> underlyingType == badType) {
+					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration\n", iter -> lineno);
+				exit(1);
+				}
+				if (addSymbolEntry(masterContx, s) != 0) {
+					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", iter -> lineno, s -> id);
+					exit(1);
+				}
+				symbolCheckExpression(varDeclIter -> value, masterContx);
+				varDeclIter = varDeclIter -> nextDecl;
+			}
+		} else if (iter -> declType == funcDeclType){
+			
+			STEntry *s = malloc(sizeof(STEntry));
+			s -> id = iter -> actualRealDeclaration.funcDecl -> identifier;
+			s -> type = malloc(sizeof(TTEntry));
+			s -> type -> id = NULL;
+			s -> type -> underlyingType = funcType;
+			s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
+			/*
+			 * Add the function to the symbol table
+			 * 
+			 * go into a scope
+			 * 
+			 * and then finally add the parameters to the new symbol table
+			 * 
+			 */
+		} else {
+			fprintf(stderr, "I don't know what the fuck just happened, but I don't really care: I'm a get the fuck up out of here. Fuck this shit, I'm out.\n");
+		}
 	}
-	t -> underlyingTypeType = holder -> kind;
-	if (holder -> kind == identifierType 
-		||
-		holder -> kind == arrayType
-		||
-		holder -> kind == sliceType
-	) {
-		PolymorphicEntry *assignee = getEntry(contx, holder -> identification);
+}
+
+
+
+
+
+
+
+TTEntry *makeNamedTTEntry(Context* contx, TypeDeclNode* declaration){
+	return makeGeneralTTEntry(contx, declaration -> actualType, declaration -> identifier, NULL, 0);
+}
+
+TTEntry *makeSubTTEntry(Context* contx, TypeHolderNode *holder, TTEntry* head, int inSlice) {
+	return makeGeneralTTEntry(contx, holder, NULL, head, inSlice);
+}
+
+TTEntry *makeAnonymousTTEntry(Context* contx, TypeHolderNode *holder) {
+	return makeGeneralTTEntry(contx, holder, NULL, NULL, 0);
+}
+
+
+TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identifier, TTEntry* head, int inSlice){
+	TTEntry *t = malloc(sizeof(TTEntry));
+	if (holder -> kind = identifierType) {
+		if (head != NULL){
+			if (strcmp(holder -> identification, head -> id) == 0){
+				if (inSlice == 0) {
+					t -> id = "invalid recursive type";
+					t -> underlyingType = badType;
+					return t;
+				} else {
+					return head;
+				}
+				
+			}
+		} else if (identifier != NULL) {
+			if (strcmp(identifier, holder -> identification) == 0) {
+				t -> id = "invalid recursive type";
+				t -> underlyingType = badType;
+				return t;
+			}
+		}
+		PolymorphicEntry* assignee = getEntry(contx, holder -> identification);
 		if (assignee == NULL) {
 			t -> id = "has not been declared";
-			t -> underlyingTypeType = badType;
+			t -> underlyingType = badType;
 			return t;
 		}
 		if (assignee -> isSymbol == 1) {
 			t -> id = "was previoiusly declared as a symbol, cannot be used to declare a type";
-			t -> underlyingTypeType = badType;
+			t -> underlyingType = badType;
 			return t;
 		}
-		t -> val.normalType.type = assignee -> entry.t;
-		t -> underlyingType = t -> val.normalType.type -> underlyingType;
+		t -> id = identifier;
+		t -> underlyingType = assignee -> entry.t -> underlyingType;
+		t -> val.nonCompositeType.type = assignee -> entry.t -> val.nonCompositeType.type;
+		t -> val.sliceType.type = assignee -> entry.t -> val.sliceType.type;
+		t -> val.arrayType.type = assignee -> entry.t -> val.arrayType.type;
+		t -> val.arrayType.size = assignee -> entry.t -> val.arrayType.size;
+		t -> val.structType.fields = assignee -> entry.t -> val.structType.fields;
 		return t;
-	} else if (holder -> kind == structType){
-		t -> underlyingType = baseStruct;
-		TypeDeclNode *sMembs = holder -> structMembers;
-		if (sMembs == NULL) {
-			t -> val.structType.fields = NULL;
+	}
+	TTEntry *innerType;
+	t -> underlyingType = holder -> kind;
+	if (t -> underlyingType == arrayType) {
+		if (head == NULL && identifier == NULL){
+			innerType = makeAnonymousTTEntry(contx, holder -> underlyingType);
+		} else if (head == NULL) {
+			innerType = makeSubTTEntry(contx, holder -> underlyingType, t, 0);
+		} else {
+			innerType = makeSubTTEntry(contx, holder -> underlyingType, head, inSlice);
+		}
+		if (innerType -> underlyingType == badType) {
+			t -> id = innerType -> id;
+			t -> underlyingType = badType;
 			return t;
 		}
-		t -> val.structType.fields = malloc(sizeof(EntryTupleList));
-		EntryTupleList *iter = t -> val.structType.fields;
-//		EntryTupleList auxIter;
-		while (sMembs -> nextDecl != NULL) {
-			iter -> type = makeTTEntry(contx, sMembs -> actualType, sMembs -> identifier);
-			sMembs = sMembs -> nextDecl;
-			/*
-			iter -> next = NULL;
-			for (auxIter = t -> val.structType.fields; auxIter != NULL; auxIter = auxIter -> next) {
-				
+		t -> val.arrayType.type = innerType;
+		t -> val.arrayType.size = holder -> arrayDims;
+	} else if (t -> underlyingType == sliceType) {
+		if (head == NULL && identifier == NULL){
+			innerType = makeAnonymousTTEntry(contx, holder -> underlyingType);
+		} else if (head == NULL) {
+			innerType = makeSubTTEntry(contx, holder -> underlyingType, t, 1);
+		} else {
+			innerType = makeSubTTEntry(contx, holder -> underlyingType, head, 1);
+		}
+		if (innerType -> underlyingType == badType) {
+			t -> id = innerType -> id;
+			t -> underlyingType = badType;
+			return t;
+		}
+		t -> val.sliceType.type = innerType;
+	} else if (t -> underlyingType == structType){
+		VarDeclNode *sMembs = holder -> structMembers;
+		Context *tentativeContext = newContext();
+		int returnCode;
+		while (sMembs != NULL) {
+			if (head == NULL && identifier == NULL){
+				innerType = makeAnonymousTTEntry(contx, sMembs -> typeThing);
+			} else if (head == NULL) {
+				innerType = makeSubTTEntry(contx, sMembs -> typeThing, t, 0);
+			} else {
+				innerType = makeSubTTEntry(contx, sMembs -> typeThing, head, inSlice);
 			}
-			*/
-			iter -> next = malloc(sizeof(EntryTupleList));
-			iter = iter -> next;
+			if (innerType -> underlyingType == badType) {
+				t -> id = innerType -> id;
+				t -> underlyingType = badType;
+				return t;
+			}
+			innerType -> id = sMembs -> identifier;
+			returnCode = addTypeEntry(tentativeContext, innerType);
+			if (returnCode != 0) {
+				t -> id = "duplicate struct members";
+				t -> underlyingType = badType;
+				return t;
+			}
+			sMembs = sMembs -> nextDecl;
 		}
-		iter -> type = makeTTEntry(contx, sMembs -> actualType, sMembs -> identifier);
-		iter -> next = NULL;
-		return t;
+		t -> val.structType.fields = tentativeContext;
 	} else {
 		fprintf(stderr, "I was passed a bad TypeDeclNode. You shouldn't ever see this.\n");
 		return NULL;
 	}
+	return t;
 }
+
+
+
 
 static void indent(int indentLevel){
 	for(int i = 0; i < indentLevel; i++){
@@ -436,6 +609,12 @@ static void indent(int indentLevel){
 	}
 }
 
+
+void symbolPrintTypeDecl(TypeDeclNode *type, int indentLevel);
+void symbolPrintTypeHolder(TypeHolderNode *node, int indentLevel);
+void symbolPrintStructMembers(VarDeclNode *type, int indentLevel);
+void symbolPrintVarDecl(VarDeclNode *var, int indentLevel);
+void symbolPrintShortVarDecl(VarDeclNode *var, int indentLevel);
  
 void printStatementSymbol(Stmt* stmt,int indentLevel){
 
@@ -514,9 +693,15 @@ void printStatementSymbol(Stmt* stmt,int indentLevel){
 
 				
 			//For Denali to implement (I also designed the rest with the assumption that the following are terminated with newline characters)
-			case StmtKindTypeDeclaration :break;
-			case StmtKindVarDeclaration :break;
-			case StmtKindShortDeclaration : break;
+			case StmtKindTypeDeclaration:
+				symbolPrintTypeDecl(stmt -> val.typeDeclaration, indentLevel);
+				break;
+			case StmtKindVarDeclaration:
+				symbolPrintVarDecl(stmt -> val.varDeclaration, indentLevel);
+				break;
+			case StmtKindShortDeclaration: 
+				symbolPrintShortVarDecl(stmt -> val.varDeclaration, indentLevel);
+				break;
 
 
 
@@ -565,8 +750,81 @@ int expressionIsAFunctionCall(Exp* exp, Context* context){
 
 
 	return 1;
-
-
-
-
 }
+
+
+
+void symbolPrintTypeDecl(TypeDeclNode *type, int indentLevel)
+{
+	if ( type == NULL ) return;
+	indent(indentLevel);
+	printf("type %s, defined by ", type->identifier);
+	symbolPrintTypeHolder(type->actualType, indentLevel);
+	printf("\n");
+	symbolPrintTypeDecl(type->nextDecl, indentLevel);
+}
+
+void symbolPrintTypeHolder(TypeHolderNode *node, int indentLevel)
+{
+	if ( node == NULL ) return;
+	switch (node->kind)
+	{
+		case sliceType:
+			printf("[]");
+			symbolPrintTypeHolder(node -> underlyingType, indentLevel);
+			break;
+		case arrayType:
+			printf("[%d]", node->arrayDims);
+			symbolPrintTypeHolder(node -> underlyingType, indentLevel);
+			break;
+		case identifierType:
+			printf(" %s", node->identification);
+			break;
+		case structType:
+			printf(" struct {\n");
+			symbolPrintStructMembers(node->structMembers, indentLevel + 1);
+			indent(indentLevel);
+			printf("}");
+			break;
+		case inferType:
+			printf("<infer>");
+			break;
+	}
+}
+
+
+void symbolPrintStructMembers(VarDeclNode *members, int indentLevel)
+{
+	if ( members == NULL ) return;
+	indent(indentLevel);
+	printf("%s", members->identifier);
+	if ( members->typeThing != NULL )
+	{
+		symbolPrintTypeHolder(members->typeThing, indentLevel);
+	}
+	printf("\n");
+	symbolPrintStructMembers(members->nextDecl, indentLevel);
+}
+
+void symbolPrintVarDecl(VarDeclNode *var, int indentLevel)
+{
+	if ( var == NULL ) return;
+	indent(indentLevel);
+	printf("variable %s of type", var->identifier);
+	symbolPrintTypeHolder(var->typeThing, indentLevel);
+	printf("\n");
+	symbolPrintVarDecl(var->nextDecl, indentLevel);
+}
+
+void symbolPrintShortVarDecl(VarDeclNode *var, int indentLevel)
+{
+	if ( var == NULL ) return;
+	if (var -> iDoDeclare == 1) {
+		indent(indentLevel);
+		printf("variable %s of type <infer>", var->identifier);
+		printf("\n");
+	}
+	symbolPrintShortVarDecl(var->nextDecl, indentLevel);
+}
+
+

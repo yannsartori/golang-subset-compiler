@@ -650,7 +650,7 @@ TypeHolderNode* makeArrayHolder(int arraySize, TypeHolderNode* id){
 	return t;
 }
 
-TypeHolderNode* makeStructHolder(TypeDeclNode* members) {
+TypeHolderNode* makeStructHolder(VarDeclNode* members) {
 	TypeHolderNode* t = malloc(sizeof(TypeHolderNode));
 	t -> kind = structType;
 	t -> structMembers = members;
@@ -678,20 +678,11 @@ IdChain* makeIdChain(char* identifier, IdChain* next) {
 	return c;
 }
 
-TypeDeclNode* makeSingleTypeDecl(IdChain* identifiers, TypeHolderNode* givenType) {
+TypeDeclNode* makeSingleTypeDecl(char* identifier, TypeHolderNode* givenType) {
 	TypeDeclNode* t = malloc(sizeof(TypeDeclNode));
 	t -> actualType = givenType;
-	t -> identifier = identifiers -> identifier;
-	TypeDeclNode* temp = t;
-	IdChain* iter = identifiers;
-	while (iter -> next != NULL) {
-		temp -> nextDecl = malloc(sizeof(TypeDeclNode));
-		temp = temp -> nextDecl;
-		iter = iter -> next;
-		temp -> identifier = iter -> identifier;
-		temp -> actualType = givenType;
-	}
-	temp -> nextDecl = NULL;
+	t -> identifier = identifier;
+	t -> nextDecl = NULL;
 	return t;
 }
 
@@ -767,7 +758,7 @@ VarDeclNode* makeSingleVarDeclWithExps(IdChain* identifiers, TypeHolderNode* giv
 	return t;
 }
 
-FuncDeclNode* makeFuncDecl(char* funcName, TypeDeclNode* argsDecls, TypeHolderNode* returnType, Stmt* blockStart) {
+FuncDeclNode* makeFuncDecl(char* funcName, VarDeclNode* argsDecls, TypeHolderNode* returnType, Stmt* blockStart) {
 	FuncDeclNode* f = malloc(sizeof(FuncDeclNode));
 	f -> identifier = funcName;
 	f -> argsDecls = argsDecls;

@@ -125,6 +125,5 @@ typedef enum {
 	baseRune,
 	baseString,
 	baseBool,
-	baseStruct,
 } BaseType;
 #endif
