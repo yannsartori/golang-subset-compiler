@@ -149,7 +149,6 @@ struct RootNode  {
 struct TopDeclarationNode {
 	TopDeclarationNode* nextTopDecl;
 	TopDeclarationType declType;
-	int lineno;
 	union {
 		VarDeclNode* varDecl;
 		TypeDeclNode* typeDecl;
@@ -163,12 +162,14 @@ struct VarDeclNode {
 	VarDeclNode* nextDecl;
 	TypeHolderNode* typeThing;
 	int iDoDeclare;		/*Used to track whether or not a short var declaration (i.e.  one that uses the ":=" operator) actually declares or just assigns. The symbol table printer  reads this and decides whether or not to print the symbol */
+	int lineno;
 };
 
 struct TypeDeclNode {
 	char* identifier;
 	TypeDeclNode* nextDecl;
 	TypeHolderNode* actualType;
+	int lineno;
 };
 
 struct FuncDeclNode {

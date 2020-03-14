@@ -184,9 +184,9 @@ root			: tPackage tIDENTIFIER ';' topDeclarationList {weedTopDeclarationNode($4,
 ;
 
 topDeclarationList	: %empty				{$$ = NULL;}
-			| variableDecl topDeclarationList	{$$ = makeTopVarDecl($1, $2); $$ -> lineno = yylineno - 1;}
-			| typeDecl topDeclarationList	{$$ = makeTopTypeDecl($1, $2); $$ -> lineno = yylineno - 1;}
-			| funcDecl topDeclarationList	{$$ = makeTopFuncDecl($1, $2); $$ -> lineno = yylineno - 1;}
+			| variableDecl topDeclarationList	{$$ = makeTopVarDecl($1, $2);}
+			| typeDecl topDeclarationList	{$$ = makeTopTypeDecl($1, $2);}
+			| funcDecl topDeclarationList	{$$ = makeTopFuncDecl($1, $2);}
 ;
 
 variableDecl		: tVar singleVarDecl ';'		{$$ = $2;}
@@ -206,7 +206,7 @@ singleVarDecl		: identifierList declType '=' expressionList
 							{$$ = $1;}
 ;
 
-singleVarDeclNoExps	: identifierList declType	{$$ = makeSingleVarDeclNoExps($1, $2);}
+singleVarDeclNoExps	: identifierList declType	{$$ = makeSingleVarDeclNoExps($1, $2); $$ -> lineno = yylineno;}
 ;
 
 
@@ -219,7 +219,7 @@ innerTypeDecls	: singleTypeDecl ';'				{$$ = $1;}
 			| singleTypeDecl ';' innerTypeDecls	{appendTypeDecls($1, $3); $$ = $1;}
 ;
 
-singleTypeDecl	: tIDENTIFIER declType			{$$ = makeSingleTypeDecl($1, $2);}
+singleTypeDecl	: tIDENTIFIER declType			{$$ = makeSingleTypeDecl($1, $2); $$ -> lineno = yylineno;}
 ;
 
 funcDecl		: tFunc tIDENTIFIER '(' funcArgDecls ')' declType block ';'
@@ -405,7 +405,7 @@ simpleStatement:
 					makeVarDeclStatement(
 						makeSingleVarDeclWithExps(
 							extractIdList($1, yylineno), 
-							NULL, 
+							makeInferredTypeHolder(), 
 							$3,
 							yylineno
 						), 

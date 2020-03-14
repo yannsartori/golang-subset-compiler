@@ -264,6 +264,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 		case StmtKindThreePartLoop :
 			newContext = scopedContext(context);
 			symbolCheckStatement(stmt->val.forLoop.init,newContext);
+			
 			if (stmt->val.forLoop.condition != NULL){
 				symbolCheckExpression(stmt -> val.forLoop.condition, newContext);
 			}
@@ -289,12 +290,12 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 			while (typeDeclIter != NULL) {
 				t = makeNamedTTEntry(context, typeDeclIter);
 				if (t -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", stmt -> lineno, typeDeclIter -> actualType -> identification, t -> id);
+					fprintf(stderr, "Error: (line %d) %s\n", stmt -> lineno, typeDeclIter -> actualType -> identification, t -> id);
 					exit(1);
 				}
 				
 				if (addTypeEntry(context, t) != 0) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", stmt -> lineno, t -> id);
+					fprintf(stderr, "Error: (line %d) identifier %s has already been declared in this scope\n", stmt -> lineno, t -> id);
 					exit(1);
 				}
 				typeDeclIter = typeDeclIter -> nextDecl;
@@ -308,20 +309,26 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 			while (varDeclIter != NULL) {
 				s = malloc(sizeof(STEntry));
 				s -> id = varDeclIter -> identifier;
+				
 				s -> type = makeAnonymousTTEntry(context, varDeclIter -> typeThing);
+				
 				if (s -> type -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration\n", stmt -> lineno);
+					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", stmt -> lineno, s -> id);
 				exit(1);
 				}
+				
 				if (addSymbolEntry(context, s) != 0) {
 					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", stmt -> lineno, s -> id);
 					exit(1);
 				}
-				symbolCheckExpression(varDeclIter -> value, context);
+				if (varDeclIter -> value != NULL) {
+					symbolCheckExpression(varDeclIter -> value, context);
+				}
 				varDeclIter = varDeclIter -> nextDecl;
 			}
 			break;
 		case StmtKindShortDeclaration : 
+			
 			if(0) {}
 			int shortDeclMustDecl = 0;
 			VarDeclNode* varDeclIterS = stmt -> val.varDeclaration;
@@ -331,7 +338,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 				sS -> id = varDeclIterS -> identifier;
 				sS -> type = makeAnonymousTTEntry(context, varDeclIterS -> typeThing);
 				if (sS -> type -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration\n", stmt -> lineno);
+					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", stmt -> lineno, sS -> id);
 					exit(1);
 				}
 				if (addSymbolEntry(context, sS) == 0) {
@@ -347,6 +354,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 				fprintf(stderr, "Error: (line %d) short declarations must declare at least one new variable\n", stmt -> lineno);
 				exit(1);
 			}
+			
 			break;
 	}
 
@@ -421,12 +429,12 @@ void symbolCheckProgram(RootNode* root) {
 			while (typeDeclIter != NULL) {
 				t = makeNamedTTEntry(masterContx, typeDeclIter);
 				if (t -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", iter -> lineno, iter -> actualRealDeclaration.typeDecl -> actualType -> identification, t -> id);
+					fprintf(stderr, "Error: (line %d) %s\n", typeDeclIter -> lineno, t -> id);
 					exit(1);
 				}
 				
 				if (addTypeEntry(masterContx, t) != 0) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", iter -> lineno, t -> id);
+					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", typeDeclIter -> lineno, t -> id);
 					exit(1);
 				}
 				typeDeclIter = typeDeclIter -> nextDecl;
@@ -438,12 +446,12 @@ void symbolCheckProgram(RootNode* root) {
 				s = malloc(sizeof(STEntry));
 				s -> id = varDeclIter -> identifier;
 				if (addSymbolEntry(masterContx, s) != 0) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", iter -> lineno, s -> id);
+					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", varDeclIter -> lineno, s -> id);
 					exit(1);
 				}
 				s -> type = makeAnonymousTTEntry(masterContx, varDeclIter -> typeThing);
 				if (s -> type -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration\n", iter -> lineno);
+					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", varDeclIter -> lineno, s -> id);
 				exit(1);
 				}
 				
@@ -454,7 +462,6 @@ void symbolCheckProgram(RootNode* root) {
 				varDeclIter = varDeclIter -> nextDecl;
 			}
 		} else if (iter -> declType == funcDeclType){
-			
 			STEntry *s = malloc(sizeof(STEntry));
 			s -> id = iter -> actualRealDeclaration.funcDecl -> identifier;
 			printf("%s\n", s -> id);
@@ -477,12 +484,12 @@ void symbolCheckProgram(RootNode* root) {
 				argEntryIter -> id = argsIter -> identifier;
 				argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
 				if (argEntryIter -> type -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", iter -> lineno, argsIter -> identifier, argEntryIter -> type -> id);
+					fprintf(stderr, "Error: (line %d) %s\n", argsIter -> lineno, argEntryIter -> type -> id);
 					exit(1);
 				};
 				returnCode = addSymbolEntry(functionContext, argEntryIter);
 				if (returnCode != 0) {
-					fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", iter -> lineno);
+					fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", argsIter -> lineno);
 					exit(1);
 				}
 				s -> type -> val.functionType.args = argEntryIter;
@@ -495,12 +502,12 @@ void symbolCheckProgram(RootNode* root) {
 					argEntryIter -> id = argsIter -> identifier;
 					argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
 					if (argEntryIter -> type -> underlyingType == badType) {
-						fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", iter -> lineno, argsIter -> identifier, argEntryIter -> id);
+						fprintf(stderr, "Error: (line %d) %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> id);
 						exit(1);
 					}
 					returnCode = addSymbolEntry(functionContext, argEntryIter);
 					if (returnCode != 0) {
-						fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", iter -> lineno);
+						fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", argsIter -> lineno);
 						exit(1);
 					}
 					argsIter = argsIter -> nextDecl;
@@ -508,9 +515,12 @@ void symbolCheckProgram(RootNode* root) {
 				argEntryIter -> next = NULL;
 			}
 			
-			printf("hopeful?\n");
+			printf("initialized function\n");
 			
 			symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
+			
+			printf("checked body\n");
+			
 		} else {
 			fprintf(stderr, "I don't know what the fuck just happened, but I don't really care: I'm a get the fuck up out of here. Fuck this shit, I'm out.\n");
 		}
@@ -563,12 +573,12 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 		}
 		PolymorphicEntry* assignee = getEntry(contx, holder -> identification);
 		if (assignee == NULL) {
-			t -> id = "has not been declared";
+			t -> id = "using a type which has not been declared";
 			t -> underlyingType = badType;
 			return t;
 		}
 		if (assignee -> isSymbol == 1) {
-			t -> id = "was previoiusly declared as a symbol, cannot be used to declare a type";
+			t -> id = "cannot use a variable as a type";
 			t -> underlyingType = badType;
 			return t;
 		}
@@ -618,6 +628,7 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 	} else if (t -> underlyingType == structType){
 		VarDeclNode *sMembs = holder -> structMembers;
 		Context *tentativeContext = newContext();
+		STEntry *memberEntry;
 		int returnCode;
 		while (sMembs != NULL) {
 			if (head == NULL && identifier == NULL){
@@ -632,8 +643,10 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 				t -> underlyingType = badType;
 				return t;
 			}
-			innerType -> id = sMembs -> identifier;
-			returnCode = addTypeEntry(tentativeContext, innerType);
+			memberEntry = malloc(sizeof(STEntry));
+			memberEntry -> id = sMembs -> identifier;
+			memberEntry -> type = innerType;
+			returnCode = addSymbolEntry(tentativeContext, memberEntry);
 			if (returnCode != 0) {
 				t -> id = "duplicate struct members";
 				t -> underlyingType = badType;
