@@ -106,9 +106,9 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 	{ //TODO make sure that bool lits are properly dealt with...
 		case expKindIntLit: return getBuiltInType("int"); //TODO this is the base base type
 		case expKindFloatLit: return getBuiltInType("float64");
-		case expKindRuneLit: return getBuilInType("rune");
+		case expKindRuneLit: return getBuiltInType("rune");
 		case expKindRawStringLit:
-		case expKindInterpretedStringLit: return getBuiltInType("string")
+		case expKindInterpretedStringLit: return getBuiltInType("string");
 		case expKindIdentifier:
 			if ( !e->contextEntry->isSymbol ) notExpressionError(getExpressionType(e), e->lineno);
 			return getExpressionType(e);
@@ -303,13 +303,13 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 						exit(1);
 					}
 					//cant use getEntry because that searches up the stack-- We only want this context.
-					int pos = hashCode(e->val.access.accessor->val.id);
-					for ( STEntry *head = baseType->val.structType.fields->curSymbolTable->entries[pos]; head; head = head->next )
+					PolymorphicEntry *structField = getEntry(baseType->val.structType.fields, e->val.access.accessor->val.id);
+					if ( structField == NULL || !structField->isSymbol )
 					{
-							if ( strcmp(e->val.access.accessor->val.id, head->id) == 0 ) return head->type;
+						fprintf(stderr, "Error: (%d) Struct %s has no field called %s", e->lineno, typeToString(baseType), e->val.access.accessor->val.id);
+						exit(1);
 					}
-					fprintf(stderr, "Error: (%d) Struct %s has no field called %s", e->lineno, typeToString(baseType), e->val.access.accessor->val.id);
-					exit(1);
+					return structField->entry.t;
 				}
 				else if ( e->kind == expKindAppend )
 				{

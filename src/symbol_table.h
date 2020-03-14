@@ -39,5 +39,5 @@ struct TTEntry { //base types have id = type and basetype = basetype to simplify
 	int comparable;
 	TTEntry *next;
 };
-int hashCode(char * id);
+PolymorphicEntry *getEntry(Context *c, char *id);
 #endif
