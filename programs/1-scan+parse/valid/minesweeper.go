@@ -4,20 +4,21 @@ package minesweeper		//Generates a 7x7 minesweeper board with the mines and numb
 
 var seedA, seedB int = 3745, 7708
 
-func main() {
-	var numMines int = 7
-	var board = generateBoard(numMines)
-	printBoard(board)
-}
 
 
 
-func generateBoard(numMines int) [7][7]int {
-	var board [7][7]int
-	for i := 0; i < numMines; i++ {
-		board = addMine(board)
+func randInt(lower, upper int) int {	// Generates pseudo-random numbers based on the two seeds
+	seedA = seedA * seedA * seedA	// It seems like it works?
+	seedA = seedA % seedB
+	if seedA < 100 {
+		seedA = -seedA + 2026
 	}
-	return board
+	seedB = seedB - 7
+	if seedB < 3761 {
+		seedB = seedB + 6427
+	}
+	var x = lower + (seedA % (upper-lower))
+	return x
 }
 
 func addMine(board [7][7]int) [7][7]int {
@@ -40,6 +41,15 @@ func addMine(board [7][7]int) [7][7]int {
 	return board
 }
 
+
+func generateBoard(numMines int) [7][7]int {
+	var board [7][7]int
+	for i := 0; i < numMines; i++ {
+		board = addMine(board)
+	}
+	return board
+}
+
 func printBoard(board [7][7]int) {
 	for i := 0; i < 7; i++ {
 		for j := 0; j < 7; j++ {
@@ -54,16 +64,11 @@ func printBoard(board [7][7]int) {
 }
 
 
-func randInt(lower, upper int) int {	// Generates pseudo-random numbers based on the two seeds
-	seedA = seedA * seedA * seedA	// It seems like it works?
-	seedA = seedA % seedB
-	if seedA < 100 {
-		seedA = -seedA + 2026
-	}
-	seedB = seedB - 7
-	if seedB < 3761 {
-		seedB = seedB + 6427
-	}
-	var x = lower + (seedA % (upper-lower))
-	return x
+
+
+
+func main() {
+	var numMines int = 7
+	var board = generateBoard(numMines)
+	printBoard(board)
 }

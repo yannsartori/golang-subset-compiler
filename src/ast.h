@@ -209,5 +209,6 @@ TopDeclarationNode* makeTopFuncDecl(FuncDeclNode* funcDecl, TopDeclarationNode* 
 Stmt* makeVarDeclStatement(VarDeclNode* declaration, int isShort, int lineNomber);
 Stmt* makeTypeDeclStatement(TypeDeclNode* declaration, int lineNomber);
 IdChain* extractIdList(ExpList* expressions, int lineno);
+TypeHolderNode* makeInferredTypeHolder();
 
 #endif

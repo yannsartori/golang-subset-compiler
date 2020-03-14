@@ -136,7 +136,7 @@ void symbolCheckExpression(Exp *e, Context *c)
 	{
 		if ( getEntry(c, e->val.id) == NULL )
 		{
-			fprintf(stderr, "Error: (%d) %s not declared as a variable, nor type", e->lineno, e->val.id);
+			fprintf(stderr, "Error: (%d) %s not declared as a variable, nor type\n", e->lineno, e->val.id);
 			exit(1);
 		}
 		e->contextEntry = getEntry(c, e->val.id);
@@ -150,7 +150,7 @@ void symbolCheckExpression(Exp *e, Context *c)
 	{ //All that matters in this stage is that it exists in A table. Which will matter in typecheck and codegen                   
 		if ( getEntry(c, e->val.funcCall.base->val.id) == NULL ) //we did yardwork to ensure that base is an identifier
 		{
-			fprintf(stderr, "Error: (%d) %s not declared as a variable, nor type", e->lineno, e->val.funcCall.base->val.id); 
+			fprintf(stderr, "Error: (%d) %s not declared as a variable, nor type\n", e->lineno, e->val.funcCall.base->val.id); 
 			exit(1);
 		}
 		e->contextEntry = getEntry(c, e->val.funcCall.base->val.id);
@@ -418,7 +418,7 @@ void symbolCheckProgram(RootNode* root) {
 	addTypeEntry(masterContx, builtInTypes);
 	masterContx = scopedContext(masterContx);
 	TopDeclarationNode *iter = root -> startDecls;
-	while (iter -> nextTopDecl != NULL) {
+	while (iter != NULL) {
 		if (iter -> declType == typeDeclType) {
 			TypeDeclNode *typeDeclIter = iter -> actualRealDeclaration.typeDecl;
 			TTEntry *t;
@@ -441,33 +441,42 @@ void symbolCheckProgram(RootNode* root) {
 			while (varDeclIter != NULL) {
 				s = malloc(sizeof(STEntry));
 				s -> id = varDeclIter -> identifier;
+				if (addSymbolEntry(masterContx, s) != 0) {
+					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", iter -> lineno, s -> id);
+					exit(1);
+				}
 				s -> type = makeAnonymousTTEntry(masterContx, varDeclIter -> typeThing);
 				if (s -> type -> underlyingType == badType) {
 					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration\n", iter -> lineno);
 				exit(1);
 				}
-				if (addSymbolEntry(masterContx, s) != 0) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", iter -> lineno, s -> id);
-					exit(1);
+				
+				
+				if (varDeclIter -> value != NULL) {
+					symbolCheckExpression(varDeclIter -> value, masterContx);
 				}
-				symbolCheckExpression(varDeclIter -> value, masterContx);
 				varDeclIter = varDeclIter -> nextDecl;
 			}
 		} else if (iter -> declType == funcDeclType){
 			
 			STEntry *s = malloc(sizeof(STEntry));
 			s -> id = iter -> actualRealDeclaration.funcDecl -> identifier;
+			printf("%s\n", s -> id);
 			addSymbolEntry(masterContx, s);
 			s -> type = malloc(sizeof(TTEntry));
 			s -> type -> id = NULL;
 			s -> type -> underlyingType = funcType;
-			s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
+			
+			if (iter -> actualRealDeclaration.funcDecl -> returnType == NULL) {
+				s -> type -> val.functionType.ret = NULL;
+			} else {
+				s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
+			}
 			Context* functionContext = scopedContext(masterContx);
-			
-			
 			
 			VarDeclNode* argsIter = iter -> actualRealDeclaration.funcDecl -> argsDecls;
 			if (argsIter != NULL){
+				int returnCode;
 				STEntry *argEntryIter = malloc(sizeof(STEntry));
 				argEntryIter -> id = argsIter -> identifier;
 				argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
@@ -475,10 +484,15 @@ void symbolCheckProgram(RootNode* root) {
 					fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", iter -> lineno, argsIter -> identifier, argEntryIter -> type -> id);
 					exit(1);
 				};
+				returnCode = addSymbolEntry(functionContext, argEntryIter);
+				if (returnCode != 0) {
+					fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", iter -> lineno);
+					exit(1);
+				}
 				s -> type -> val.functionType.args = argEntryIter;
 				
 				argsIter = argsIter -> nextDecl;
-				int returnCode;
+				
 				while (argsIter != NULL) {
 					argEntryIter -> next = malloc(sizeof(STEntry));
 					argEntryIter = argEntryIter -> next;
@@ -495,12 +509,16 @@ void symbolCheckProgram(RootNode* root) {
 					}
 					argsIter = argsIter -> nextDecl;
 				}
+				argEntryIter -> next = NULL;
 			}
+			
+			printf("hopeful?\n");
 			
 			symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
 		} else {
 			fprintf(stderr, "I don't know what the fuck just happened, but I don't really care: I'm a get the fuck up out of here. Fuck this shit, I'm out.\n");
 		}
+		iter = iter -> nextTopDecl;
 	}
 }
 
@@ -524,8 +542,12 @@ TTEntry *makeAnonymousTTEntry(Context* contx, TypeHolderNode *holder) {
 
 
 TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identifier, TTEntry* head, int inSlice){
+	
+	
 	TTEntry *t = malloc(sizeof(TTEntry));
-	if (holder -> kind = identifierType) {
+	t -> id = identifier;
+	
+	if (holder -> kind == identifierType) {
 		if (head != NULL){
 			if (strcmp(holder -> identification, head -> id) == 0){
 				if (inSlice == 0) {
@@ -535,7 +557,6 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 				} else {
 					return head;
 				}
-				
 			}
 		} else if (identifier != NULL) {
 			if (strcmp(identifier, holder -> identification) == 0) {
@@ -555,7 +576,6 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 			t -> underlyingType = badType;
 			return t;
 		}
-		t -> id = identifier;
 		t -> underlyingType = assignee -> entry.t -> underlyingType;
 		t -> val.nonCompositeType.type = assignee -> entry.t -> val.nonCompositeType.type;
 		t -> val.sliceType.type = assignee -> entry.t -> val.sliceType.type;
@@ -566,6 +586,9 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 	}
 	TTEntry *innerType;
 	t -> underlyingType = holder -> kind;
+	if (holder -> kind == inferType) {
+		return t;
+	}
 	if (t -> underlyingType == arrayType) {
 		if (head == NULL && identifier == NULL){
 			innerType = makeAnonymousTTEntry(contx, holder -> underlyingType);
@@ -582,6 +605,7 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 		t -> val.arrayType.type = innerType;
 		t -> val.arrayType.size = holder -> arrayDims;
 	} else if (t -> underlyingType == sliceType) {
+		
 		if (head == NULL && identifier == NULL){
 			innerType = makeAnonymousTTEntry(contx, holder -> underlyingType);
 		} else if (head == NULL) {

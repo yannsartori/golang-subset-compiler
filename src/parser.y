@@ -184,9 +184,9 @@ root			: tPackage tIDENTIFIER ';' topDeclarationList {weedTopDeclarationNode($4,
 ;
 
 topDeclarationList	: %empty				{$$ = NULL;}
-			| variableDecl topDeclarationList	{$$ = makeTopVarDecl($1, $2);}
-			| typeDecl topDeclarationList	{$$ = makeTopTypeDecl($1, $2); }
-			| funcDecl topDeclarationList	{$$ = makeTopFuncDecl($1, $2); }
+			| variableDecl topDeclarationList	{$$ = makeTopVarDecl($1, $2); $$ -> lineno = yylineno - 1;}
+			| typeDecl topDeclarationList	{$$ = makeTopTypeDecl($1, $2); $$ -> lineno = yylineno - 1;}
+			| funcDecl topDeclarationList	{$$ = makeTopFuncDecl($1, $2); $$ -> lineno = yylineno - 1;}
 ;
 
 variableDecl		: tVar singleVarDecl ';'		{$$ = $2;}
@@ -201,7 +201,7 @@ innerVarDecls		: singleVarDecl ';'				{$$ = $1;}
 singleVarDecl		: identifierList declType '=' expressionList
 							{$$ = makeSingleVarDeclWithExps($1, $2, $4, yylineno);}
 			| identifierList '=' expressionList
-							{$$ = makeSingleVarDeclWithExps($1, NULL, $3, yylineno);}
+							{$$ = makeSingleVarDeclWithExps($1, makeInferredTypeHolder(), $3, yylineno);}
 			| singleVarDeclNoExps
 							{$$ = $1;}
 ;
@@ -251,7 +251,7 @@ structDeclType	: tStruct '{' structMemDecls '}'		{$$ = makeStructHolder($3);}
 			| tStruct '{' '}'				{$$ = makeStructHolder(NULL);}
 ;
 
-structMemDecls	: singleVarDeclNoExps			{$$ = $1;}
+structMemDecls	: singleVarDeclNoExps ';'			{$$ = $1;}
 			| singleVarDeclNoExps ';' structMemDecls	{appendVarDecls($1, $3); $$ = $1;}
 ;
 

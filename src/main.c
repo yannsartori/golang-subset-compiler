@@ -37,6 +37,8 @@ int main(int argc, char * argv[])
 		yyparse();
 		//symbolchecknoprint
 		//typecheck
+	} else {
+		printf("sorry, I didn't get that\n");
 	}
 	return 0;
 }
