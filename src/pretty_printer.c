@@ -20,8 +20,8 @@ void printSwitchCaseClause(switchCaseClause* clause,int indentLevel);
 void prettyTypeHolder(TypeHolderNode *node, int indentLevel);
 void prettyFuncDecl(FuncDeclNode *func, int indentLevel);
 void prettyTypeDecl(TypeDeclNode *type, int indentLevel);
-void prettyFuncArgs(TypeDeclNode *type, int indentLevel);
-void prettyStructMembers(TypeDeclNode *type, int indentLevel);
+void prettyFuncArgs(VarDeclNode *type, int indentLevel);
+void prettyStructMembers(VarDeclNode *members, int indentLevel);
 void prettyVarDecl(VarDeclNode *var, int indentLevel);
 void prettyShortVarDecl(VarDeclNode *var, int indentLevel);
 void prettyTopDeclaration(TopDeclarationNode *topDecl, int indentLevel);
@@ -486,31 +486,31 @@ void prettyFuncDecl(FuncDeclNode *func, int indentLevel)
 	printStmt(func->blockStart, indentLevel );	
 
 }
-void prettyFuncArgs(TypeDeclNode *type, int indentLevel)
+void prettyFuncArgs(VarDeclNode *args, int indentLevel)
 {
-	if ( type == NULL ) return;
-	printf("%s", type->identifier);
-	if ( type->actualType != NULL )
+	if ( args == NULL ) return;
+	printf("%s", args->identifier);
+	if ( args->typeThing != NULL )
 	{
-		prettyTypeHolder(type->actualType, indentLevel);
+		prettyTypeHolder(args->typeThing, indentLevel);
 	}
-	if ( type->nextDecl != NULL )
+	if ( args->nextDecl != NULL )
 	{
 		printf(", ");
-		prettyFuncArgs(type->nextDecl, indentLevel);
+		prettyFuncArgs(args->nextDecl, indentLevel);
 	}
 }
-void prettyStructMembers(TypeDeclNode *type, int indentLevel)
+void prettyStructMembers(VarDeclNode *members, int indentLevel)
 {
-	if ( type == NULL ) return;
+	if ( members == NULL ) return;
 	indent(indentLevel);
-	printf("%s", type->identifier);
-	if ( type->actualType != NULL )
+	printf("%s", members->identifier);
+	if ( members->typeThing != NULL )
 	{
-		prettyTypeHolder(type->actualType, indentLevel);
+		prettyTypeHolder(members->typeThing, indentLevel);
 	}
 	printf("\n");
-	prettyStructMembers(type->nextDecl, indentLevel);
+	prettyStructMembers(members->nextDecl, indentLevel);
 }
 void prettyTypeDecl(TypeDeclNode *type, int indentLevel)
 {

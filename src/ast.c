@@ -650,7 +650,7 @@ TypeHolderNode* makeArrayHolder(int arraySize, TypeHolderNode* id){
 	return t;
 }
 
-TypeHolderNode* makeStructHolder(TypeDeclNode* members) {
+TypeHolderNode* makeStructHolder(VarDeclNode* members) {
 	TypeHolderNode* t = malloc(sizeof(TypeHolderNode));
 	t -> kind = structType;
 	t -> structMembers = members;
@@ -678,20 +678,11 @@ IdChain* makeIdChain(char* identifier, IdChain* next) {
 	return c;
 }
 
-TypeDeclNode* makeSingleTypeDecl(IdChain* identifiers, TypeHolderNode* givenType) {
+TypeDeclNode* makeSingleTypeDecl(char* identifier, TypeHolderNode* givenType) {
 	TypeDeclNode* t = malloc(sizeof(TypeDeclNode));
 	t -> actualType = givenType;
-	t -> identifier = identifiers -> identifier;
-	TypeDeclNode* temp = t;
-	IdChain* iter = identifiers;
-	while (iter -> next != NULL) {
-		temp -> nextDecl = malloc(sizeof(TypeDeclNode));
-		temp = temp -> nextDecl;
-		iter = iter -> next;
-		temp -> identifier = iter -> identifier;
-		temp -> actualType = givenType;
-	}
-	temp -> nextDecl = NULL;
+	t -> identifier = identifier;
+	t -> nextDecl = NULL;
 	return t;
 }
 
@@ -767,7 +758,7 @@ VarDeclNode* makeSingleVarDeclWithExps(IdChain* identifiers, TypeHolderNode* giv
 	return t;
 }
 
-FuncDeclNode* makeFuncDecl(char* funcName, TypeDeclNode* argsDecls, TypeHolderNode* returnType, Stmt* blockStart) {
+FuncDeclNode* makeFuncDecl(char* funcName, VarDeclNode* argsDecls, TypeHolderNode* returnType, Stmt* blockStart) {
 	FuncDeclNode* f = malloc(sizeof(FuncDeclNode));
 	f -> identifier = funcName;
 	f -> argsDecls = argsDecls;
@@ -827,6 +818,14 @@ IdChain* extractIdList(ExpList* expressions, int lineno) {
 	idIter -> next = NULL;
 	return base;
 }
+
+TypeHolderNode* makeInferredTypeHolder() {
+	TypeHolderNode* t = malloc(sizeof(TypeHolderNode));
+	t -> kind = inferType;
+	return t;
+}
+
+
 int isBinary(Exp *e)
 {
 	return e->kind == expKindAddition || e->kind == expKindSubtraction || e->kind == expKindMultiplication || e->kind == expKindDivision || e->kind == expKindMod || e->kind == expKindBitAnd || e->kind == expKindBitOr || e->kind == expKindBitNotBinary || e->kind == expKindBitShiftLeft || e->kind == expKindBitShiftRight || e->kind == expKindBitAndNot || e->kind == expKindLogicAnd || e->kind == expKindLogicOr || e->kind == expKindEQ || e->kind == expKindGreater || e->kind == expKindLess || e->kind == expKindNEQ || e->kind == expKindLEQ || e->kind == expKindGEQ;

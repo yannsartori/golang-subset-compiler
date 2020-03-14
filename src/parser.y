@@ -158,8 +158,8 @@ void shortDeclarationPostError(Stmt* stmt){
 %type <explist> expressionList arguments expressionSwitchCase maybeEmptyExpressionList
 %type <rootNode> root
 %type <topDeclNode> topDeclarationList
-%type <varDeclNode> variableDecl singleVarDecl innerVarDecls
-%type <typeDeclNode> typeDecl singleTypeDecl innerTypeDecls funcArgDecls
+%type <varDeclNode> variableDecl singleVarDecl innerVarDecls singleVarDeclNoExps funcArgDecls structMemDecls
+%type <typeDeclNode> typeDecl singleTypeDecl innerTypeDecls
 %type <funcDeclNode> funcDecl
 %type <declType> declType sliceDeclType arrayDeclType structDeclType
 %type <tempIdChain> identifierList
@@ -184,9 +184,9 @@ root			: tPackage tIDENTIFIER ';' topDeclarationList {weedTopDeclarationNode($4,
 ;
 
 topDeclarationList	: %empty				{$$ = NULL;}
-			| variableDecl topDeclarationList	{$$ = makeTopVarDecl($1, $2);}
-			| typeDecl topDeclarationList	{$$ = makeTopTypeDecl($1, $2); }
-			| funcDecl topDeclarationList	{$$ = makeTopFuncDecl($1, $2); }
+			| variableDecl topDeclarationList	{$$ = makeTopVarDecl($1, $2); $$ -> lineno = yylineno - 1;}
+			| typeDecl topDeclarationList	{$$ = makeTopTypeDecl($1, $2); $$ -> lineno = yylineno - 1;}
+			| funcDecl topDeclarationList	{$$ = makeTopFuncDecl($1, $2); $$ -> lineno = yylineno - 1;}
 ;
 
 variableDecl		: tVar singleVarDecl ';'		{$$ = $2;}
@@ -201,10 +201,14 @@ innerVarDecls		: singleVarDecl ';'				{$$ = $1;}
 singleVarDecl		: identifierList declType '=' expressionList
 							{$$ = makeSingleVarDeclWithExps($1, $2, $4, yylineno);}
 			| identifierList '=' expressionList
-							{$$ = makeSingleVarDeclWithExps($1, NULL, $3, yylineno);}
-			| identifierList declType	
-							{$$ = makeSingleVarDeclNoExps($1, $2);}
+							{$$ = makeSingleVarDeclWithExps($1, makeInferredTypeHolder(), $3, yylineno);}
+			| singleVarDeclNoExps
+							{$$ = $1;}
 ;
+
+singleVarDeclNoExps	: identifierList declType	{$$ = makeSingleVarDeclNoExps($1, $2);}
+;
+
 
 typeDecl		: tType singleTypeDecl ';'			{$$ = $2;}
 			| tType '(' innerTypeDecls ')' ';'		{$$ = $3;}
@@ -215,7 +219,7 @@ innerTypeDecls	: singleTypeDecl ';'				{$$ = $1;}
 			| singleTypeDecl ';' innerTypeDecls	{appendTypeDecls($1, $3); $$ = $1;}
 ;
 
-singleTypeDecl	: identifierList declType			{$$ = makeSingleTypeDecl($1, $2);}
+singleTypeDecl	: tIDENTIFIER declType			{$$ = makeSingleTypeDecl($1, $2);}
 ;
 
 funcDecl		: tFunc tIDENTIFIER '(' funcArgDecls ')' declType block ';'
@@ -228,8 +232,8 @@ funcDecl		: tFunc tIDENTIFIER '(' funcArgDecls ')' declType block ';'
 						{$$ = makeFuncDecl($2, NULL, NULL, $5);}
 ;
 
-funcArgDecls		: singleTypeDecl ',' funcArgDecls		{appendTypeDecls($1, $3); $$ = $1;}
-			| singleTypeDecl				{$$ = $1;}
+funcArgDecls		: singleVarDeclNoExps ',' funcArgDecls	{appendVarDecls($1, $3); $$ = $1;}
+			| singleVarDeclNoExps			{$$ = $1;}
 ;
 
 declType		: '(' declType ')'				{$$ = $2;}
@@ -243,8 +247,12 @@ sliceDeclType		: '[' ']' declType				{$$ = makeSliceHolder($3);}
 ;
 arrayDeclType		: '[' tINTLIT ']' declType				{$$ = makeArrayHolder($2, $4);}
 ;
-structDeclType	: tStruct '{' innerTypeDecls '}'		{$$ = makeStructHolder($3);}
+structDeclType	: tStruct '{' structMemDecls '}'		{$$ = makeStructHolder($3);}
 			| tStruct '{' '}'				{$$ = makeStructHolder(NULL);}
+;
+
+structMemDecls	: singleVarDeclNoExps ';'			{$$ = $1;}
+			| singleVarDeclNoExps ';' structMemDecls	{appendVarDecls($1, $3); $$ = $1;}
 ;
 
 identifierList	: tIDENTIFIER					{$$ = makeIdChain($1, NULL);}

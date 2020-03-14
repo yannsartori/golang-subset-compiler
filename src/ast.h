@@ -149,6 +149,7 @@ struct RootNode  {
 struct TopDeclarationNode {
 	TopDeclarationNode* nextTopDecl;
 	TopDeclarationType declType;
+	int lineno;
 	union {
 		VarDeclNode* varDecl;
 		TypeDeclNode* typeDecl;
@@ -161,6 +162,7 @@ struct VarDeclNode {
 	Exp* value;
 	VarDeclNode* nextDecl;
 	TypeHolderNode* typeThing;
+	int iDoDeclare;		/*Used to track whether or not a short var declaration (i.e.  one that uses the ":=" operator) actually declares or just assigns. The symbol table printer  reads this and decides whether or not to print the symbol */
 };
 
 struct TypeDeclNode {
@@ -171,7 +173,7 @@ struct TypeDeclNode {
 
 struct FuncDeclNode {
 	char* identifier;
-	TypeDeclNode* argsDecls;
+	VarDeclNode* argsDecls;
 	TypeHolderNode* returnType;
 	Stmt* blockStart;
 };
@@ -181,7 +183,7 @@ struct TypeHolderNode {
 	char* identification;
 	TypeHolderNode* underlyingType;
 	int arrayDims;
-	TypeDeclNode* structMembers;
+	VarDeclNode* structMembers;
 };
 
 struct IdChain {
@@ -192,20 +194,21 @@ struct IdChain {
 RootNode* makeRootNode(char* packName, TopDeclarationNode* firstDecl);
 TopDeclarationNode* makeTopVarDecl(VarDeclNode* varDecl, TopDeclarationNode* nextTopDecl);
 TypeHolderNode* makeArrayHolder(int arraySize, TypeHolderNode* id);
-TypeHolderNode* makeStructHolder(TypeDeclNode* members);
+TypeHolderNode* makeStructHolder(VarDeclNode* members);
 TypeHolderNode* makeSliceHolder(TypeHolderNode* id);
 TypeHolderNode* makeIdTypeHolder(char* id);
 IdChain* makeIdChain(char* identifier, IdChain* next);
-TypeDeclNode* makeSingleTypeDecl(IdChain* identifiers, TypeHolderNode* givenType);
+TypeDeclNode* makeSingleTypeDecl(char* identifier, TypeHolderNode* givenType);
 TopDeclarationNode* makeTopTypeDecl(TypeDeclNode* typeDecl, TopDeclarationNode* nextTopDecl);
 void appendTypeDecls(TypeDeclNode* baseDecl, TypeDeclNode* leafDecl);
 void appendVarDecls(VarDeclNode* baseDecl, VarDeclNode* leafDecl);
 VarDeclNode* makeSingleVarDeclNoExps(IdChain* identifiers, TypeHolderNode* givenType);
 VarDeclNode* makeSingleVarDeclWithExps(IdChain* identifiers, TypeHolderNode* givenType, ExpList* values, int lineno);
-FuncDeclNode* makeFuncDecl(char* funcName, TypeDeclNode* argsDecls, TypeHolderNode* returnType, Stmt* blockStart);
+FuncDeclNode* makeFuncDecl(char* funcName, VarDeclNode* argsDecls, TypeHolderNode* returnType, Stmt* blockStart);
 TopDeclarationNode* makeTopFuncDecl(FuncDeclNode* funcDecl, TopDeclarationNode* nextTopDecl);
 Stmt* makeVarDeclStatement(VarDeclNode* declaration, int isShort, int lineNomber);
 Stmt* makeTypeDeclStatement(TypeDeclNode* declaration, int lineNomber);
 IdChain* extractIdList(ExpList* expressions, int lineno);
+TypeHolderNode* makeInferredTypeHolder();
 
 #endif
