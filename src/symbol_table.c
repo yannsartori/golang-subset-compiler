@@ -4,7 +4,7 @@
 #include "globalEnum.h"
 #include "symbol_table.h"
 
-Context *globalContext;
+TTEntry *builtInTypes;
 
 void symbolCheckExpression(Exp *e, Context *c);
 void symbolCheckExpressionList(ExpList* expressionList,Context* context);
@@ -143,13 +143,8 @@ void symbolCheckExpression(Exp *e, Context *c)
 		symbolCheckExpression(e->val.access.accessor, c);
 	}
 	else if ( e->kind == expKindFuncCall )
-	{ //All that matters in this stage is that it exists in A table. Which will matter in typecheck and codegen                   
-		if ( getEntry(c, e->val.funcCall.base->val.id) == NULL ) //we did yardwork to ensure that base is an identifier
-		{
-			fprintf(stderr, "Error: (%d) %s not declared as a variable, nor type\n", e->lineno, e->val.funcCall.base->val.id); 
-			exit(1);
-		}
-		e->contextEntry = getEntry(c, e->val.funcCall.base->val.id);
+	{ 
+		symbolCheckExpression(e->val.funcCall.base, c);
 		ExpList *curArg = e->val.funcCall.arguments;
 		while ( curArg != NULL )
 		{
@@ -387,7 +382,7 @@ void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* cont
 
 void symbolCheckProgram(RootNode* root) {
 	Context* masterContx = newContext();
-	TTEntry *builtInTypes = malloc(5*sizeof(TTEntry));
+	builtInTypes = malloc(5*sizeof(TTEntry));
 	builtInTypes -> id = "int";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseInt;
