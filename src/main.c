@@ -3,6 +3,7 @@
 #include<string.h>
 #include "ast.h"
 #include "pretty_printer.h"
+void symbolCheckProgram(RootNode* root);
 void yyparse();
 int yylex();
 RootNode * rootNode;
@@ -30,7 +31,7 @@ int main(int argc, char * argv[])
 	} else if ( !strcmp(argv[1], "symbol") )
 	{
 		yyparse();
-		//symbolcheck
+		symbolCheckProgram(rootNode);
 	} else if ( !strcmp(argv[1], "typecheck") )
 	{
 		yyparse();

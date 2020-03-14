@@ -457,29 +457,47 @@ void symbolCheckProgram(RootNode* root) {
 			
 			STEntry *s = malloc(sizeof(STEntry));
 			s -> id = iter -> actualRealDeclaration.funcDecl -> identifier;
+			addSymbolEntry(masterContx, s);
 			s -> type = malloc(sizeof(TTEntry));
 			s -> type -> id = NULL;
 			s -> type -> underlyingType = funcType;
 			s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
 			Context* functionContext = scopedContext(masterContx);
+			
+			
+			
 			VarDeclNode* argsIter = iter -> actualRealDeclaration.funcDecl -> argsDecls;
-			TTEntry *argEntryIter;
-			while (argsIter != NULL) {
-				argEntryIter = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
-				if (argEntryIter -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", iter -> lineno, argsIter -> identifier, argEntryIter -> id);
+			if (argsIter != NULL){
+				STEntry *argEntryIter = malloc(sizeof(STEntry));
+				argEntryIter -> id = argsIter -> identifier;
+				argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
+				if (argEntryIter -> type -> underlyingType == badType) {
+					fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", iter -> lineno, argsIter -> identifier, argEntryIter -> type -> id);
 					exit(1);
+				};
+				s -> type -> val.functionType.args = argEntryIter;
+				
+				argsIter = argsIter -> nextDecl;
+				int returnCode;
+				while (argsIter != NULL) {
+					argEntryIter -> next = malloc(sizeof(STEntry));
+					argEntryIter = argEntryIter -> next;
+					argEntryIter -> id = argsIter -> identifier;
+					argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
+					if (argEntryIter -> type -> underlyingType == badType) {
+						fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", iter -> lineno, argsIter -> identifier, argEntryIter -> id);
+						exit(1);
+					}
+					returnCode = addSymbolEntry(functionContext, argEntryIter);
+					if (returnCode != 0) {
+						fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", iter -> lineno);
+						exit(1);
+					}
+					argsIter = argsIter -> nextDecl;
 				}
 			}
-			s -> type -> val.functionType.args = 
-			/*
-			 * Add the function to the symbol table
-			 * 
-			 * go into a scope
-			 * 
-			 * and then finally add the parameters to the new symbol table
-			 * 
-			 */
+			
+			symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
 		} else {
 			fprintf(stderr, "I don't know what the fuck just happened, but I don't really care: I'm a get the fuck up out of here. Fuck this shit, I'm out.\n");
 		}
