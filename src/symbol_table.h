@@ -39,14 +39,5 @@ struct TTEntry { //base types have id = type and basetype = basetype to simplify
 	int comparable;
 	TTEntry *next;
 };
-struct EntryTupleList {
-	TTEntry *type;
-	char *id; //could change
-	EntryTupleList *next;
-};
-struct TTEntryList {
-	TTEntry *cur;
-	TTEntryList *next;
-};
-void symbolCheckExpression(Exp *e, Context *c);
+int hashCode(char * id);
 #endif

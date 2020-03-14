@@ -5,12 +5,8 @@
 #include "symbol_table.h"
 
 Context *globalContext;
-STEntry * symbolLookup(char *id, SymbolTable *s);
-TTEntry * typeLookup(char *id, TypeTable *t);
 
-
-
-
+void symbolCheckExpression(Exp *e, Context *c);
 void symbolCheckExpressionList(ExpList* expressionList,Context* context);
 void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* context);
 
