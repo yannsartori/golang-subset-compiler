@@ -4,13 +4,9 @@
 #include "globalEnum.h"
 #include "symbol_table.h"
 
-Context *globalContext;
-STEntry * symbolLookup(char *id, SymbolTable *s);
-TTEntry * typeLookup(char *id, TypeTable *t);
+TTEntry *builtInTypes;
 
-
-
-
+void symbolCheckExpression(Exp *e, Context *c);
 void symbolCheckExpressionList(ExpList* expressionList,Context* context);
 void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* context);
 
@@ -144,16 +140,10 @@ void symbolCheckExpression(Exp *e, Context *c)
 	else if ( e->kind == expKindFieldSelect || e->kind == expKindIndexing )
 	{
 		symbolCheckExpression(e->val.access.base, c);
-		symbolCheckExpression(e->val.access.accessor, c);
 	}
 	else if ( e->kind == expKindFuncCall )
-	{ //All that matters in this stage is that it exists in A table. Which will matter in typecheck and codegen                   
-		if ( getEntry(c, e->val.funcCall.base->val.id) == NULL ) //we did yardwork to ensure that base is an identifier
-		{
-			fprintf(stderr, "Error: (%d) %s not declared as a variable, nor type\n", e->lineno, e->val.funcCall.base->val.id); 
-			exit(1);
-		}
-		e->contextEntry = getEntry(c, e->val.funcCall.base->val.id);
+	{ 
+		symbolCheckExpression(e->val.funcCall.base, c);
 		ExpList *curArg = e->val.funcCall.arguments;
 		while ( curArg != NULL )
 		{
@@ -272,6 +262,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 		case StmtKindThreePartLoop :
 			newContext = scopedContext(context);
 			symbolCheckStatement(stmt->val.forLoop.init,newContext);
+			
 			if (stmt->val.forLoop.condition != NULL){
 				symbolCheckExpression(stmt -> val.forLoop.condition, newContext);
 			}
@@ -297,12 +288,12 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 			while (typeDeclIter != NULL) {
 				t = makeNamedTTEntry(context, typeDeclIter);
 				if (t -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", stmt -> lineno, typeDeclIter -> actualType -> identification, t -> id);
+					fprintf(stderr, "Error: (line %d) %s\n", stmt -> lineno, typeDeclIter -> actualType -> identification, t -> id);
 					exit(1);
 				}
 				
 				if (addTypeEntry(context, t) != 0) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", stmt -> lineno, t -> id);
+					fprintf(stderr, "Error: (line %d) identifier %s has already been declared in this scope\n", stmt -> lineno, t -> id);
 					exit(1);
 				}
 				typeDeclIter = typeDeclIter -> nextDecl;
@@ -316,20 +307,26 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 			while (varDeclIter != NULL) {
 				s = malloc(sizeof(STEntry));
 				s -> id = varDeclIter -> identifier;
+				
 				s -> type = makeAnonymousTTEntry(context, varDeclIter -> typeThing);
+				
 				if (s -> type -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration\n", stmt -> lineno);
-				exit(1);
+					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", stmt -> lineno, s -> id);
+					exit(1);
 				}
+				
 				if (addSymbolEntry(context, s) != 0) {
 					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", stmt -> lineno, s -> id);
 					exit(1);
 				}
-				symbolCheckExpression(varDeclIter -> value, context);
+				if (varDeclIter -> value != NULL) {
+					symbolCheckExpression(varDeclIter -> value, context);
+				}
 				varDeclIter = varDeclIter -> nextDecl;
 			}
 			break;
 		case StmtKindShortDeclaration : 
+			
 			if(0) {}
 			int shortDeclMustDecl = 0;
 			VarDeclNode* varDeclIterS = stmt -> val.varDeclaration;
@@ -339,7 +336,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 				sS -> id = varDeclIterS -> identifier;
 				sS -> type = makeAnonymousTTEntry(context, varDeclIterS -> typeThing);
 				if (sS -> type -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration\n", stmt -> lineno);
+					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", stmt -> lineno, sS -> id);
 					exit(1);
 				}
 				if (addSymbolEntry(context, sS) == 0) {
@@ -348,13 +345,14 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 				} else {
 					varDeclIterS -> iDoDeclare = 0;
 				}
-				symbolCheckExpression(varDeclIter -> value, context);
+				symbolCheckExpression(varDeclIterS -> value, context);
 				varDeclIterS = varDeclIterS -> nextDecl;
 			}
 			if (shortDeclMustDecl == 0) {
 				fprintf(stderr, "Error: (line %d) short declarations must declare at least one new variable\n", stmt -> lineno);
 				exit(1);
 			}
+			
 			break;
 
 			*/
@@ -389,20 +387,23 @@ void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* cont
 
 void symbolCheckProgram(RootNode* root) {
 	Context* masterContx = newContext();
-	TTEntry *builtInTypes = malloc(5*sizeof(TTEntry));
+	builtInTypes = malloc(5*sizeof(TTEntry));
 	builtInTypes -> id = "int";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseInt;
+	builtInTypes -> comparable = 1;
 	addTypeEntry(masterContx, builtInTypes);
 	builtInTypes ++;
 	builtInTypes -> id = "float64";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseFloat64;
+	builtInTypes -> comparable = 1;
 	addTypeEntry(masterContx, builtInTypes);
 	builtInTypes ++;
 	builtInTypes -> id = "bool";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseBool;
+	builtInTypes -> comparable = 1;
 	addTypeEntry(masterContx, builtInTypes);
 	STEntry *builtInVals = malloc(2*sizeof(STEntry));
 	builtInVals -> id = "true";
@@ -416,11 +417,13 @@ void symbolCheckProgram(RootNode* root) {
 	builtInTypes -> id = "rune";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseRune;
+	builtInTypes -> comparable = 1;
 	addTypeEntry(masterContx, builtInTypes);
 	builtInTypes ++;
 	builtInTypes -> id = "string";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseString;
+	builtInTypes -> comparable = 1;
 	addTypeEntry(masterContx, builtInTypes);
 	masterContx = scopedContext(masterContx);
 	TopDeclarationNode *iter = root -> startDecls;
@@ -429,32 +432,40 @@ void symbolCheckProgram(RootNode* root) {
 			TypeDeclNode *typeDeclIter = iter -> actualRealDeclaration.typeDecl;
 			TTEntry *t;
 			while (typeDeclIter != NULL) {
+				if (strcmp(typeDeclIter -> identifier, "main") == 0 || strcmp(typeDeclIter -> identifier, "init") == 0) {
+					fprintf(stderr, "Error: (line %d) can only declare %s as a funciton at toplevel\n", typeDeclIter -> lineno, typeDeclIter -> identifier);
+					exit(1);
+				}
 				t = makeNamedTTEntry(masterContx, typeDeclIter);
 				if (t -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", iter -> lineno, iter -> actualRealDeclaration.typeDecl -> actualType -> identification, t -> id);
+					fprintf(stderr, "Error: (line %d) %s\n", typeDeclIter -> lineno, t -> id);
 					exit(1);
 				}
 				
 				if (addTypeEntry(masterContx, t) != 0) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", iter -> lineno, t -> id);
+					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", typeDeclIter -> lineno, t -> id);
 					exit(1);
 				}
 				typeDeclIter = typeDeclIter -> nextDecl;
 			}
 		} else if (iter -> declType == variDeclType) {
 			VarDeclNode* varDeclIter = iter -> actualRealDeclaration.varDecl;
+			if (strcmp(varDeclIter -> identifier, "main") == 0 || strcmp(varDeclIter -> identifier, "init") == 0) {
+				fprintf(stderr, "Error: (line %d) can only declare %s as a funciton at toplevel\n", varDeclIter -> lineno, varDeclIter -> identifier);
+				exit(1);
+			}
 			STEntry *s;
 			while (varDeclIter != NULL) {
 				s = malloc(sizeof(STEntry));
 				s -> id = varDeclIter -> identifier;
 				if (addSymbolEntry(masterContx, s) != 0) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", iter -> lineno, s -> id);
+					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", varDeclIter -> lineno, s -> id);
 					exit(1);
 				}
 				s -> type = makeAnonymousTTEntry(masterContx, varDeclIter -> typeThing);
 				if (s -> type -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration\n", iter -> lineno);
-				exit(1);
+					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", varDeclIter -> lineno, s -> id);
+					exit(1);
 				}
 				
 				
@@ -467,62 +478,85 @@ void symbolCheckProgram(RootNode* root) {
 			
 			STEntry *s = malloc(sizeof(STEntry));
 			s -> id = iter -> actualRealDeclaration.funcDecl -> identifier;
-			printf("%s\n", s -> id);
-			addSymbolEntry(masterContx, s);
-			s -> type = malloc(sizeof(TTEntry));
-			s -> type -> id = NULL;
-			s -> type -> underlyingType = funcType;
 			
-			if (iter -> actualRealDeclaration.funcDecl -> returnType == NULL) {
-				s -> type -> val.functionType.ret = NULL;
-			} else {
-				s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
-			}
 			Context* functionContext = scopedContext(masterContx);
 			
-			VarDeclNode* argsIter = iter -> actualRealDeclaration.funcDecl -> argsDecls;
-			if (argsIter != NULL){
-				int returnCode;
-				STEntry *argEntryIter = malloc(sizeof(STEntry));
-				argEntryIter -> id = argsIter -> identifier;
-				argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
-				if (argEntryIter -> type -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", iter -> lineno, argsIter -> identifier, argEntryIter -> type -> id);
-					exit(1);
-				};
-				returnCode = addSymbolEntry(functionContext, argEntryIter);
-				if (returnCode != 0) {
-					fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", iter -> lineno);
+			if (strcmp(s -> id, "init") == 0) {
+				if (iter -> actualRealDeclaration.funcDecl -> returnType != NULL || iter -> actualRealDeclaration.funcDecl -> argsDecls != NULL) {
+					fprintf(stderr, "Error: (line %d) init must have no arguments and void return type", iter -> actualRealDeclaration.funcDecl -> lineno);
 					exit(1);
 				}
-				s -> type -> val.functionType.args = argEntryIter;
+				symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
+			} else  {
 				
-				argsIter = argsIter -> nextDecl;
 				
-				while (argsIter != NULL) {
-					argEntryIter -> next = malloc(sizeof(STEntry));
-					argEntryIter = argEntryIter -> next;
+				if (strcmp(s -> id, "main") == 0) {
+					if (iter -> actualRealDeclaration.funcDecl -> returnType != NULL || iter -> actualRealDeclaration.funcDecl -> argsDecls != NULL) {
+						fprintf(stderr, "Error: (line %d) main must have no arguments and void return type", iter -> actualRealDeclaration.funcDecl -> lineno);
+						exit(1);
+					}
+				}
+				
+				addSymbolEntry(masterContx, s);
+				s -> type = malloc(sizeof(TTEntry));
+				s -> type -> id = NULL;
+				s -> type -> underlyingType = funcType;
+				s -> type -> comparable = 0;
+				
+				if (iter -> actualRealDeclaration.funcDecl -> returnType == NULL) {
+					s -> type -> val.functionType.ret = NULL;
+				} else {
+					s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
+					if (s -> type -> val.functionType.ret -> underlyingType == badType) {
+						fprintf(stderr, "Error: (line %d) problem with function return type: %s", iter -> actualRealDeclaration.funcDecl -> lineno, s -> type -> val.functionType.ret -> id);
+						exit(1);
+					}
+				}
+				
+				VarDeclNode* argsIter = iter -> actualRealDeclaration.funcDecl -> argsDecls;
+				if (argsIter != NULL){
+					int returnCode;
+					STEntry *argEntryIter = malloc(sizeof(STEntry));
 					argEntryIter -> id = argsIter -> identifier;
 					argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
 					if (argEntryIter -> type -> underlyingType == badType) {
-						fprintf(stderr, "Error: (line %d) identifier (%s) %s\n", iter -> lineno, argsIter -> identifier, argEntryIter -> id);
+						fprintf(stderr, "Error: (line %d) %s\n", argsIter -> lineno, argEntryIter -> type -> id);
 						exit(1);
-					}
+					};
 					returnCode = addSymbolEntry(functionContext, argEntryIter);
 					if (returnCode != 0) {
-						fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", iter -> lineno);
+						fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", argsIter -> lineno);
 						exit(1);
 					}
+					s -> type -> val.functionType.args = argEntryIter;
+					
 					argsIter = argsIter -> nextDecl;
+					
+					while (argsIter != NULL) {
+						argEntryIter -> next = malloc(sizeof(STEntry));
+						argEntryIter = argEntryIter -> next;
+						argEntryIter -> id = argsIter -> identifier;
+						argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
+						if (argEntryIter -> type -> underlyingType == badType) {
+							fprintf(stderr, "Error: (line %d) %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> id);
+							exit(1);
+						}
+						returnCode = addSymbolEntry(functionContext, argEntryIter);
+						if (returnCode != 0) {
+							fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", argsIter -> lineno);
+							exit(1);
+						}
+						argsIter = argsIter -> nextDecl;
+					}
+					argEntryIter -> next = NULL;
 				}
-				argEntryIter -> next = NULL;
+				
+				symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
 			}
 			
-			printf("hopeful?\n");
-			
-			symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
 		} else {
 			fprintf(stderr, "I don't know what the fuck just happened, but I don't really care: I'm a get the fuck up out of here. Fuck this shit, I'm out.\n");
+			exit(1);
 		}
 		iter = iter -> nextTopDecl;
 	}
@@ -573,12 +607,12 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 		}
 		PolymorphicEntry* assignee = getEntry(contx, holder -> identification);
 		if (assignee == NULL) {
-			t -> id = "has not been declared";
+			t -> id = "using a type which has not been declared";
 			t -> underlyingType = badType;
 			return t;
 		}
 		if (assignee -> isSymbol == 1) {
-			t -> id = "was previoiusly declared as a symbol, cannot be used to declare a type";
+			t -> id = "cannot use a variable as a type";
 			t -> underlyingType = badType;
 			return t;
 		}
@@ -588,6 +622,7 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 		t -> val.arrayType.type = assignee -> entry.t -> val.arrayType.type;
 		t -> val.arrayType.size = assignee -> entry.t -> val.arrayType.size;
 		t -> val.structType.fields = assignee -> entry.t -> val.structType.fields;
+		t -> comparable = assignee -> entry.t -> comparable;
 		return t;
 	}
 	TTEntry *innerType;
@@ -610,6 +645,7 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 		}
 		t -> val.arrayType.type = innerType;
 		t -> val.arrayType.size = holder -> arrayDims;
+		t -> comparable = innerType -> comparable;
 	} else if (t -> underlyingType == sliceType) {
 		
 		if (head == NULL && identifier == NULL){
@@ -625,9 +661,12 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 			return t;
 		}
 		t -> val.sliceType.type = innerType;
+		t -> comparable = 0;
 	} else if (t -> underlyingType == structType){
+		t -> comparable = 1;
 		VarDeclNode *sMembs = holder -> structMembers;
 		Context *tentativeContext = newContext();
+		STEntry *memberEntry;
 		int returnCode;
 		while (sMembs != NULL) {
 			if (head == NULL && identifier == NULL){
@@ -642,8 +681,12 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 				t -> underlyingType = badType;
 				return t;
 			}
-			innerType -> id = sMembs -> identifier;
-			returnCode = addTypeEntry(tentativeContext, innerType);
+			t -> comparable *= innerType -> comparable;
+			
+			memberEntry = malloc(sizeof(STEntry));
+			memberEntry -> id = sMembs -> identifier;
+			memberEntry -> type = innerType;
+			returnCode = addSymbolEntry(tentativeContext, memberEntry);
 			if (returnCode != 0) {
 				t -> id = "duplicate struct members";
 				t -> underlyingType = badType;
@@ -676,6 +719,8 @@ void symbolPrintTypeHolder(TypeHolderNode *node, int indentLevel);
 void symbolPrintStructMembers(VarDeclNode *type, int indentLevel);
 void symbolPrintVarDecl(VarDeclNode *var, int indentLevel);
 void symbolPrintShortVarDecl(VarDeclNode *var, int indentLevel);
+void symbolPrintFuncDecl(FuncDeclNode *func);
+void symbolPrintFuncArgs(VarDeclNode *args);
  
 void printStatementSymbol(Stmt* stmt,int indentLevel){
 
@@ -744,7 +789,7 @@ void printStatementSymbol(Stmt* stmt,int indentLevel){
 										printStatementSymbol(stmt->val.forLoop.init,indentLevel+1);
 										printStatementSymbol(stmt->val.forLoop.inc,indentLevel+1);
 
-										printStatementSymbol(stmt->val.forLoop.block,indentLevel+2);
+										printStatementSymbol(stmt->val.forLoop.block,indentLevel+1);
 
 										printf("\n");
 										indent(indentLevel);
@@ -772,6 +817,38 @@ void printStatementSymbol(Stmt* stmt,int indentLevel){
 
 		printStatementSymbol(stmt->next,indentLevel);
 }
+
+void printSymbolProgram(RootNode* rootNode) {
+	printf("{\n");
+	printf("\t\"int\" type defined as: int\n");
+	printf("\t\"string\" type defined as: string\n");
+	printf("\t\"float64\" type defined as: float64\n");
+	printf("\t\"bool\" type defined as: bool\n");
+	printf("\t\"rune\" type defined as: rune\n");
+	
+	printf("\t\"true\" constant of type: bool\n");
+	printf("\t\"false\" constant of type: bool\n");
+	printf("\t{\n");
+	
+	TopDeclarationNode *iter = rootNode -> startDecls;
+	while (iter != NULL) {
+		if (iter -> declType == typeDeclType) {
+			symbolPrintTypeDecl(iter -> actualRealDeclaration.typeDecl, 2);
+		} else if (iter -> declType == variDeclType) {
+			symbolPrintVarDecl(iter -> actualRealDeclaration.varDecl, 2);
+		} else if (iter -> declType == funcDeclType) {
+			symbolPrintFuncDecl(iter -> actualRealDeclaration.funcDecl);
+		} else {
+			fprintf(stderr, "something went wrong, go fuck yourself\n");
+			exit(1);
+		}
+		iter = iter -> nextTopDecl;
+	}
+	printf("\t}\n");
+	printf("}\n");
+}
+
+
 
 
 void printClauseListSymbol(switchCaseClause* clauseList,int indentLevel){
@@ -821,7 +898,7 @@ void symbolPrintTypeDecl(TypeDeclNode *type, int indentLevel)
 {
 	if ( type == NULL ) return;
 	indent(indentLevel);
-	printf("type %s, defined by ", type->identifier);
+	printf("\"%s\" type defined as: ", type->identifier);
 	symbolPrintTypeHolder(type->actualType, indentLevel);
 	printf("\n");
 	symbolPrintTypeDecl(type->nextDecl, indentLevel);
@@ -841,7 +918,7 @@ void symbolPrintTypeHolder(TypeHolderNode *node, int indentLevel)
 			symbolPrintTypeHolder(node -> underlyingType, indentLevel);
 			break;
 		case identifierType:
-			printf(" %s", node->identification);
+			printf("%s", node->identification);
 			break;
 		case structType:
 			printf(" struct {\n");
@@ -873,7 +950,7 @@ void symbolPrintVarDecl(VarDeclNode *var, int indentLevel)
 {
 	if ( var == NULL ) return;
 	indent(indentLevel);
-	printf("variable %s of type", var->identifier);
+	printf("\"%s\" variable of type ", var->identifier);
 	symbolPrintTypeHolder(var->typeThing, indentLevel);
 	printf("\n");
 	symbolPrintVarDecl(var->nextDecl, indentLevel);
@@ -884,12 +961,47 @@ void symbolPrintShortVarDecl(VarDeclNode *var, int indentLevel)
 	if ( var == NULL ) return;
 	if (var -> iDoDeclare == 1) {
 		indent(indentLevel);
-		printf("variable %s of type <infer>", var->identifier);
+		printf("\"%s\" variable of type <infer>", var->identifier);
 		printf("\n");
 	}
 	symbolPrintShortVarDecl(var->nextDecl, indentLevel);
 }
 
+void symbolPrintFuncDecl(FuncDeclNode *func)
+{
+	if ( func == NULL ) return;
+	if (strcmp(func -> identifier, "init") == 0) {
+		printf("\t\t\"init\" function: [unmapped]");
+	} else {
+		printf("\t\t\"%s\" function: (", func->identifier);
+		symbolPrintFuncArgs(func -> argsDecls);
+		printf(") -> ");
+		if ( func->returnType != NULL )
+		{
+			symbolPrintTypeHolder(func->returnType, 2);
+		} else {
+			printf("void");
+		}
+	}
+	printf("\n\t\t{\n");
+	symbolPrintVarDecl(func -> argsDecls, 3);
+	printStatementSymbol(func->blockStart -> val.block.stmt, 3);
+	printf("\t\t}\n");
+}
+
+void symbolPrintFuncArgs(VarDeclNode *args)
+{
+	if ( args == NULL ) return;
+	if ( args->typeThing != NULL )
+	{
+		symbolPrintTypeHolder(args->typeThing, 2);
+	}
+	if ( args->nextDecl != NULL )
+	{
+		printf(", ");
+		symbolPrintFuncArgs(args->nextDecl);
+	}
+}
 
 
 

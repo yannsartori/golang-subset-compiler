@@ -5,39 +5,27 @@
 #include "globalEnum.h"
 #include "symbol_table.h"
 
-
-//so it compiles
-#define INT_HOLDER NULL
-#define FLOAT_HOLDER NULL;
-#define RUNE_HOLDER NULL;
-#define STRING_HOLDER NULL;
-#define BOOL_HOLDER NULL;
-
-
-
+extern TTEntry *builtInTypes;
 
 TTEntry *getExpressionType(Exp *e)
 {
 	if ( e->contextEntry->isSymbol ) return e->contextEntry->entry.s->type;
 	return e->contextEntry->entry.t;
 }
+TTEntry *getBuiltInType(char *id)
+{
+	TTEntry *cur = builtInTypes;
+	while ( cur != NULL )
+	{
+		if ( strcmp(cur->id, id) == 0 ) return cur;
+	}
+	return NULL; //unreachable if id typed correctly...
+}
 int isNonCompositeType(TTEntry *t) { return t != NULL && t->underlyingType == identifierType;}
 int isNumericType(TTEntry *t) { return t != NULL && isNonCompositeType(t) && (t->val.nonCompositeType.type == baseInt || t->val.nonCompositeType.type == baseFloat64 || t->val.nonCompositeType.type == baseRune); }
 int isIntegerType(TTEntry *t) { return t != NULL && isNonCompositeType(t) && (t->val.nonCompositeType.type == baseInt || t->val.nonCompositeType.type == baseRune); }
 int isBool(TTEntry *t) { return t != NULL && isNonCompositeType(t) && t->val.nonCompositeType.type == baseBool; }
 int isOrdered(TTEntry *t) { return isNumericType(t) || (isNonCompositeType(t) && t->val.nonCompositeType.type == baseString); }
-int isComparable(TTEntry *t) { 
-	if ( t->underlyingType == funcType || t->underlyingType == sliceType ) return 0;
-	if ( t->underlyingType == arrayType ) return isComparable(t->val.arrayType.type);
-	if ( t->underlyingType == structType )
-	{
-		for ( EntryTupleList *curField = t->val.structType.fields; curField != NULL; curField = curField->next ) 
-		{
-			if ( !isComparable(curField->type) ) return 0; 
-		}
-	}
-	return 1;
-}
 int typeEquality(TTEntry *t1, TTEntry *t2) //only used for comparison operations
 {
 	if ( t1->underlyingType == arrayType && t2->underlyingType == arrayType )
@@ -116,11 +104,11 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 	Exp *rightExp;
 	switch (e->kind)
 	{ //TODO make sure that bool lits are properly dealt with...
-		case expKindIntLit: return INT_HOLDER; //TODO this is the base base type
-		case expKindFloatLit: return FLOAT_HOLDER;
-		case expKindRuneLit: return RUNE_HOLDER;
+		case expKindIntLit: return getBuiltInType("int"); //TODO this is the base base type
+		case expKindFloatLit: return getBuiltInType("float64");
+		case expKindRuneLit: return getBuiltInType("rune");
 		case expKindRawStringLit:
-		case expKindInterpretedStringLit: return STRING_HOLDER
+		case expKindInterpretedStringLit: return getBuiltInType("string");
 		case expKindIdentifier:
 			if ( !e->contextEntry->isSymbol ) notExpressionError(getExpressionType(e), e->lineno);
 			return getExpressionType(e);
@@ -163,27 +151,27 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 						boolTypeError(typeLeft, "&&", e->lineno);
 					case expKindEQ:
 						if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes(typeLeft, typeRight, "==", e->lineno);
-						else if ( isComparable(typeLeft) ) return BOOL_HOLDER;
+						else if ( typeLeft->comparable ) return getBuiltInType("bool");
 						comparableTypeError(typeLeft, "==", e->lineno);
 					case expKindNEQ:
 						if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes(typeLeft, typeRight, "!=", e->lineno);
-						else if ( isComparable(typeLeft) ) return BOOL_HOLDER;
+						else if ( typeLeft->comparable ) return getBuiltInType("bool");
 						comparableTypeError(typeLeft, "!=", e->lineno);
 					case expKindLess:
 						if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes(typeLeft, typeRight, "<", e->lineno);
-						else if ( isOrdered(typeLeft) ) return BOOL_HOLDER;
+						else if ( isOrdered(typeLeft) ) return getBuiltInType("bool");
 						orderedTypeError(typeLeft, "<", e->lineno); 
 					case expKindLEQ:
 						if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes(typeLeft, typeRight, "<=", e->lineno);
-						else if ( isOrdered(typeLeft) ) return BOOL_HOLDER;
+						else if ( isOrdered(typeLeft) ) return getBuiltInType("bool");
 						orderedTypeError(typeLeft, "<=", e->lineno); 
 					case expKindGreater:
 						if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes(typeLeft, typeRight, ">", e->lineno);
-						else if ( isOrdered(typeLeft) ) return BOOL_HOLDER;
+						else if ( isOrdered(typeLeft) ) return getBuiltInType("bool");
 						orderedTypeError(typeLeft, ">", e->lineno); 
 					case expKindGEQ:
 						if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes(typeLeft, typeRight, ">=", e->lineno);
-						else if ( isOrdered(typeLeft) ) return BOOL_HOLDER;
+						else if ( isOrdered(typeLeft) ) return getBuiltInType("bool");
 						orderedTypeError(typeLeft, ">=", e->lineno); 
 					case expKindAddition:
 						if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes(typeLeft, typeRight, "+", e->lineno);
@@ -266,7 +254,7 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 					}
 					/**FUNCCALL**/
 					ExpList * curArgPassed = e->val.funcCall.arguments;
-					for ( TTEntryList *curArgType = baseType->val.functionType.args; curArgType; curArgType = curArgType->next )
+					for ( STEntry *curArgSymbolEntry = baseType->val.functionType.args; curArgSymbolEntry; curArgSymbolEntry = curArgSymbolEntry->next )
 					{
 						if ( curArgPassed == NULL )
 						{
@@ -274,9 +262,9 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 							exit(1);
 						}
 						TTEntry *curArgPassedType = typeCheckExpression(curArgPassed->cur);
-						if ( curArgPassedType != curArgType->cur )
+						if ( curArgPassedType != curArgSymbolEntry->type )
 						{
-							fprintf(stderr, "Error: (%d) Expected parameter of type %s, received %s\n", e->lineno, typeToString(curArgType->cur), typeToString(curArgPassedType));
+							fprintf(stderr, "Error: (%d) Expected parameter of type %s, received %s\n", e->lineno, typeToString(curArgSymbolEntry->type), typeToString(curArgPassedType));
 							exit(1);
 						}
 						curArgPassed = curArgPassed->next;
@@ -314,12 +302,14 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 						fprintf(stderr, "Error (%d) Field selection requires a base expression with underlying type struct, received %s\n", e->lineno, typeToString(baseType));
 						exit(1);
 					}
-					for ( EntryTupleList *curField = baseType->val.structType.fields; curField != NULL; curField = curField->next ) 
+					//cant use getEntry because that searches up the stack-- We only want this context.
+					PolymorphicEntry *structField = getEntry(baseType->val.structType.fields, e->val.access.accessor->val.id);
+					if ( structField == NULL || !structField->isSymbol )
 					{
-						if ( strcmp(e->val.access.accessor->val.id, curField->id) == 0 ) return curField->type; //safe field access-- ensured to be id in past passes
+						fprintf(stderr, "Error: (%d) Struct %s has no field called %s", e->lineno, typeToString(baseType), e->val.access.accessor->val.id);
+						exit(1);
 					}
-					fprintf(stderr, "Error: (%d) Struct %s has no field called %s", e->lineno, typeToString(baseType), e->val.access.accessor->val.id);
-					exit(1);
+					return structField->entry.t;
 				}
 				else if ( e->kind == expKindAppend )
 				{
@@ -345,7 +335,7 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 						fprintf(stderr, "Error: (%d) Length requires an expression with underlying type slice or array or string, received %s\n", e->lineno, typeToString(bodyType));
 						exit(1);
 					}
-					return INT_HOLDER; 
+					return getBuiltInType("int"); 
 				}
 				else if (e->kind == expKindCapacity )
 				{
@@ -355,7 +345,7 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 						fprintf(stderr, "Error: (%d) Capacity requires an expression with underlying type slice or array, received %s\n", e->lineno, typeToString(bodyType));
 						exit(1);
 					}
-					return INT_HOLDER; 
+					return getBuiltInType("int"); 
 				}
 			}
 

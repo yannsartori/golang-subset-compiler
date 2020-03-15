@@ -149,7 +149,6 @@ struct RootNode  {
 struct TopDeclarationNode {
 	TopDeclarationNode* nextTopDecl;
 	TopDeclarationType declType;
-	int lineno;
 	union {
 		VarDeclNode* varDecl;
 		TypeDeclNode* typeDecl;
@@ -163,12 +162,14 @@ struct VarDeclNode {
 	VarDeclNode* nextDecl;
 	TypeHolderNode* typeThing;
 	int iDoDeclare;		/*Used to track whether or not a short var declaration (i.e.  one that uses the ":=" operator) actually declares or just assigns. The symbol table printer  reads this and decides whether or not to print the symbol */
+	int lineno;
 };
 
 struct TypeDeclNode {
 	char* identifier;
 	TypeDeclNode* nextDecl;
 	TypeHolderNode* actualType;
+	int lineno;
 };
 
 struct FuncDeclNode {
@@ -176,6 +177,7 @@ struct FuncDeclNode {
 	VarDeclNode* argsDecls;
 	TypeHolderNode* returnType;
 	Stmt* blockStart;
+	int lineno;
 };
 
 struct TypeHolderNode {
@@ -204,7 +206,7 @@ void appendTypeDecls(TypeDeclNode* baseDecl, TypeDeclNode* leafDecl);
 void appendVarDecls(VarDeclNode* baseDecl, VarDeclNode* leafDecl);
 VarDeclNode* makeSingleVarDeclNoExps(IdChain* identifiers, TypeHolderNode* givenType);
 VarDeclNode* makeSingleVarDeclWithExps(IdChain* identifiers, TypeHolderNode* givenType, ExpList* values, int lineno);
-FuncDeclNode* makeFuncDecl(char* funcName, VarDeclNode* argsDecls, TypeHolderNode* returnType, Stmt* blockStart);
+FuncDeclNode* makeFuncDecl(char* funcName, VarDeclNode* argsDecls, TypeHolderNode* returnType, int lineno);
 TopDeclarationNode* makeTopFuncDecl(FuncDeclNode* funcDecl, TopDeclarationNode* nextTopDecl);
 Stmt* makeVarDeclStatement(VarDeclNode* declaration, int isShort, int lineNomber);
 Stmt* makeTypeDeclStatement(TypeDeclNode* declaration, int lineNomber);

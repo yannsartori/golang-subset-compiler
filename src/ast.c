@@ -735,6 +735,7 @@ VarDeclNode* makeSingleVarDeclWithExps(IdChain* identifiers, TypeHolderNode* giv
 	t -> typeThing = givenType;
 	t -> identifier = identifiers -> identifier;
 	t -> value = valIter -> cur;
+	t -> lineno = lineno;
 	VarDeclNode* temp = t;
 	IdChain* iter = identifiers;
 	while (iter -> next != NULL) {
@@ -749,6 +750,7 @@ VarDeclNode* makeSingleVarDeclWithExps(IdChain* identifiers, TypeHolderNode* giv
 		}
 		temp -> value = valIter -> cur;
 		temp -> typeThing = givenType;
+		temp -> lineno = lineno;
 	}
 	if (valIter -> next != NULL) {
 		fprintf(stderr, "Error: wrong number of expressions for assignment on line %d.\n", lineno);
@@ -758,12 +760,12 @@ VarDeclNode* makeSingleVarDeclWithExps(IdChain* identifiers, TypeHolderNode* giv
 	return t;
 }
 
-FuncDeclNode* makeFuncDecl(char* funcName, VarDeclNode* argsDecls, TypeHolderNode* returnType, Stmt* blockStart) {
+FuncDeclNode* makeFuncDecl(char* funcName, VarDeclNode* argsDecls, TypeHolderNode* returnType, int lineno) {
 	FuncDeclNode* f = malloc(sizeof(FuncDeclNode));
 	f -> identifier = funcName;
 	f -> argsDecls = argsDecls;
 	f -> returnType = returnType;
-	f -> blockStart = blockStart;
+	f -> lineno = lineno;
 	return f;
 }
 
