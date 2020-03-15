@@ -962,15 +962,18 @@ void symbolPrintShortVarDecl(VarDeclNode *var, int indentLevel)
 void symbolPrintFuncDecl(FuncDeclNode *func)
 {
 	if ( func == NULL ) return;
-	indent(2);
-	printf("func \"%s\" function: (", func->identifier);
-	symbolPrintFuncArgs(func -> argsDecls);
-	printf(") -> ");
-	if ( func->returnType != NULL )
-	{
-		symbolPrintTypeHolder(func->returnType, 2);
+	if (strcmp(func -> identifier, "init") == 0) {
+		printf("\t\t\"init\" function: [unmapped]");
 	} else {
-		printf("void");
+		printf("\t\t\"%s\" function: (", func->identifier);
+		symbolPrintFuncArgs(func -> argsDecls);
+		printf(") -> ");
+		if ( func->returnType != NULL )
+		{
+			symbolPrintTypeHolder(func->returnType, 2);
+		} else {
+			printf("void");
+		}
 	}
 	printf("\n\t\t{\n");
 	symbolPrintVarDecl(func -> argsDecls, 3);
