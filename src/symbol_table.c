@@ -308,7 +308,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 				
 				if (s -> type -> underlyingType == badType) {
 					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", stmt -> lineno, s -> id);
-				exit(1);
+					exit(1);
 				}
 				
 				if (addSymbolEntry(context, s) != 0) {
@@ -341,7 +341,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 				} else {
 					varDeclIterS -> iDoDeclare = 0;
 				}
-				symbolCheckExpression(varDeclIter -> value, context);
+				symbolCheckExpression(varDeclIterS -> value, context);
 				varDeclIterS = varDeclIterS -> nextDecl;
 			}
 			if (shortDeclMustDecl == 0) {
@@ -428,6 +428,7 @@ void symbolCheckProgram(RootNode* root) {
 			while (typeDeclIter != NULL) {
 				if (strcmp(typeDeclIter -> identifier, "main") == 0 || strcmp(typeDeclIter -> identifier, "init") == 0) {
 					fprintf(stderr, "Error: (line %d) can only declare %s as a funciton at toplevel\n", typeDeclIter -> lineno, typeDeclIter -> identifier);
+					exit(1);
 				}
 				t = makeNamedTTEntry(masterContx, typeDeclIter);
 				if (t -> underlyingType == badType) {
@@ -445,6 +446,7 @@ void symbolCheckProgram(RootNode* root) {
 			VarDeclNode* varDeclIter = iter -> actualRealDeclaration.varDecl;
 			if (strcmp(varDeclIter -> identifier, "main") == 0 || strcmp(varDeclIter -> identifier, "init") == 0) {
 				fprintf(stderr, "Error: (line %d) can only declare %s as a funciton at toplevel\n", varDeclIter -> lineno, varDeclIter -> identifier);
+				exit(1);
 			}
 			STEntry *s;
 			while (varDeclIter != NULL) {
@@ -457,7 +459,7 @@ void symbolCheckProgram(RootNode* root) {
 				s -> type = makeAnonymousTTEntry(masterContx, varDeclIter -> typeThing);
 				if (s -> type -> underlyingType == badType) {
 					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", varDeclIter -> lineno, s -> id);
-				exit(1);
+					exit(1);
 				}
 				
 				
@@ -548,6 +550,7 @@ void symbolCheckProgram(RootNode* root) {
 			
 		} else {
 			fprintf(stderr, "I don't know what the fuck just happened, but I don't really care: I'm a get the fuck up out of here. Fuck this shit, I'm out.\n");
+			exit(1);
 		}
 		iter = iter -> nextTopDecl;
 	}
