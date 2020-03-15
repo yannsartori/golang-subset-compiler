@@ -191,9 +191,12 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 		
 		case StmtKindSwitch :
 							newContext = scopedContext(context);
+							
 							symbolCheckStatement(stmt->val.switchStmt.statement,newContext);
-							symbolCheckExpression(stmt->val.switchStmt.expression,newContext);
-
+							
+							if (stmt->val.switchStmt.expression != NULL)
+								symbolCheckExpression(stmt->val.switchStmt.expression,newContext);
+							
 
 							//I'm in sense encasing the clasue list in a block from the perspective of scope
 							symbolCheckSwitchCaseClauseList(stmt->val.switchStmt.clauseList,scopedContext(newContext));
@@ -252,7 +255,8 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 		case StmtKindInfLoop : symbolCheckStatement(stmt->val.infLoop.block,context);
 								break;
 		case StmtKindWhileLoop :
-			symbolCheckExpression(stmt->val.whileLoop.conditon,context);
+			if (stmt->val.whileLoop.conditon != NULL)
+				symbolCheckExpression(stmt->val.whileLoop.conditon,context);
 			symbolCheckStatement(stmt->val.whileLoop.block,context);
 			break;
 		case StmtKindThreePartLoop :
@@ -275,7 +279,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 
 
 
-
+	/*
 		//For Denali to implement (Probably want to modify declaration nodes to include symbol references)
 		case StmtKindTypeDeclaration :
 			if(0) {}
@@ -350,6 +354,8 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 			}
 			
 			break;
+
+			*/
 	}
 
 	symbolCheckStatement(stmt->next,context);
@@ -703,7 +709,7 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 
 static void indent(int indentLevel){
 	for(int i = 0; i < indentLevel; i++){
-		printf("	");
+		printf("    ");
 	}
 }
 
@@ -733,7 +739,7 @@ void printStatementSymbol(Stmt* stmt,int indentLevel){
 								printStatementSymbol(stmt->val.switchStmt.statement,indentLevel+1);
 								printClauseListSymbol(stmt->val.switchStmt.clauseList,indentLevel+1);
 
-								printf("\n");
+								
 								indent(indentLevel);
 								printf("}\n");
 								break;
@@ -741,7 +747,7 @@ void printStatementSymbol(Stmt* stmt,int indentLevel){
 			case StmtKindBlock : indent(indentLevel);
 								printf("{\n");
 								printStatementSymbol(stmt->val.block.stmt,indentLevel+1);
-								printf("\n");
+								
 								indent(indentLevel);
 								printf("}\n");
 								break;
@@ -791,7 +797,7 @@ void printStatementSymbol(Stmt* stmt,int indentLevel){
 										break;
 
 
-				
+			/*	
 			//For Denali to implement (I also designed the rest with the assumption that the following are terminated with newline characters)
 			case StmtKindTypeDeclaration:
 				symbolPrintTypeDecl(stmt -> val.typeDeclaration, indentLevel);
@@ -802,6 +808,8 @@ void printStatementSymbol(Stmt* stmt,int indentLevel){
 			case StmtKindShortDeclaration: 
 				symbolPrintShortVarDecl(stmt -> val.varDeclaration, indentLevel);
 				break;
+
+			*/
 
 
 
@@ -851,7 +859,7 @@ void printClauseListSymbol(switchCaseClause* clauseList,int indentLevel){
 	indent(indentLevel);
 	printf("{\n");
 	printStatementSymbol(clauseList->statementList,indentLevel+1);
-	printf("\n");
+	//printf("\n");
 	indent(indentLevel);
 	printf("}\n");
 
@@ -995,3 +1003,14 @@ void symbolPrintFuncArgs(VarDeclNode *args)
 	}
 }
 
+
+
+
+void symbolTest(Stmt* stmt){
+	symbolCheckStatement(stmt,scopedContext(NULL));
+
+	puts("Finished checking");
+
+	printStatementSymbol(stmt,0);
+	puts("We didn't die!");
+}
