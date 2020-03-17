@@ -47,6 +47,20 @@ void blankTargetError() {
 	exit(1);
 }
 
+void blankIncCheck(Exp* exp) {
+	if (isBlank(exp)){
+		fprintf(stderr, "Error: (line %d) blank identifier may not be incremented \n", yylineno);
+		exit(1);
+	}
+}
+
+void blankDecCheck(Exp* exp) {
+	if (isBlank(exp)){
+		fprintf(stderr, "Error: (line %d) blank identifier may not be decremented \n", yylineno);
+		exit(1);
+	}
+}
+
 void compoundOperatorError(Exp* left,Exp* right){
 	if (isBlank(left)){
 		blankTargetError();
@@ -68,10 +82,7 @@ void blankSwitchCaseClauseError(){
 
 Stmt* compoundOperator(Exp* left,Exp* right,ExpressionKind kind){
 	compoundOperatorError(left,right);
-	Stmt* stmt = makeAssignmentStmt(createArgumentList(left) ,createArgumentList(makeExpBinary(left,right,kind) ) );
-	stmt->val.assignment.isCompoundAssignment = 1;
-	return stmt;
-
+	return makeOpAssignmentStmt(left,right,kind);
 	
 }
 
@@ -390,8 +401,8 @@ simpleStatement:
 			| expression  {if (isFuncCall($1)) {$$ = makeExpressionStmt($1); } else {expressionStmtError();}     } /* 2.8.3 sketchy, (needs to be a function call)*/ 
 
 
-			| tIDENTIFIER tIncrement {$$ = compoundOperator(makeExpIdentifier($1),makeExpIntLit(1),expKindAddition);} // 2.8.7 , Blank identifier, not _
-			| tIDENTIFIER tDecrement {$$ = compoundOperator(makeExpIdentifier($1),makeExpIntLit(1),expKindSubtraction);}// 2.8.7 , Blank identifier, not _ 
+			| tIDENTIFIER tIncrement {Exp* exp = makeExpIdentifier($1);blankIncCheck(exp);$$ = makeIncStmt(exp);} // 2.8.7 , Blank identifier, not _
+			| tIDENTIFIER tDecrement {Exp* exp = makeExpIdentifier($1);blankDecCheck(exp);$$ = makeDecStmt(exp);}// 2.8.7 , Blank identifier, not _ 
 
 
 
