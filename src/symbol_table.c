@@ -15,6 +15,7 @@ TTEntry *makeNamedTTEntry(Context* contx, TypeDeclNode* declaration);
 TTEntry *makeSubTTEntry(Context* contx, TypeHolderNode *holder, TTEntry* head, int inSlice);
 TTEntry *makeAnonymousTTEntry(Context* contx, TypeHolderNode *holder);
 TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identifier, TTEntry* head, int inSlice);
+void symbolCheckVarDecl(VarDeclNode* declNode, Context* contx, int placement);
 
 
 
@@ -279,7 +280,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 
 
 
-	/*
+	
 		//For Denali to implement (Probably want to modify declaration nodes to include symbol references)
 		case StmtKindTypeDeclaration :
 			if(0) {}
@@ -303,64 +304,13 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 			
 			break;
 		case StmtKindVarDeclaration :
-			if(0) {}
-			VarDeclNode* varDeclIter = stmt -> val.varDeclaration;
-			STEntry *s;
-			while (varDeclIter != NULL) {
-				if (varDeclIter -> value != NULL) {
-					symbolCheckExpression(varDeclIter -> value, context);
-				}
-				s = malloc(sizeof(STEntry));
-				s -> id = varDeclIter -> identifier;
-				s -> type = makeAnonymousTTEntry(context, varDeclIter -> typeThing);
-				
-				if (s -> type -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", stmt -> lineno, s -> id);
-					exit(1);
-				}
-				if (strcmp(s -> id, "_") != 0){
-					if (addSymbolEntry(context, s) != 0) {
-						fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", stmt -> lineno, s -> id);
-						exit(1);
-					}
-				}
-				
-				varDeclIter = varDeclIter -> nextDecl;
-			}
+			symbolCheckVarDecl(stmt -> val.varDeclaration, context, 1);
 			break;
 		case StmtKindShortDeclaration : 
-			
-			if(0) {}
-			int shortDeclMustDecl = 0;
-			VarDeclNode* varDeclIterS = stmt -> val.varDeclaration;
-			STEntry *sS;
-			while (varDeclIterS != NULL) {
-				symbolCheckExpression(varDeclIterS -> value, context);
-				sS = malloc(sizeof(STEntry));
-				sS -> id = varDeclIterS -> identifier;
-				sS -> type = makeAnonymousTTEntry(context, varDeclIterS -> typeThing);
-				if (sS -> type -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", stmt -> lineno, sS -> id);
-					exit(1);
-				}
-				if(strcmp(sS -> id, "_") != 0) {
-					if (addSymbolEntry(context, sS) == 0) {
-						shortDeclMustDecl ++;
-						varDeclIterS -> iDoDeclare = 1;
-					} else {
-						varDeclIterS -> iDoDeclare = 0;
-					}
-				}
-				varDeclIterS = varDeclIterS -> nextDecl;
-			}
-			if (shortDeclMustDecl == 0) {
-				fprintf(stderr, "Error: (line %d) short declarations must declare at least one new variable\n", stmt -> lineno);
-				exit(1);
-			}
-			
+			symbolCheckVarDecl(stmt -> val.varDeclaration, context, 2);
 			break;
 
-			*/
+			
 	}
 
 	symbolCheckStatement(stmt->next,context);
@@ -455,35 +405,7 @@ void symbolCheckProgram(RootNode* root) {
 				typeDeclIter = typeDeclIter -> nextDecl;
 			}
 		} else if (iter -> declType == variDeclType) {
-			VarDeclNode* varDeclIter = iter -> actualRealDeclaration.varDecl;
-			if (strcmp(varDeclIter -> identifier, "main") == 0 || strcmp(varDeclIter -> identifier, "init") == 0) {
-				fprintf(stderr, "Error: (line %d) can only declare %s as a funciton at toplevel\n", varDeclIter -> lineno, varDeclIter -> identifier);
-				exit(1);
-			}
-			STEntry *s;
-			while (varDeclIter != NULL) {
-				
-				if (varDeclIter -> value != NULL) {
-					symbolCheckExpression(varDeclIter -> value, masterContx);
-				}
-				
-				s = malloc(sizeof(STEntry));
-				s -> id = varDeclIter -> identifier;
-				if (strcmp(s -> id, "_") != 0){
-					if (addSymbolEntry(masterContx, s) != 0) {
-						fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", varDeclIter -> lineno, s -> id);
-						exit(1);
-					}
-				}
-				s -> type = makeAnonymousTTEntry(masterContx, varDeclIter -> typeThing);
-				if (s -> type -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", varDeclIter -> lineno, s -> id);
-					exit(1);
-				}
-				
-				
-				varDeclIter = varDeclIter -> nextDecl;
-			}
+			symbolCheckVarDecl(iter -> actualRealDeclaration.varDecl, masterContx, 0);
 		} else if (iter -> declType == funcDeclType){
 			
 			STEntry *s = malloc(sizeof(STEntry));
@@ -717,6 +639,62 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 		return NULL;
 	}
 	return t;
+}
+
+
+void symbolCheckVarDecl(VarDeclNode* declNode, Context* contx, int placement) { /* 0 for toplevel (main, init), 1 for inside function, 2 for shortDecl */
+	if (declNode == NULL) {return;}
+	int shortDeclMustDecl = 0;
+	VarDeclNode* varDeclIter = declNode;
+	STEntry *s;
+	while (varDeclIter != NULL) {
+		if (varDeclIter -> value != NULL) {
+			symbolCheckExpression(varDeclIter -> value, contx);
+		}
+		varDeclIter = varDeclIter -> nextDecl;
+	}
+	varDeclIter = declNode;
+	while (varDeclIter != NULL) {
+		if (placement == 0) {
+			if (strcmp(varDeclIter -> identifier, "main") == 0 || strcmp(varDeclIter -> identifier, "init") == 0) {
+				fprintf(stderr, "Error: (line %d) may only declare %s as a funciton at toplevel\n", varDeclIter -> lineno, varDeclIter -> identifier);
+				exit(1);
+			}
+		} 
+		
+		
+		s = malloc(sizeof(STEntry));
+		s -> id = varDeclIter -> identifier;
+		s -> type = makeAnonymousTTEntry(contx, varDeclIter -> typeThing);
+		
+		if (s -> type -> underlyingType == badType) {
+			fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", varDeclIter -> lineno, s -> id);
+			exit(1);
+		}
+		if (strcmp(s -> id, "_") != 0){
+			if (addSymbolEntry(contx, s) != 0) {
+				if (placement == 2) {
+					varDeclIter -> iDoDeclare = 0;
+				} else {
+					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", varDeclIter -> lineno, s -> id);
+					exit(1);
+				}
+				
+			} else {
+				shortDeclMustDecl ++;
+				varDeclIter -> iDoDeclare = 1;
+			}
+		}
+		
+		varDeclIter = varDeclIter -> nextDecl;
+	}
+	
+	if (shortDeclMustDecl == 0 && placement == 2) {
+		fprintf(stderr, "Error: (line %d) short declarations must declare at least one new variable\n", declNode -> lineno);
+		exit(1);
+	}
+	symbolCheckVarDecl(declNode -> multiDecl, contx, placement);
+	
 }
 
 
@@ -971,6 +949,7 @@ void symbolPrintVarDecl(VarDeclNode *var, int indentLevel)
 	symbolPrintTypeHolder(var->typeThing, indentLevel);
 	printf("\n");
 	symbolPrintVarDecl(var->nextDecl, indentLevel);
+	symbolPrintVarDecl(var -> multiDecl, indentLevel);
 }
 
 void symbolPrintShortVarDecl(VarDeclNode *var, int indentLevel)

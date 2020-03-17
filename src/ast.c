@@ -715,6 +715,7 @@ VarDeclNode* makeSingleVarDeclNoExps(IdChain* identifiers, TypeHolderNode* given
 	v -> typeThing = givenType;
 	v -> identifier = identifiers -> identifier;
 	v -> value = NULL;
+	v -> multiDecl = NULL;
 	VarDeclNode* temp = v;
 	IdChain* iter = identifiers;
 	while (iter -> next != NULL) {
@@ -724,6 +725,7 @@ VarDeclNode* makeSingleVarDeclNoExps(IdChain* identifiers, TypeHolderNode* given
 		temp -> identifier = iter -> identifier;
 		temp -> value = NULL;
 		temp -> typeThing = givenType;
+		temp -> multiDecl = NULL;
 	}
 	temp -> nextDecl = NULL;
 	return v;
@@ -736,6 +738,7 @@ VarDeclNode* makeSingleVarDeclWithExps(IdChain* identifiers, TypeHolderNode* giv
 	t -> identifier = identifiers -> identifier;
 	t -> value = valIter -> cur;
 	t -> lineno = lineno;
+	t -> multiDecl = NULL;
 	VarDeclNode* temp = t;
 	IdChain* iter = identifiers;
 	while (iter -> next != NULL) {
@@ -751,6 +754,7 @@ VarDeclNode* makeSingleVarDeclWithExps(IdChain* identifiers, TypeHolderNode* giv
 		temp -> value = valIter -> cur;
 		temp -> typeThing = givenType;
 		temp -> lineno = lineno;
+		temp -> multiDecl = NULL;
 	}
 	if (valIter -> next != NULL) {
 		fprintf(stderr, "Error: wrong number of expressions for assignment on line %d.\n", lineno);
