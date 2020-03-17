@@ -24,6 +24,9 @@ Stmt* makeWhileLoopStmt(Exp* condition, Stmt* block);
 Stmt* makeInfLoopStmt(Stmt* block);
 Stmt* makeThreePartLoopStmt(Stmt* init, Exp* condition, Stmt* inc, Stmt* block);
 Stmt* makeSwitchStmt(Stmt* statement, Exp* expression, switchCaseClause* clauseList);
+Stmt* makeOpAssignmentStmt(Exp* lhs, Exp* rhs,ExpressionKind kind);
+Stmt* makeIncStmt(Exp* exp);
+Stmt* makeDecStmt(Exp* exp);
 switchCaseClause* makeSwitchCaseClause(ExpList* expressionList, Stmt* statementList);
 ExpList* reverseList(ExpList* reversed);
 Exp *makeExpIdentifier(char *identifier); 
@@ -61,7 +64,7 @@ struct Stmt{
     union {
         struct {Stmt* stmt;} block;
         struct {Exp* expr;} expression;
-        struct {ExpList* lhs; ExpList* rhs;int isCompoundAssignment;} assignment;
+        struct {ExpList* lhs; ExpList* rhs} assignment;
 
 
         struct {ExpList* list;} print;
@@ -80,6 +83,12 @@ struct Stmt{
  
 
         struct {Stmt* statement; Exp* expression; switchCaseClause* clauseList;} switchStmt; //Different variants are encodes using NULL
+
+		struct {Exp* lhs; Exp* rhs; ExpressionKind kind;} opAssignment;
+
+		struct {Exp* exp;} incStmt;
+
+		struct {Exp* exp;} decStmt;
 
         //Break and continue are encoded in kind
 

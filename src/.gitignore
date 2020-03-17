@@ -2,3 +2,7 @@ errors.txt
 .gitignore
 *.o
 test.go
+*.tab.c
+*.tab.h
+lex.yy.c
+golitec

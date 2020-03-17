@@ -46,6 +46,10 @@ typedef enum {
     StmtKindContinue,
 	StmtKindFallthrough,
 
+	StmtKindOpAssignment,
+	StmtKindInc,
+	StmtKindDec,
+
 	StmtKindTypeDeclaration,
 	StmtKindVarDeclaration,
 }StatementKind;

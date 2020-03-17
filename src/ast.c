@@ -11,6 +11,7 @@ int defaultClauseCount(switchCaseClause* clauseList);
 
 Stmt* makeBlockStmt(Stmt* stmt){
     Stmt* ptr = malloc(sizeof(Stmt));
+    
     if (ptr == NULL){
         return NULL;
     }
@@ -19,6 +20,8 @@ Stmt* makeBlockStmt(Stmt* stmt){
     ptr->val.block.stmt = stmt;
 
     ptr->lineno = yylineno;
+
+    
 
     return ptr;
 }
@@ -47,8 +50,6 @@ Stmt* makeAssignmentStmt(ExpList* lhs, ExpList* rhs){
     ptr->kind = StmtKindAssignment;
     ptr->val.assignment.lhs = lhs;
     ptr->val.assignment.rhs = rhs;
-
-    ptr->val.assignment.isCompoundAssignment = 0;
 
     ptr->lineno = yylineno;
 
@@ -839,4 +840,57 @@ int isBinary(Exp *e)
 int isUnary(Exp *e)
 {
 	return e->kind == expKindBitNotUnary || e->kind == expKindLogicNot || e->kind == expKindUnaryPlus || e->kind == expKindUnaryMinus;
+}
+
+
+Stmt* makeOpAssignmentStmt(Exp* lhs, Exp* rhs,ExpressionKind kind){
+    Stmt* ptr = malloc(sizeof(Stmt));
+
+    if (ptr == NULL){
+        return NULL;
+    }
+
+    ptr->kind = StmtKindOpAssignment;
+    ptr->val.opAssignment.lhs = lhs;
+    ptr->val.opAssignment.rhs = rhs;
+    ptr->val.opAssignment.kind = kind;
+
+    ptr->lineno = yylineno;
+
+    return ptr;
+
+}
+
+
+Stmt* makeIncStmt(Exp* exp){
+    Stmt* ptr = malloc(sizeof(Stmt));
+
+    if (ptr == NULL){
+        return NULL;
+    }
+
+    ptr->kind = StmtKindInc;
+    ptr->val.incStmt.exp = exp;
+    ptr->val.decStmt.exp = exp;
+
+    ptr->lineno = yylineno;
+
+    return ptr;
+}
+
+
+Stmt* makeDecStmt(Exp* exp){
+    Stmt* ptr = malloc(sizeof(Stmt));
+
+    if (ptr == NULL){
+        return NULL;
+    }
+
+    ptr->kind = StmtKindDec;
+    ptr->val.incStmt.exp = exp;
+    ptr->val.decStmt.exp = exp;
+
+    ptr->lineno = yylineno;
+
+    return ptr;
 }

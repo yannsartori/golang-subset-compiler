@@ -35,7 +35,9 @@ int main(int argc, char * argv[])
 	{
 		yyparse();
 
+
 		symbolCheckProgram(rootNode);
+		puts("Got here");
 		printSymbolProgram(rootNode);
 		
 

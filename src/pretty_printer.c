@@ -30,6 +30,7 @@ void prettyVarDeclSimpleStatement(VarDeclNode *var);
 void printPartiallyIndentedBlock(Stmt* stmt,int indentLevel);
 
 void printAssignmentStmt(Stmt* stmt);
+void printOpAssignmentStmt(Stmt* stmt);
 
 void indent(int indentLevel){
     for(int i = 0 ; i < indentLevel; i++){
@@ -129,10 +130,20 @@ void printStmt(Stmt* stmt, int indentLevel){
         case StmtKindContinue: indent(indentLevel);
 								printf("continue;\n");
                                 break;
-        case StmtKindFallthrough: 
-								indent(indentLevel);
-                                printf("fallthrough;\n");
-                                break;
+		
+		case StmtKindInc: indent(indentLevel);
+							prettyExp(stmt->val.incStmt.exp);
+							printf("++;\n");
+							break;
+		case StmtKindDec: indent(indentLevel);
+							prettyExp(stmt->val.decStmt.exp);
+							printf("--;\n");
+							break;
+		case StmtKindOpAssignment : indent(indentLevel);
+									printOpAssignmentStmt(stmt);
+									printf("\n");
+
+        
     }
 
     printStmt(stmt->next,indentLevel);
@@ -629,13 +640,21 @@ void printPartiallyIndentedBlock(Stmt* stmt,int indentLevel){
 
 
 void printAssignmentStmt(Stmt* stmt){
-	if (stmt->val.assignment.isCompoundAssignment == 1){
-		
-		Exp* exp = stmt->val.assignment.rhs->cur;
-		prettyExp(exp->val.binary.left);
+		prettyExpList(stmt->val.assignment.lhs);
+        printf(" = ");
+        prettyExpList(stmt->val.assignment.rhs);
+}
 
 
-		switch (exp->kind) {
+
+void printOpAssignmentStmt(Stmt* stmt){
+	if (stmt == NULL){
+		return;
+	}
+
+	prettyExp(stmt->val.opAssignment.lhs);
+
+	switch (stmt->val.opAssignment.kind) {
 				case expKindAddition:
 					printf(" += " );
 					break;
@@ -671,12 +690,7 @@ void printAssignmentStmt(Stmt* stmt){
 					break;
 			}
 
-		prettyExp(exp->val.binary.right);
+	prettyExp(stmt->val.opAssignment.rhs);
 
-	}else{
-		prettyExpList(stmt->val.assignment.lhs);
-        printf(" = ");
-        prettyExpList(stmt->val.assignment.rhs);
-	}
 }
 

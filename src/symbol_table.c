@@ -241,7 +241,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 						}
 						symbolCheckStatement(stmt->val.ifStmt.block,newContext);
 
-						symbolCheckStatement(stmt->val.ifStmt.elseBlock,context);
+						symbolCheckStatement(stmt->val.ifStmt.elseBlock,newContext);
 
 						break;
 		case StmtKindReturn :
@@ -321,7 +321,11 @@ void symbolCheckExpressionList(ExpList* expressionList,Context* context){
 		return;
 	}
 
-	symbolCheckExpression(expressionList->cur,context);
+	//symbolCheckExpression doesn't treat the blank identifier specially so I handle it here
+	if (!isBlank(expressionList->cur))
+		symbolCheckExpression(expressionList->cur,context);
+
+	
 	symbolCheckExpressionList(expressionList->next,context);
 
 	
@@ -704,7 +708,7 @@ void symbolCheckVarDecl(VarDeclNode* declNode, Context* contx, int placement) { 
 
 static void indent(int indentLevel){
 	for(int i = 0; i < indentLevel; i++){
-		printf("    ");
+		printf("\t");
 	}
 }
 
@@ -767,9 +771,16 @@ void printStatementSymbol(Stmt* stmt,int indentLevel){
 
 								printStatementSymbol(stmt->val.ifStmt.block,indentLevel+1);
 
+
+								printStatementSymbol(stmt->val.ifStmt.elseBlock,indentLevel+1);
+
 								printf("\n");
 								indent(indentLevel);
 								printf("}\n");
+
+								
+
+								
 								break;
 
 			case StmtKindElse : printStatementSymbol(stmt->val.elseStmt.block,indentLevel);
@@ -792,7 +803,7 @@ void printStatementSymbol(Stmt* stmt,int indentLevel){
 										break;
 
 
-			/*	
+			
 			//For Denali to implement (I also designed the rest with the assumption that the following are terminated with newline characters)
 			case StmtKindTypeDeclaration:
 				symbolPrintTypeDecl(stmt -> val.typeDeclaration, indentLevel);
@@ -804,7 +815,7 @@ void printStatementSymbol(Stmt* stmt,int indentLevel){
 				symbolPrintShortVarDecl(stmt -> val.varDeclaration, indentLevel);
 				break;
 
-			*/
+			
 
 
 
@@ -1001,9 +1012,9 @@ void symbolPrintFuncArgs(VarDeclNode *args)
 
 
 
-
 void symbolTest(Stmt* stmt){
 	symbolCheckStatement(stmt,scopedContext(NULL));
+
 
 	puts("Finished checking");
 

@@ -401,8 +401,7 @@ void typeCheckStatement(Stmt* stmt){
 			break;
 		case StmtKindContinue:
 			break;
-		case StmtKindFallthrough:
-			break;
+
 
 
 
@@ -611,16 +610,13 @@ int statementIsProperlyTerminated(Stmt* stmt, char* funcName){
 
 
 
-
-int forAll (ExpList* list,int(*predicate)(Exp*) ){
-	if (list == NULL){
+int isPrintable(Exp* exp){
+	if (exp == NULL){
 		return 1;
 	}
 
-	if (predicate(list->cur)){
-		return forAll(list->next,predicate);
-	}else{
-		return 0;
-	}
+	TTEntry* type = typeCheckExpression(exp);
+	return type != NULL && 
+
 }
 
