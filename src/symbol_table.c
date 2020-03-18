@@ -275,6 +275,18 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 		//Trivially symbolcheck
 		case StmtKindBreak :break;
 		case StmtKindContinue :break;
+
+
+		case StmtKindInc : 
+			symbolCheckExpression(stmt->val.incStmt.exp,context);
+			break;
+		case StmtKindDec :
+			symbolCheckExpression(stmt->val.decStmt.exp,context);
+			break;
+		case StmtKindOpAssignment:
+			symbolCheckExpression(stmt->val.opAssignment.lhs,context);
+			symbolCheckExpression(stmt->val.opAssignment.rhs, context);
+			break;
 		
 
 

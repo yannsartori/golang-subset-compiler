@@ -6,6 +6,7 @@
 #include "symbol_table.h"
 
 extern TTEntry *builtInTypes;
+int isExpListPrintable(ExpList* expList);
 
 TTEntry *getExpressionType(Exp *e)
 {
@@ -40,7 +41,11 @@ int typeEquality(TTEntry *t1, TTEntry *t2) //only used for comparison operations
 }
 char * typeToString(TTEntry *t)
 { //this might freak out pointers spook me
+
+
 	char * str = (char *) calloc(100, sizeof(char));
+
+
 	if ( t->underlyingType == arrayType )
 	{
 		sprintf(str, "[%d]%s", t->val.arrayType.size, typeToString(t->val.arrayType.type));
@@ -353,6 +358,18 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 	}
 }
 
+int statementTypeEquality(TTEntry* t1, TTEntry* t2){
+	if (t1 == NULL && t2 != NULL || t2 != NULL && t1 == NULL){ // I suppose I could use ^, but what would XOR with NULL mean
+		return 0;
+	}else if (t1 == NULL && t2 == NULL){
+		return 1;
+	}else{
+		return typeEquality(t1,t2);
+	}
+}
+
+TTEntry* globalReturnType = NULL; //I know this is bad, but it simplifies the code
+
 //TODO
 void typeCheckStatement(Stmt* stmt){
 	if (stmt == NULL){
@@ -377,18 +394,34 @@ void typeCheckStatement(Stmt* stmt){
 
 		//TODO
 		case StmtKindPrint:
+			isExpListPrintable(stmt->val.print.list);
 			break;
 		case StmtKindPrintln:
+			isExpListPrintable(stmt->val.println.list);
 			break;
-
 
 		case StmtKindIf:
+			typeCheckStatement(stmt->val.ifStmt.statement);
+			TTEntry* type = typeCheckExpression(stmt->val.ifStmt.expression);
+			if (!isBool(type)){
+				fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]",stmt->val.ifStmt.expression->lineno,typeToString(type));
+			}
+			typeCheckStatement(stmt->val.ifStmt.block);
+			typeCheckStatement(stmt->val.ifStmt.elseBlock);
+			
 			break;  
-		case StmtKindReturn:
+		case StmtKindReturn://Only dealt with inside function
+			if (stmt->val.returnVal.returnVal == NULL){
+				statementTypeEquality(NULL,globalReturnType);
+			}else{
+				statementTypeEquality(typeCheckExpression(stmt->val.returnVal.returnVal),globalReturnType);
+			}
+			
 			break;
 		case StmtKindElse:
+			typeCheckStatement(stmt->val.elseStmt.block);
 			break;
-		case StmtKindSwitch:
+		case StmtKindSwitch: // A lot... sigh
 			break;
 		case StmtKindInfLoop:
 			break;
@@ -602,15 +635,50 @@ int statementIsProperlyTerminated(Stmt* stmt, char* funcName){
 
 
 
+
+
 int isPrintable(Exp* exp){
 	if (exp == NULL){
 		return 1;
 	}
 
 	TTEntry* type = typeCheckExpression(exp);
-	return type != NULL && 
+
+	if (type == NULL){
+		puts("Oh no");
+		exit(1);
+	}
+	
+	if (!isNonCompositeType(type)){
+		return 0;
+	}
+
+	if( type->val.nonCompositeType.type == baseBool 
+			|| type->val.nonCompositeType.type == baseInt
+			|| type->val.nonCompositeType.type == baseFloat64 
+			|| type->val.nonCompositeType.type == baseRune 
+			|| type->val.nonCompositeType.type == baseString){
+
+		return 1;	
+	}else{
+		fprintf(stderr,"Error: (line %d) print expects base types [received %s]",exp->lineno,typeToString(type));
+		exit(1);
+	}
+
 
 }
+
+int isExpListPrintable(ExpList* expList){
+	if (expList == NULL){
+		return 1;
+	}
+
+	if (isPrintable(expList->cur)){
+		return isExpListPrintable(expList->next);
+	}
+}
+
+
 
 
 
