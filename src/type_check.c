@@ -9,6 +9,8 @@
 extern TTEntry *builtInTypes;
 int isExpListPrintable(ExpList* expList);
 int isValidAssignStmt(ExpList* left, ExpList* right);
+int isExpressionAddressable(Exp* exp);
+int isValidOpAssignStmt(Stmt* stmt);
 
 TTEntry *getExpressionType(Exp *e)
 {
@@ -395,14 +397,11 @@ void typeCheckStatement(Stmt* stmt){
 			typeCheckExpression(stmt->val.expression.expr);
 			break;
 
-		//TODO, lots todo
-		//lvalue assignability checks
+
 		case StmtKindAssignment:
 			isValidAssignStmt(stmt->val.assignment.lhs,stmt->val.assignment.rhs);
 			break;
 
-
-		//TODO
 		case StmtKindPrint:
 			isExpListPrintable(stmt->val.print.list);
 			break;
@@ -414,18 +413,27 @@ void typeCheckStatement(Stmt* stmt){
 			typeCheckStatement(stmt->val.ifStmt.statement);
 			type = typeCheckExpression(stmt->val.ifStmt.expression);
 			if (!isBool(type)){
-				fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]",stmt->val.ifStmt.expression->lineno,typeToString(type));
+				fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]\n",stmt->val.ifStmt.expression->lineno,typeToString(type));
 			}
 			typeCheckStatement(stmt->val.ifStmt.block);
 			typeCheckStatement(stmt->val.ifStmt.elseBlock);
 			
 			break;  
-		case StmtKindReturn://Only dealt with inside function
+		case StmtKindReturn:
 			if (stmt->val.returnVal.returnVal == NULL){
-				statementTypeEquality(NULL,globalReturnType);
+				if (!statementTypeEquality(NULL,globalReturnType)){
+					fprintf(stderr,"Error: (lune %d) return expected %s but received %s\n",stmt->lineno,typeToString(globalReturnType),typeToString(NULL));
+					exit(1);
+				}
 			}else{
-				statementTypeEquality(typeCheckExpression(stmt->val.returnVal.returnVal),globalReturnType);
+				TTEntry* type = typeCheckExpression(stmt->val.returnVal.returnVal);
+				if (!statementTypeEquality(type,globalReturnType)){
+					fprintf(stderr,"Error: (lune %d) return expected %s but received %s",stmt->lineno,typeToString(globalReturnType),typeToString(type));
+					exit(1);
+				}
+
 			}
+			
 			
 			break;
 		case StmtKindElse:
@@ -439,7 +447,7 @@ void typeCheckStatement(Stmt* stmt){
 		case StmtKindWhileLoop:
 			type = typeCheckExpression(stmt->val.whileLoop.conditon);
 			if (!isBool(type)){
-				fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]",stmt->lineno,typeToString(type));
+				fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]\n",stmt->lineno,typeToString(type));
 				exit(1);
 			}
 			typeCheckStatement(stmt->val.whileLoop.block);
@@ -449,7 +457,7 @@ void typeCheckStatement(Stmt* stmt){
 			if (stmt->val.forLoop.condition != NULL){
 				type = typeCheckExpression(stmt->val.forLoop.condition);
 				if (!isBool(type)){
-					fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]",stmt->lineno,typeToString(type));
+					fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]\n",stmt->lineno,typeToString(type));
 					exit(1);
 				}
 			}
@@ -464,14 +472,40 @@ void typeCheckStatement(Stmt* stmt){
 			break;
 
 
-		//TODO
+		//Remember that addressable is a subset of assignable
 		case StmtKindInc:
+			type = typeCheckExpression(stmt->val.incStmt.exp);
+			if (!isNumericType(type)){
+				fprintf(stderr,"Error: (line %d) expected numeric type but received %s\n",stmt->lineno,typeToString(type));
+				exit(1);
+			}
+
+			if (!isExpressionAddressable(stmt->val.incStmt.exp)){
+				fprintf(stderr,"Error: (line %d) ",stmt->lineno);
+				prettyExp(stmt->val.incStmt.exp);
+				printf(" is not addressable\n");
+				exit(1);
+
+			}
 			break;
 		case StmtKindDec:
+			type = typeCheckExpression(stmt->val.decStmt.exp);
+			if (!isNumericType(type)){
+				fprintf(stderr,"Error: (line %d) expected numeric type but received %s\n",stmt->lineno,typeToString(type));
+				exit(1);
+			}
+
+			if (!isExpressionAddressable(stmt->val.decStmt.exp)){
+				fprintf(stderr,"Error: (line %d) ",stmt->lineno);
+				prettyExp(stmt->val.decStmt.exp);
+				printf(" is not addressable\n");
+				exit(1);
+
+			}
 			break;
 		case StmtKindOpAssignment:
+			isValidOpAssignStmt(stmt);
 			break;
-
 
 
 		//For denali to implement
@@ -704,7 +738,7 @@ int isPrintable(Exp* exp){
 
 		return 1;	
 	}else{
-		fprintf(stderr,"Error: (line %d) print expects base types [received %s]",exp->lineno,typeToString(type));
+		fprintf(stderr,"Error: (line %d) print expects base types [received %s]\n",exp->lineno,typeToString(type));
 		exit(1);
 	}
 
@@ -794,7 +828,7 @@ int isValidAssignPair(Exp* left,Exp* right){
 		}
 
 		if (!statementTypeEquality(leftType,rightType)){
-			fprintf(stderr,"Error: (line %d) %s cannot be assigned to %s",left->lineno,typeToString(rightType),typeToString(leftType));
+			fprintf(stderr,"Error: (line %d) %s cannot be assigned to %s\n",left->lineno,typeToString(rightType),typeToString(leftType));
 			exit(1);
 		}
 
@@ -816,6 +850,30 @@ int isValidAssignStmt(ExpList* left, ExpList* right){
 	}
 }
 
+
+int isValidOpAssignStmt(Stmt* stmt){
+	if (stmt == NULL){
+		return 0;
+	}
+
+	//I essentially rewrite the statement so that I can recycle functions
+	ExpList* leftList = createArgumentList(stmt->val.opAssignment.lhs);
+	Exp* bin = makeExpBinary(stmt->val.opAssignment.lhs,stmt->val.opAssignment.rhs,stmt->val.opAssignment.kind);\
+	bin->lineno = stmt->lineno;
+	ExpList* rightList = createArgumentList(bin);
+	Stmt* temp = makeAssignmentStmt(leftList,rightList);
+	temp->lineno = stmt->lineno;
+
+	typeCheckStatement(temp);
+
+	free(temp);
+	free(leftList);
+	free(rightList);
+	free(bin);
+
+	return 1;
+
+}
 
 
 
