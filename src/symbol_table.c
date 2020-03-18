@@ -1028,12 +1028,3 @@ void symbolPrintFuncArgs(VarDeclNode *args)
 
 
 
-void symbolTest(Stmt* stmt){
-	symbolCheckStatement(stmt,scopedContext(NULL));
-
-
-	puts("Finished checking");
-
-	printStatementSymbol(stmt,0);
-	puts("We didn't die!");
-}

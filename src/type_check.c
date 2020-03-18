@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ast.h"
+#include "pretty_printer.h"
 #include "globalEnum.h"
 #include "symbol_table.h"
 
 extern TTEntry *builtInTypes;
 int isExpListPrintable(ExpList* expList);
+int isValidAssignStmt(ExpList* left, ExpList* right);
 
 TTEntry *getExpressionType(Exp *e)
 {
@@ -396,6 +398,7 @@ void typeCheckStatement(Stmt* stmt){
 		//TODO, lots todo
 		//lvalue assignability checks
 		case StmtKindAssignment:
+			isValidAssignStmt(stmt->val.assignment.lhs,stmt->val.assignment.rhs);
 			break;
 
 
@@ -471,8 +474,6 @@ void typeCheckStatement(Stmt* stmt){
 
 
 
-
-
 		//For denali to implement
 		case StmtKindTypeDeclaration:
 			break;
@@ -544,6 +545,13 @@ int isLocalBreakPresent(Stmt* stmt){
 		case StmtKindVarDeclaration:
 			break;
 		case StmtKindShortDeclaration:
+			break;
+
+		case StmtKindInc:
+			break;
+		case StmtKindDec:
+			break;
+		case StmtKindOpAssignment:
 			break;
 	}
 
@@ -710,6 +718,101 @@ int isExpListPrintable(ExpList* expList){
 
 	if (isPrintable(expList->cur)){
 		return isExpListPrintable(expList->next);
+	}
+}
+
+//TODO
+int isExpressionAddressable(Exp* exp){
+	if (exp == NULL){
+		puts("Oh no");
+		exit(1);
+	}
+
+	switch(exp->kind){
+		case expKindIdentifier:
+			if (isBlank(exp)){
+				return 1;
+			}
+
+			PolymorphicEntry* polyEntry  = exp->contextEntry;
+			if (polyEntry->isSymbol){
+				return 1;//VERY MUCH INCOMPLETE
+			}else{
+				return 0; //If its not a symbol, its a type
+			}
+
+
+		case expKindFieldSelect:
+			return 1;
+		case expKindIndexing:
+			return 1;
+		default:
+			return 0;
+	}
+
+
+}
+
+//TODO
+int isExpressionAssignable(Exp* exp){
+	return 0;
+}
+
+int isValidAssignPair(Exp* left,Exp* right){
+	if (isBlank(left)){
+		TTEntry* rightType = typeCheckExpression(right);
+		if (!isExpressionAssignable(right)){
+			fprintf(stderr,"Error: (line %d) ",right->lineno);
+			prettyExp(right);
+			printf(" cannot be assigned to ");
+			prettyExp(left);
+			printf("\n");
+
+			exit(1);
+		}
+		//? function types
+
+	}else{
+		TTEntry* leftType = typeCheckExpression(left);
+		if (!isExpressionAddressable(left)){
+			fprintf(stderr,"Error: (line %d) cannot assign to ",left->lineno);
+			prettyExp(left);
+			printf("\n");
+			exit(1);
+			
+		}
+		TTEntry* rightType = typeCheckExpression(right);
+
+		if (!isExpressionAssignable(right)){
+			fprintf(stderr,"Error: (line %d) ",right->lineno);
+			prettyExp(right);
+			printf(" cannot be assigned to ");
+			prettyExp(left);
+			printf("\n");
+
+			exit(1);
+		}
+
+		if (!statementTypeEquality(leftType,rightType)){
+			fprintf(stderr,"Error: (line %d) %s cannot be assigned to %s",left->lineno,typeToString(rightType),typeToString(leftType));
+			exit(1);
+		}
+
+
+
+	}
+
+	return 1;
+
+}
+
+int isValidAssignStmt(ExpList* left, ExpList* right){
+	if (left == NULL || right == NULL){
+		return 1;
+	}
+
+	if (isValidAssignPair(left->cur,right->cur)){
+		isValidAssignStmt(left->next,right->next);
 	}
 }
 
