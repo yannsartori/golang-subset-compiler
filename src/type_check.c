@@ -523,6 +523,14 @@ void typeCheckStatement(Stmt* stmt){
 }
 
 
+void typeCheckProgram(RootNode rootNode) {
+	
+}
+
+
+
+
+
 int statementIsProperlyTerminated(Stmt* stmt, char* funcName);
 
 
@@ -626,7 +634,7 @@ int clauseListBreakCheck(switchCaseClause* clauseList,char* functionName){
 int weedSwitchStatementClauseList(Stmt* stmt, char* functionName){
 
 
-	if (isDefaultCasePresent(stmt->val.switchStmt.clauseList)){
+	if (isDefaultCasePresent(stmt->val.switchStmt.clauseList,functionName)){
 		return clauseListBreakCheck(stmt->val.switchStmt.clauseList,functionName);
 
 	}else{
@@ -744,6 +752,7 @@ int isPrintable(Exp* exp){
 
 
 }
+
 
 int isExpListPrintable(ExpList* expList){
 	if (expList == NULL){
@@ -874,7 +883,5 @@ int isValidOpAssignStmt(Stmt* stmt){
 	return 1;
 
 }
-
-
 
 

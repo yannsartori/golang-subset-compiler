@@ -478,7 +478,7 @@ void prettyTypeHolder(TypeHolderNode *node, int indentLevel)
 			printf("}");
 			break;
 		case inferType:
-			//nothing :(
+			printf(" ");
 			break;
 	}
 }
@@ -536,15 +536,27 @@ void prettyVarDecl(VarDeclNode *var, int indentLevel)
 {
 	if ( var == NULL ) return;
 	indent(indentLevel);
-	printf("var %s", var->identifier);
-	prettyTypeHolder(var->typeThing, indentLevel);
-	if ( var->value != NULL )
-	{
-		printf(" = ");
-		prettyExp(var->value);
+	VarDeclNode *iter = var;
+	while(iter -> nextDecl != NULL){
+		printf("%s, ", iter->identifier);
+		iter = iter -> nextDecl;
 	}
+	printf("%s", iter->identifier);
+	
+	prettyTypeHolder(var->typeThing, indentLevel);
+	
+	printf("= ");
+	
+	iter = var;
+	while(iter -> nextDecl != NULL){
+		prettyExp(iter->value);
+		printf(", ");
+		iter = iter -> nextDecl;
+	}
+	prettyExp(iter->value);
 	printf("\n");
-	prettyVarDecl(var->nextDecl, indentLevel);
+	prettyVarDecl(var -> multiDecl, indentLevel);
+	
 }
 void prettyShortVarDecl(VarDeclNode *var, int indentLevel)
 {

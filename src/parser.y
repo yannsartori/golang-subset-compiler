@@ -220,7 +220,7 @@ variableDecl		: tVar singleVarDecl ';'		{$$ = $2;}
 ;
 
 innerVarDecls		: singleVarDecl ';'				{$$ = $1;}
-			| singleVarDecl ';' innerVarDecls		{$$ = $1, appendVarDecls($$, $3);}
+			| singleVarDecl ';' innerVarDecls		{$$ = $1, $$ -> multiDecl = $3;}
 ;
 
 singleVarDecl		: identifierList declType '=' expressionList
