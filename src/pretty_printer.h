@@ -3,6 +3,7 @@
 
 #include "ast.h"
 
-void printStmt(Stmt* stmt, int indentLevel);
+
 void printRoot(RootNode *root);
+void prettyExp(Exp * exp);
 #endif

@@ -2,10 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ast.h"
+#include "pretty_printer.h"
 #include "globalEnum.h"
 #include "symbol_table.h"
 
 extern TTEntry *builtInTypes;
+int isExpListPrintable(ExpList* expList);
+int isValidAssignStmt(ExpList* left, ExpList* right);
+int isExpressionAddressable(Exp* exp);
+int isValidOpAssignStmt(Stmt* stmt);
 
 TTEntry *getExpressionType(Exp *e)
 {
@@ -40,7 +45,16 @@ int typeEquality(TTEntry *t1, TTEntry *t2) //only used for comparison operations
 }
 char * typeToString(TTEntry *t)
 { //this might freak out pointers spook me
+
+
 	char * str = (char *) calloc(100, sizeof(char));
+
+	if (t == NULL){
+		strcpy(str,"void");
+		return str;
+	}
+
+
 	if ( t->underlyingType == arrayType )
 	{
 		sprintf(str, "[%d]%s", t->val.arrayType.size, typeToString(t->val.arrayType.type));
@@ -353,11 +367,25 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 	}
 }
 
+int statementTypeEquality(TTEntry* t1, TTEntry* t2){
+	if (t1 == NULL && t2 != NULL || t2 != NULL && t1 == NULL){ // I suppose I could use ^, but what would XOR with NULL mean
+		return 0;
+	}else if (t1 == NULL && t2 == NULL){
+		return 1;
+	}else{
+		return typeEquality(t1,t2);
+	}
+}
+
+TTEntry* globalReturnType = NULL; //I know this is bad, but it simplifies the code
+
 //TODO
 void typeCheckStatement(Stmt* stmt){
 	if (stmt == NULL){
 		return;
 	}
+
+	TTEntry* type;
 
 	switch (stmt->kind){
 		case StmtKindBlock:
@@ -369,40 +397,115 @@ void typeCheckStatement(Stmt* stmt){
 			typeCheckExpression(stmt->val.expression.expr);
 			break;
 
-		//TODO, lots todo
-		//lvalue assignability checks
+
 		case StmtKindAssignment:
+			isValidAssignStmt(stmt->val.assignment.lhs,stmt->val.assignment.rhs);
 			break;
 
-
-		//TODO
 		case StmtKindPrint:
+			isExpListPrintable(stmt->val.print.list);
 			break;
 		case StmtKindPrintln:
+			isExpListPrintable(stmt->val.println.list);
 			break;
-
 
 		case StmtKindIf:
+			typeCheckStatement(stmt->val.ifStmt.statement);
+			type = typeCheckExpression(stmt->val.ifStmt.expression);
+			if (!isBool(type)){
+				fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]\n",stmt->val.ifStmt.expression->lineno,typeToString(type));
+			}
+			typeCheckStatement(stmt->val.ifStmt.block);
+			typeCheckStatement(stmt->val.ifStmt.elseBlock);
+			
 			break;  
 		case StmtKindReturn:
+			if (stmt->val.returnVal.returnVal == NULL){
+				if (!statementTypeEquality(NULL,globalReturnType)){
+					fprintf(stderr,"Error: (lune %d) return expected %s but received %s\n",stmt->lineno,typeToString(globalReturnType),typeToString(NULL));
+					exit(1);
+				}
+			}else{
+				TTEntry* type = typeCheckExpression(stmt->val.returnVal.returnVal);
+				if (!statementTypeEquality(type,globalReturnType)){
+					fprintf(stderr,"Error: (lune %d) return expected %s but received %s",stmt->lineno,typeToString(globalReturnType),typeToString(type));
+					exit(1);
+				}
+
+			}
+			
+			
 			break;
 		case StmtKindElse:
+			typeCheckStatement(stmt->val.elseStmt.block);
 			break;
-		case StmtKindSwitch:
+		case StmtKindSwitch: // A lot... sigh
 			break;
 		case StmtKindInfLoop:
+			typeCheckStatement(stmt->val.infLoop.block);
 			break;
 		case StmtKindWhileLoop:
+			type = typeCheckExpression(stmt->val.whileLoop.conditon);
+			if (!isBool(type)){
+				fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]\n",stmt->lineno,typeToString(type));
+				exit(1);
+			}
+			typeCheckStatement(stmt->val.whileLoop.block);
 			break;
 		case StmtKindThreePartLoop:
+			typeCheckStatement(stmt->val.forLoop.init);
+			if (stmt->val.forLoop.condition != NULL){
+				type = typeCheckExpression(stmt->val.forLoop.condition);
+				if (!isBool(type)){
+					fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]\n",stmt->lineno,typeToString(type));
+					exit(1);
+				}
+			}
+			typeCheckStatement(stmt->val.forLoop.inc);
+			typeCheckStatement(stmt->val.forLoop.block);
 			break;
 
+		//Trivially typecheck
 		case StmtKindBreak:
 			break;
 		case StmtKindContinue:
 			break;
 
 
+		//Remember that addressable is a subset of assignable
+		case StmtKindInc:
+			type = typeCheckExpression(stmt->val.incStmt.exp);
+			if (!isNumericType(type)){
+				fprintf(stderr,"Error: (line %d) expected numeric type but received %s\n",stmt->lineno,typeToString(type));
+				exit(1);
+			}
+
+			if (!isExpressionAddressable(stmt->val.incStmt.exp)){
+				fprintf(stderr,"Error: (line %d) ",stmt->lineno);
+				prettyExp(stmt->val.incStmt.exp);
+				printf(" is not addressable\n");
+				exit(1);
+
+			}
+			break;
+		case StmtKindDec:
+			type = typeCheckExpression(stmt->val.decStmt.exp);
+			if (!isNumericType(type)){
+				fprintf(stderr,"Error: (line %d) expected numeric type but received %s\n",stmt->lineno,typeToString(type));
+				exit(1);
+			}
+
+			if (!isExpressionAddressable(stmt->val.decStmt.exp)){
+				fprintf(stderr,"Error: (line %d) ",stmt->lineno);
+				prettyExp(stmt->val.decStmt.exp);
+				printf(" is not addressable\n");
+				exit(1);
+
+			}
+			break;
+		case StmtKindOpAssignment:
+			isValidOpAssignStmt(stmt);
+			break;
 
 
 		//For denali to implement
@@ -484,6 +587,13 @@ int isLocalBreakPresent(Stmt* stmt){
 		case StmtKindVarDeclaration:
 			break;
 		case StmtKindShortDeclaration:
+			break;
+
+		case StmtKindInc:
+			break;
+		case StmtKindDec:
+			break;
+		case StmtKindOpAssignment:
 			break;
 	}
 
@@ -610,13 +720,168 @@ int statementIsProperlyTerminated(Stmt* stmt, char* funcName){
 
 
 
+
+
 int isPrintable(Exp* exp){
 	if (exp == NULL){
 		return 1;
 	}
 
 	TTEntry* type = typeCheckExpression(exp);
-	return type != NULL && 
+
+	if (type == NULL){
+		puts("Oh no");
+		exit(1);
+	}
+	
+	if (!isNonCompositeType(type)){
+		return 0;
+	}
+
+	if( type->val.nonCompositeType.type == baseBool 
+			|| type->val.nonCompositeType.type == baseInt
+			|| type->val.nonCompositeType.type == baseFloat64 
+			|| type->val.nonCompositeType.type == baseRune 
+			|| type->val.nonCompositeType.type == baseString){
+
+		return 1;	
+	}else{
+		fprintf(stderr,"Error: (line %d) print expects base types [received %s]\n",exp->lineno,typeToString(type));
+		exit(1);
+	}
+
 
 }
+
+
+int isExpListPrintable(ExpList* expList){
+	if (expList == NULL){
+		return 1;
+	}
+
+	if (isPrintable(expList->cur)){
+		return isExpListPrintable(expList->next);
+	}
+}
+
+//TODO
+int isExpressionAddressable(Exp* exp){
+	if (exp == NULL){
+		puts("Oh no");
+		exit(1);
+	}
+
+	switch(exp->kind){
+		case expKindIdentifier:
+			if (isBlank(exp)){
+				return 1;
+			}
+
+			PolymorphicEntry* polyEntry  = exp->contextEntry;
+			if (polyEntry->isSymbol){
+				return 1;//VERY MUCH INCOMPLETE
+			}else{
+				return 0; //If its not a symbol, its a type
+			}
+
+
+		case expKindFieldSelect:
+			return 1;
+		case expKindIndexing:
+			return 1;
+		default:
+			return 0;
+	}
+
+
+}
+
+//TODO
+int isExpressionAssignable(Exp* exp){
+	return 0;
+}
+
+int isValidAssignPair(Exp* left,Exp* right){
+	if (isBlank(left)){
+		TTEntry* rightType = typeCheckExpression(right);
+		if (!isExpressionAssignable(right)){
+			fprintf(stderr,"Error: (line %d) ",right->lineno);
+			prettyExp(right);
+			printf(" cannot be assigned to ");
+			prettyExp(left);
+			printf("\n");
+
+			exit(1);
+		}
+		//? function types
+
+	}else{
+		TTEntry* leftType = typeCheckExpression(left);
+		if (!isExpressionAddressable(left)){
+			fprintf(stderr,"Error: (line %d) cannot assign to ",left->lineno);
+			prettyExp(left);
+			printf("\n");
+			exit(1);
+			
+		}
+		TTEntry* rightType = typeCheckExpression(right);
+
+		if (!isExpressionAssignable(right)){
+			fprintf(stderr,"Error: (line %d) ",right->lineno);
+			prettyExp(right);
+			printf(" cannot be assigned to ");
+			prettyExp(left);
+			printf("\n");
+
+			exit(1);
+		}
+
+		if (!statementTypeEquality(leftType,rightType)){
+			fprintf(stderr,"Error: (line %d) %s cannot be assigned to %s\n",left->lineno,typeToString(rightType),typeToString(leftType));
+			exit(1);
+		}
+
+
+
+	}
+
+	return 1;
+
+}
+
+int isValidAssignStmt(ExpList* left, ExpList* right){
+	if (left == NULL || right == NULL){
+		return 1;
+	}
+
+	if (isValidAssignPair(left->cur,right->cur)){
+		isValidAssignStmt(left->next,right->next);
+	}
+}
+
+
+int isValidOpAssignStmt(Stmt* stmt){
+	if (stmt == NULL){
+		return 0;
+	}
+
+	//I essentially rewrite the statement so that I can recycle functions
+	ExpList* leftList = createArgumentList(stmt->val.opAssignment.lhs);
+	Exp* bin = makeExpBinary(stmt->val.opAssignment.lhs,stmt->val.opAssignment.rhs,stmt->val.opAssignment.kind);\
+	bin->lineno = stmt->lineno;
+	ExpList* rightList = createArgumentList(bin);
+	Stmt* temp = makeAssignmentStmt(leftList,rightList);
+	temp->lineno = stmt->lineno;
+
+	typeCheckStatement(temp);
+
+	free(temp);
+	free(leftList);
+	free(rightList);
+	free(bin);
+
+	return 1;
+
+}
+
 
