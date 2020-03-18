@@ -80,6 +80,20 @@ void blankSwitchCaseClauseError(){
 	exit(1);
 }
 
+void ifConditionBlankCheck(Exp* exp){
+	if (isBlank(exp)){
+		fprintf(stderr, "Error: (line %d) if statement condition may not use the blank identifier \n", yylineno);
+		exit(1);
+	}
+}
+
+void loopConditionBlankCheck(Exp* exp){
+	if (isBlank(exp)){
+		fprintf(stderr, "Error: (line %d) loop condition may not use the blank identifier \n", yylineno);
+		exit(1);
+	}
+}
+
 Stmt* compoundOperator(Exp* left,Exp* right,ExpressionKind kind){
 	compoundOperatorError(left,right);
 	return makeOpAssignmentStmt(left,right,kind);
@@ -469,12 +483,12 @@ assignmentStatement :
 
 // 2.8.10
 ifStatement : 
-			tIf expression block {$$ = makeIfStmt(NULL,$2,$3,NULL);}
-			| tIf expression block tElse ifStatement {$$ = makeIfStmt(NULL,$2,$3,makeElseStmt(makeBlockStmt($5))); }
-			| tIf expression block tElse block {$$ = makeIfStmt(NULL,$2,$3,makeElseStmt($5)); }
-			| tIf simpleStatement  ';' expression block {$$ = makeIfStmt($2,$4,$5,NULL); }
-			| tIf simpleStatement ';'  expression block tElse ifStatement {$$ = makeIfStmt($2,$4,$5,makeElseStmt(makeBlockStmt($7))); } //Blockify
-			| tIf simpleStatement  ';' expression block tElse block {$$ = makeIfStmt($2,$4,$5,makeElseStmt($7));}
+			tIf expression block {ifConditionBlankCheck($2); $$ = makeIfStmt(NULL,$2,$3,NULL);}
+			| tIf expression block tElse ifStatement {ifConditionBlankCheck($2);$$ = makeIfStmt(NULL,$2,$3,makeElseStmt(makeBlockStmt($5))); }
+			| tIf expression block tElse block {ifConditionBlankCheck($2);$$ = makeIfStmt(NULL,$2,$3,makeElseStmt($5)); }
+			| tIf simpleStatement  ';' expression block {ifConditionBlankCheck($4);$$ = makeIfStmt($2,$4,$5,NULL); }
+			| tIf simpleStatement ';'  expression block tElse ifStatement {ifConditionBlankCheck($4);$$ = makeIfStmt($2,$4,$5,makeElseStmt(makeBlockStmt($7))); } //Blockify
+			| tIf simpleStatement  ';' expression block tElse block {ifConditionBlankCheck($4);$$ = makeIfStmt($2,$4,$5,makeElseStmt($7));}
 
 
 
@@ -483,8 +497,8 @@ ifStatement :
 //2.8.12
 loop : 
 		tFor block {$$ = makeInfLoopStmt($2);}
-		| tFor expression block {$$ = makeWhileLoopStmt($2,$3);}
-		| tFor simpleStatement ';' expression ';' simpleStatement block { shortDeclarationPostError($6) ;  $$ = makeThreePartLoopStmt($2,$4,$6,$7);}
+		| tFor expression block {loopConditionBlankCheck($2);$$ = makeWhileLoopStmt($2,$3);}
+		| tFor simpleStatement ';' expression ';' simpleStatement block {loopConditionBlankCheck($4); shortDeclarationPostError($6) ;  $$ = makeThreePartLoopStmt($2,$4,$6,$7);}
 		| tFor simpleStatement ';' ';' simpleStatement block { shortDeclarationPostError($5) ;  $$ = makeThreePartLoopStmt($2,NULL,$5,$6);}
 
 

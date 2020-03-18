@@ -45,6 +45,11 @@ char * typeToString(TTEntry *t)
 
 	char * str = (char *) calloc(100, sizeof(char));
 
+	if (t == NULL){
+		strcpy(str,"void");
+		return str;
+	}
+
 
 	if ( t->underlyingType == arrayType )
 	{
@@ -376,6 +381,8 @@ void typeCheckStatement(Stmt* stmt){
 		return;
 	}
 
+	TTEntry* type;
+
 	switch (stmt->kind){
 		case StmtKindBlock:
 			typeCheckStatement(stmt->val.block.stmt);
@@ -402,7 +409,7 @@ void typeCheckStatement(Stmt* stmt){
 
 		case StmtKindIf:
 			typeCheckStatement(stmt->val.ifStmt.statement);
-			TTEntry* type = typeCheckExpression(stmt->val.ifStmt.expression);
+			type = typeCheckExpression(stmt->val.ifStmt.expression);
 			if (!isBool(type)){
 				fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]",stmt->val.ifStmt.expression->lineno,typeToString(type));
 			}
@@ -424,16 +431,44 @@ void typeCheckStatement(Stmt* stmt){
 		case StmtKindSwitch: // A lot... sigh
 			break;
 		case StmtKindInfLoop:
+			typeCheckStatement(stmt->val.infLoop.block);
 			break;
 		case StmtKindWhileLoop:
+			type = typeCheckExpression(stmt->val.whileLoop.conditon);
+			if (!isBool(type)){
+				fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]",stmt->lineno,typeToString(type));
+				exit(1);
+			}
+			typeCheckStatement(stmt->val.whileLoop.block);
 			break;
 		case StmtKindThreePartLoop:
+			typeCheckStatement(stmt->val.forLoop.init);
+			if (stmt->val.forLoop.condition != NULL){
+				type = typeCheckExpression(stmt->val.forLoop.condition);
+				if (!isBool(type)){
+					fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]",stmt->lineno,typeToString(type));
+					exit(1);
+				}
+			}
+			typeCheckStatement(stmt->val.forLoop.inc);
+			typeCheckStatement(stmt->val.forLoop.block);
 			break;
 
+		//Trivially typecheck
 		case StmtKindBreak:
 			break;
 		case StmtKindContinue:
 			break;
+
+
+		//TODO
+		case StmtKindInc:
+			break;
+		case StmtKindDec:
+			break;
+		case StmtKindOpAssignment:
+			break;
+
 
 
 
