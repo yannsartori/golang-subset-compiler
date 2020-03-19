@@ -188,6 +188,7 @@ struct FuncDeclNode {
 	TypeHolderNode* returnType;
 	Stmt* blockStart;
 	int lineno;
+	STEntry symbolEntry;
 };
 
 struct TypeHolderNode {

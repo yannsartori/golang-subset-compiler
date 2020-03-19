@@ -429,6 +429,7 @@ void symbolCheckProgram(RootNode* root) {
 			STEntry *s = malloc(sizeof(STEntry));
 			s -> id = iter -> actualRealDeclaration.funcDecl -> identifier;
 			s -> isConstant = 1;
+			iter -> actualRealDeclaration.funcDecl -> symbolEntry = s;
 			
 			Context* functionContext = scopedContext(masterContx);
 			
