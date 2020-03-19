@@ -12,6 +12,7 @@ int isValidAssignStmt(ExpList* left, ExpList* right);
 int isExpressionAddressable(Exp* exp);
 int isValidOpAssignStmt(Stmt* stmt);
 void typecheckSwitchStatements(Stmt* stmt);
+void functionWeeder(FuncDeclNode* function);
 
 TTEntry *getExpressionType(Exp *e)
 {
@@ -950,9 +951,9 @@ void functionWeeder(FuncDeclNode* function){
 		return;
 	}
 
-	TTEntry* returnType = NULL;//TODO
-	globalReturnType = NULL;//TODO
-
+	TTEntry* returnType = function->symbolEntry->type->val.functionType.ret;
+	globalReturnType = returnType;
+	
 	if (returnType  == NULL){ //Weeder skipped if return type is NULL(void)
 		return;
 	}
@@ -962,5 +963,5 @@ void functionWeeder(FuncDeclNode* function){
 		exit(1);
 	}
 
-	
+
 }
