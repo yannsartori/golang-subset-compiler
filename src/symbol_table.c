@@ -379,10 +379,12 @@ void symbolCheckProgram(RootNode* root) {
 	STEntry *builtInVals = malloc(2*sizeof(STEntry));
 	builtInVals -> id = "true";
 	builtInVals -> type = builtInTypes;
+	builtInVals -> isConstant = 1;
 	addSymbolEntry(masterContx, builtInVals);
 	builtInVals ++;
 	builtInVals -> id = "false";
 	builtInVals -> type = builtInTypes;
+	builtInVals -> isConstant = 1;
 	addSymbolEntry(masterContx, builtInVals);
 	builtInTypes ++;
 	builtInTypes -> id = "rune";
@@ -426,6 +428,7 @@ void symbolCheckProgram(RootNode* root) {
 			
 			STEntry *s = malloc(sizeof(STEntry));
 			s -> id = iter -> actualRealDeclaration.funcDecl -> identifier;
+			s -> isConstant = 1;
 			
 			Context* functionContext = scopedContext(masterContx);
 			
@@ -473,6 +476,7 @@ void symbolCheckProgram(RootNode* root) {
 					STEntry *argEntryIter = malloc(sizeof(STEntry));
 					argEntryIter -> id = argsIter -> identifier;
 					argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
+					argEntryIter -> isConstant = 0;
 					if (argEntryIter -> type -> underlyingType == badType) {
 						fprintf(stderr, "Error: (line %d) %s\n", argsIter -> lineno, argEntryIter -> type -> id);
 						exit(1);
@@ -489,6 +493,7 @@ void symbolCheckProgram(RootNode* root) {
 						argEntryIter = argEntryIter -> next;
 						argEntryIter -> id = argsIter -> identifier;
 						argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
+						argEntryIter -> isConstant = 0;
 						if (argEntryIter -> type -> underlyingType == badType) {
 							fprintf(stderr, "Error: (line %d) %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> id);
 							exit(1);
@@ -682,6 +687,7 @@ void symbolCheckVarDecl(VarDeclNode* declNode, Context* contx, int placement) { 
 		s = malloc(sizeof(STEntry));
 		s -> id = varDeclIter -> identifier;
 		s -> type = makeAnonymousTTEntry(contx, varDeclIter -> typeThing);
+		s -> isConstant = 0;
 		
 		if (s -> type -> underlyingType == badType) {
 			fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", varDeclIter -> lineno, s -> id);
