@@ -11,6 +11,8 @@ int isExpListPrintable(ExpList* expList);
 int isValidAssignStmt(ExpList* left, ExpList* right);
 int isExpressionAddressable(Exp* exp);
 int isValidOpAssignStmt(Stmt* stmt);
+void typecheckSwitchStatements(Stmt* stmt);
+void functionWeeder(FuncDeclNode* function);
 
 TTEntry *getExpressionType(Exp *e)
 {
@@ -439,7 +441,8 @@ void typeCheckStatement(Stmt* stmt){
 		case StmtKindElse:
 			typeCheckStatement(stmt->val.elseStmt.block);
 			break;
-		case StmtKindSwitch: // A lot... sigh
+		case StmtKindSwitch:
+			typecheckSwitchStatements(stmt);
 			break;
 		case StmtKindInfLoop:
 			typeCheckStatement(stmt->val.infLoop.block);
@@ -507,7 +510,7 @@ void typeCheckStatement(Stmt* stmt){
 			isValidOpAssignStmt(stmt);
 			break;
 
-
+		//TODO
 		//For denali to implement
 		case StmtKindTypeDeclaration:
 			break;
@@ -634,7 +637,7 @@ int clauseListBreakCheck(switchCaseClause* clauseList,char* functionName){
 int weedSwitchStatementClauseList(Stmt* stmt, char* functionName){
 
 
-	if (isDefaultCasePresent(stmt->val.switchStmt.clauseList,functionName)){
+	if (isDefaultCasePresent(stmt->val.switchStmt.clauseList)){
 		return clauseListBreakCheck(stmt->val.switchStmt.clauseList,functionName);
 
 	}else{
@@ -704,7 +707,7 @@ int statementIsProperlyTerminated(Stmt* stmt, char* funcName){
 
 		case StmtKindSwitch : 
 				return weedSwitchStatementClauseList(stmt,funcName);
-				break; //TODO
+				break; 
 
 
 
@@ -764,7 +767,7 @@ int isExpListPrintable(ExpList* expList){
 	}
 }
 
-//TODO
+
 int isExpressionAddressable(Exp* exp){
 	if (exp == NULL){
 		puts("Oh no");
@@ -778,8 +781,8 @@ int isExpressionAddressable(Exp* exp){
 			}
 
 			PolymorphicEntry* polyEntry  = exp->contextEntry;
-			if (polyEntry->isSymbol){
-				return 1;//VERY MUCH INCOMPLETE
+			if (polyEntry->isSymbol && ! polyEntry->entry.s->isConstant){ //If a symbol and not a constant
+				return 1;
 			}else{
 				return 0; //If its not a symbol, its a type
 			}
@@ -796,9 +799,17 @@ int isExpressionAddressable(Exp* exp){
 
 }
 
-//TODO
 int isExpressionAssignable(Exp* exp){
-	return 0;
+	if (exp == NULL){
+		return 0;
+	}
+
+	switch (exp->kind){
+		case identifierType : 
+			return isExpressionAddressable(exp);
+		default: 
+			return 1;
+	}
 }
 
 int isValidAssignPair(Exp* left,Exp* right){
@@ -813,7 +824,6 @@ int isValidAssignPair(Exp* left,Exp* right){
 
 			exit(1);
 		}
-		//? function types
 
 	}else{
 		TTEntry* leftType = typeCheckExpression(left);
@@ -884,4 +894,74 @@ int isValidOpAssignStmt(Stmt* stmt){
 
 }
 
+void typeCheckExpList(ExpList* list,TTEntry* type){
+	if (list == NULL){
+		return;
+	}
 
+	TTEntry* temp = typeCheckExpression(list->cur);
+	if(!statementTypeEquality(temp,type)){
+		fprintf(stderr,"Error: (line %d) switch clause conditon expected type %s, but received type %s\n",list->cur->lineno,typeToString(type),typeToString(temp));
+		exit(1);
+	}
+	typeCheckExpList(list->next,type);
+}
+
+
+void typecheckSwitchCaseClause(switchCaseClause* clauseList, TTEntry* type){
+	if (clauseList == NULL){
+		return;
+	}
+
+	typeCheckExpList(clauseList->expressionList,type);
+	typeCheckStatement(clauseList->statementList);
+
+	typecheckSwitchCaseClause(clauseList->next,type);
+
+
+
+}
+
+void typecheckSwitchStatements(Stmt* stmt){
+	if(stmt == NULL){
+		return;
+	}
+
+	typeCheckStatement(stmt->val.switchStmt.statement);
+
+	TTEntry* type;
+	if (stmt->val.switchStmt.expression == NULL){ //Empty expression corresponds to boolean
+		// I'm trying to summon the boolean type entry
+		Exp* exp = makeExpIntLit(1);
+		Exp* exp1 = makeExpBinary(exp,exp,expKindEQ);
+		type = typeCheckExpression(exp1);
+		free(exp1);
+		free(exp);
+
+	}else{
+		type = typeCheckExpression(stmt->val.switchStmt.expression);
+	}
+
+	typecheckSwitchCaseClause(stmt->val.switchStmt.clauseList,type);
+}
+
+
+void functionWeeder(FuncDeclNode* function){
+	if (function == NULL){
+		return;
+	}
+
+	TTEntry* returnType = function->symbolEntry->type->val.functionType.ret;
+	globalReturnType = returnType;
+	
+	if (returnType  == NULL){ //Weeder skipped if return type is NULL(void)
+		return;
+	}
+
+	if (!statementIsProperlyTerminated(function->blockStart,function->identifier)){
+		fprintf(stderr,"Error: (line %d) function %s does not end in a terminating statement\n",function->lineno,function->identifier);
+		exit(1);
+	}
+
+
+}
