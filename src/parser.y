@@ -322,7 +322,7 @@ expression:
 			| '^' expression %prec UNARY					{ $$ = makeExpUnary($2, expKindBitNotUnary); }
 			;
 expressionList: 
-			  expression									{ $$ = createArgumentList($1); }
+			  expression									{ $$ = createArgumentL ist($1); }
 			| expressionList ',' expression					{ $$ = addArgument($1, $3); } /*gets reversed in add argument */
 			; 
 maybeEmptyExpressionList : 
