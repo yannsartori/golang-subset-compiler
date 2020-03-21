@@ -34,16 +34,25 @@ int isNumericType(TTEntry *t) { return t != NULL && isNonCompositeType(t) && (t-
 int isIntegerType(TTEntry *t) { return t != NULL && isNonCompositeType(t) && (t->val.nonCompositeType.type == baseInt || t->val.nonCompositeType.type == baseRune); }
 int isBool(TTEntry *t) { return t != NULL && isNonCompositeType(t) && t->val.nonCompositeType.type == baseBool; }
 int isOrdered(TTEntry *t) { return isNumericType(t) || (isNonCompositeType(t) && t->val.nonCompositeType.type == baseString); }
-int typeEquality(TTEntry *t1, TTEntry *t2) //only used for comparison operations
+int typeEquality(TTEntry *t1, TTEntry *t2)
 {
-	if ( t1->underlyingType == arrayType && t2->underlyingType == arrayType )
-	{
-		return typeEquality(t1->val.arrayType.type, t2->val.arrayType.type) && t1->val.arrayType.size == t2->val.arrayType.size;
-	}
-	if ( t1->underlyingType == sliceType && t2->underlyingType == sliceType )
-	{
-		return typeEquality(t1->val.sliceType.type, t2->val.sliceType.type);
-	}
+  if ( t1 == NULL || t2 == NULL ) return t1 == t2;
+  
+  if ( t1->id == NULL && t2->id == NULL )
+  {
+    if ( t1->underlyingType == arrayType && t2->underlyingType == arrayType )
+	  {
+		  return typeEquality(t1->val.arrayType.type, t2->val.arrayType.type) && t1->val.arrayType.size == t2->val.arrayType.size;
+	  }
+	  else if ( t1->underlyingType == sliceType && t2->underlyingType == sliceType )
+	  {
+		  return typeEquality(t1->val.sliceType.type, t2->val.sliceType.type);
+	  }
+	  else if ( t1->underlyingType == structType && t2->underlyingType == structType )
+	  {
+	    //iterate through entries and call type equality on the fields. return false if any are false, true if all are true
+	  }
+  }
 	return t1 == t2;
 }
 char * typeToString(TTEntry *t)
