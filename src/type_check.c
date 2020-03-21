@@ -562,7 +562,7 @@ void typeCheckStatement(Stmt* stmt){
 		//TODO
 		//For denali to implement
 		case StmtKindTypeDeclaration:
-			printf("Something at least\n");
+			//printf("Something at least\n");
 			break;
 		case StmtKindVarDeclaration:
 		case StmtKindShortDeclaration:
