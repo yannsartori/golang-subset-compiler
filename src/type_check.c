@@ -13,6 +13,7 @@ int isExpressionAddressable(Exp* exp);
 int isValidOpAssignStmt(Stmt* stmt);
 void typecheckSwitchStatements(Stmt* stmt);
 void functionWeeder(FuncDeclNode* function);
+void typeCheckVarDecl(VarDeclNode* decl);
 
 TTEntry *getExpressionType(Exp *e)
 {
@@ -64,6 +65,10 @@ char * typeToString(TTEntry *t)
 	else if ( t->underlyingType == sliceType )
 	{
 		sprintf(str, "[]%s", typeToString(t->val.sliceType.type));
+	}
+	else if ( t->underlyingType == identifierType )
+	{
+		sprintf(str, "%s", t -> id);
 	}
 	else
 	{
@@ -322,7 +327,7 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 					PolymorphicEntry *structField = getEntry(baseType->val.structType.fields, e->val.access.accessor->val.id);
 					if ( structField == NULL || !structField->isSymbol )
 					{
-						fprintf(stderr, "Error: (%d) Struct %s has no field called %s", e->lineno, typeToString(baseType), e->val.access.accessor->val.id);
+						fprintf(stderr, "Error: (%d) Struct %s has no field called %s\n", e->lineno, typeToString(baseType), e->val.access.accessor->val.id);
 						exit(1);
 					}
 					return structField->entry.t;
@@ -338,7 +343,7 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 					}
 					if ( elemType != listType->val.sliceType.type )
 					{
-						fprintf(stderr, "Error: (%d) Cannot append elements of type %s to types %s", e->lineno, typeToString(elemType), typeToString(listType));
+						fprintf(stderr, "Error: (%d) Cannot append elements of type %s to types %s\n", e->lineno, typeToString(elemType), typeToString(listType));
 						exit(1);
 					}
 					return listType;
@@ -513,10 +518,11 @@ void typeCheckStatement(Stmt* stmt){
 		//TODO
 		//For denali to implement
 		case StmtKindTypeDeclaration:
+			printf("Something at least\n");
 			break;
 		case StmtKindVarDeclaration:
-			break;
 		case StmtKindShortDeclaration:
+			typeCheckVarDecl(stmt -> val.varDeclaration);
 			break;
 	}
 
@@ -526,8 +532,23 @@ void typeCheckStatement(Stmt* stmt){
 }
 
 
-void typeCheckProgram(RootNode rootNode) {
-	
+void typeCheckProgram(RootNode* rootNode) {
+	TopDeclarationNode* topIter = rootNode -> startDecls;
+	while (topIter != NULL){
+		if (topIter -> declType == variDeclType) {
+			typeCheckVarDecl(topIter -> actualRealDeclaration.varDecl);
+		} else if (topIter -> declType == typeDeclType) {
+			//Do nothing?
+			printf("types are type-correct;\n");
+		} else if (topIter -> declType == funcDeclType) {
+			functionWeeder(topIter -> actualRealDeclaration.funcDecl);
+			typeCheckStatement(topIter -> actualRealDeclaration.funcDecl -> blockStart);
+		} else {
+			printf("How did I get here?\n");
+		}
+		
+		topIter = topIter -> nextTopDecl;
+	}
 }
 
 
@@ -965,3 +986,42 @@ void functionWeeder(FuncDeclNode* function){
 
 
 }
+
+void typeCheckVarDecl(VarDeclNode* decl) {
+	if (decl == NULL) {
+		return;
+	}
+	
+	if (decl -> value == NULL){
+		return;
+	}
+	
+	TTEntry* expType = typeCheckExpression(decl -> value);
+	
+	if (decl -> typeThing -> kind == inferType) {
+		if (decl -> iDoDeclare == 1) {
+			decl -> whoAmI -> type = expType;
+		} else {
+			if (!typeEquality(decl -> whoAmI -> type, expType)) {
+				
+				fprintf(stderr,"Error: (line %d) %s cannot be assigned to %s\n", decl -> lineno, typeToString(expType), typeToString(decl -> whoAmI -> type));
+				exit(1);
+			}
+		}
+	} else {
+		if (!typeEquality(expType, decl -> whoAmI -> type)) {
+			fprintf(stderr,"Error: (line %d) %s cannot be assigned to %s\n", decl -> lineno, typeToString(expType), typeToString(decl -> whoAmI -> type));
+			exit(1);
+		}
+	}
+	
+	
+	typeCheckVarDecl(decl -> nextDecl);
+	typeCheckVarDecl(decl -> multiDecl);
+	
+}
+
+
+
+
+

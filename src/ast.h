@@ -171,6 +171,7 @@ struct VarDeclNode {
 	VarDeclNode* nextDecl;
 	VarDeclNode* multiDecl;
 	TypeHolderNode* typeThing;
+	STEntry* whoAmI;
 	int iDoDeclare;		/*Used to track whether or not a short var declaration (i.e.  one that uses the ":=" operator) actually declares or just assigns. The symbol table printer  reads this and decides whether or not to print the symbol */
 	int lineno;
 };
