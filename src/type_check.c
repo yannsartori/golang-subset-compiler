@@ -36,23 +36,46 @@ int isBool(TTEntry *t) { return t != NULL && isNonCompositeType(t) && t->val.non
 int isOrdered(TTEntry *t) { return isNumericType(t) || (isNonCompositeType(t) && t->val.nonCompositeType.type == baseString); }
 int typeEquality(TTEntry *t1, TTEntry *t2)
 {
-  if ( t1 == NULL || t2 == NULL ) return t1 == t2;
-  
-  if ( t1->id == NULL && t2->id == NULL )
-  {
-    if ( t1->underlyingType == arrayType && t2->underlyingType == arrayType )
-	  {
-		  return typeEquality(t1->val.arrayType.type, t2->val.arrayType.type) && t1->val.arrayType.size == t2->val.arrayType.size;
-	  }
-	  else if ( t1->underlyingType == sliceType && t2->underlyingType == sliceType )
-	  {
-		  return typeEquality(t1->val.sliceType.type, t2->val.sliceType.type);
-	  }
-	  else if ( t1->underlyingType == structType && t2->underlyingType == structType )
-	  {
-	    //iterate through entries and call type equality on the fields. return false if any are false, true if all are true
-	  }
-  }
+	if ( t1 == NULL || t2 == NULL ) return t1 == t2;
+	
+	if ( t1->id == NULL && t2->id == NULL )
+	{
+	if ( t1->underlyingType == arrayType && t2->underlyingType == arrayType )
+		{
+			return typeEquality(t1->val.arrayType.type, t2->val.arrayType.type) && t1->val.arrayType.size == t2->val.arrayType.size;
+		}
+		else if ( t1->underlyingType == sliceType && t2->underlyingType == sliceType )
+		{
+			return typeEquality(t1->val.sliceType.type, t2->val.sliceType.type);
+		}
+		else if ( t1->underlyingType == structType && t2->underlyingType == structType )
+		{
+		//iterate through entries and call type equality on the fields. return false if any are false, true if all are true
+			IdChain* iter1 = t1 -> val.structType.fieldNames;
+			IdChain* iter2 = t2 -> val.structType.fieldNames;
+			PolymorphicEntry* hold1;
+			PolymorphicEntry* hold2;
+			while (iter1 != NULL) {
+				if (iter2 == NULL) {
+					return 0;
+				}
+				if (strcmp(iter1 -> identifier, iter2 -> identifier) != 0) {
+					return 0;
+				}
+				hold1 = getEntry(t1 -> val.structType.fields, iter1 -> identifier);
+				hold2 = getEntry(t2 -> val.structType.fields, iter2 -> identifier);
+				if (typeEquality(hold1 -> entry.s -> type, hold2 -> entry.s -> type) == 0) {
+					return 0;
+				}
+				iter1 = iter1 -> next;
+				iter2 = iter2 -> next;
+			}
+			if (iter2 != NULL) {
+				return 0;
+			}
+			return 1;
+		}
+	}
 	return t1 == t2;
 }
 char * typeToString(TTEntry *t)
@@ -66,18 +89,30 @@ char * typeToString(TTEntry *t)
 		return str;
 	}
 
-
-	if ( t->underlyingType == arrayType )
-	{
-		sprintf(str, "[%d]%s", t->val.arrayType.size, typeToString(t->val.arrayType.type));
-	}
-	else if ( t->underlyingType == sliceType )
-	{
-		sprintf(str, "[]%s", typeToString(t->val.sliceType.type));
-	}
-	else if ( t->underlyingType == identifierType )
-	{
-		sprintf(str, "%s", t -> id);
+	if (t -> id == NULL) {
+		if ( t->underlyingType == arrayType )
+		{
+			sprintf(str, "[%d]%s", t->val.arrayType.size, typeToString(t->val.arrayType.type));
+		}
+		else if ( t->underlyingType == sliceType )
+		{
+			sprintf(str, "[]%s", typeToString(t->val.sliceType.type));
+		}
+		else if ( t->underlyingType == structType )
+		{
+			sprintf(str, "struct { ");
+			//iterate through entries and call print on the fields.
+			IdChain* iter = t -> val.structType.fieldNames;
+			PolymorphicEntry* hold;
+			while (iter != NULL) {
+				strcat(str, iter -> identifier);
+				strcat(str, " ");
+				strcat(str, typeToString(getEntry(t -> val.structType.fields, iter -> identifier) -> entry.s -> type));
+				strcat(str, "; ");
+				iter = iter -> next;
+			}
+			strcat(str, "}");
+		}
 	}
 	else
 	{
@@ -548,7 +583,7 @@ void typeCheckProgram(RootNode* rootNode) {
 			typeCheckVarDecl(topIter -> actualRealDeclaration.varDecl);
 		} else if (topIter -> declType == typeDeclType) {
 			//Do nothing?
-			printf("types are type-correct;\n");
+			//printf("types are type-correct;\n");
 		} else if (topIter -> declType == funcDeclType) {
 			functionWeeder(topIter -> actualRealDeclaration.funcDecl);
 			typeCheckStatement(topIter -> actualRealDeclaration.funcDecl -> blockStart);

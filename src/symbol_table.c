@@ -633,6 +633,8 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 		VarDeclNode *sMembs = holder -> structMembers;
 		Context *tentativeContext = newContext();
 		STEntry *memberEntry;
+		IdChain* idMover = malloc(sizeof(IdChain));
+		t -> val.structType.fieldNames = idMover;
 		int returnCode;
 		while (sMembs != NULL) {
 			if (head == NULL && identifier == NULL){
@@ -647,7 +649,8 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 				t -> underlyingType = badType;
 				return t;
 			}
-			t -> comparable *= innerType -> comparable;
+			t -> comparable *= innerType -> comparable;   //this line scares me
+			
 			
 			memberEntry = malloc(sizeof(STEntry));
 			memberEntry -> id = sMembs -> identifier;
@@ -658,9 +661,25 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 				t -> underlyingType = badType;
 				return t;
 			}
+			
+			idMover -> identifier = sMembs -> identifier;
 			sMembs = sMembs -> nextDecl;
+			
+			if (sMembs == NULL) {
+				idMover -> next = NULL;
+			} else {
+				
+				idMover -> next = malloc(sizeof(IdChain));
+				idMover = idMover -> next;
+			}
+			
+			
 		}
 		t -> val.structType.fields = tentativeContext;
+		
+		IdChain* temp = t -> val.structType.fieldNames;
+		
+		
 	} else {
 		fprintf(stderr, "I was passed a bad TypeDeclNode. You shouldn't ever see this.\n");
 		return NULL;
