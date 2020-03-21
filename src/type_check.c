@@ -26,7 +26,10 @@ TTEntry *getBuiltInType(char *id)
 	while ( cur != NULL )
 	{
 		if ( strcmp(cur->id, id) == 0 ) return cur;
+		printf("%s\n", cur -> id);
+		cur = cur -> next;
 	}
+	printf("looked for a built-in (%s), couldn't find it. You should never see this.\n", id);
 	return NULL; //unreachable if id typed correctly...
 }
 int isNonCompositeType(TTEntry *t) { return t != NULL && t->underlyingType == identifierType;}
@@ -565,6 +568,8 @@ void typeCheckStatement(Stmt* stmt){
 			//printf("Something at least\n");
 			break;
 		case StmtKindVarDeclaration:
+			typeCheckVarDecl(stmt -> val.varDeclaration);
+			break;
 		case StmtKindShortDeclaration:
 			typeCheckVarDecl(stmt -> val.varDeclaration);
 			break;
@@ -1032,6 +1037,8 @@ void functionWeeder(FuncDeclNode* function){
 }
 
 void typeCheckVarDecl(VarDeclNode* decl) {
+	
+	
 	if (decl == NULL) {
 		return;
 	}
@@ -1039,9 +1046,7 @@ void typeCheckVarDecl(VarDeclNode* decl) {
 	if (decl -> value == NULL){
 		return;
 	}
-	
 	TTEntry* expType = typeCheckExpression(decl -> value);
-	
 	if (decl -> typeThing -> kind == inferType) {
 		if (decl -> iDoDeclare == 1) {
 			decl -> whoAmI -> type = expType;
@@ -1060,7 +1065,10 @@ void typeCheckVarDecl(VarDeclNode* decl) {
 	}
 	
 	
+	
 	typeCheckVarDecl(decl -> nextDecl);
+	
+	
 	typeCheckVarDecl(decl -> multiDecl);
 	
 }
