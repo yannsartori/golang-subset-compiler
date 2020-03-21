@@ -358,19 +358,22 @@ void symbolCheckSwitchCaseClauseList(switchCaseClause* clauseList, Context* cont
 
 void symbolCheckProgram(RootNode* root) {
 	Context* masterContx = newContext();
-	builtInTypes = malloc(5*sizeof(TTEntry));
+	builtInTypes = malloc(sizeof(TTEntry));
+	TTEntry* placeHolder = builtInTypes;
 	builtInTypes -> id = "int";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseInt;
 	builtInTypes -> comparable = 1;
 	addTypeEntry(masterContx, builtInTypes);
-	builtInTypes ++;
+	builtInTypes -> next = malloc(sizeof(TTEntry));
+	builtInTypes = builtInTypes -> next;
 	builtInTypes -> id = "float64";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseFloat64;
 	builtInTypes -> comparable = 1;
 	addTypeEntry(masterContx, builtInTypes);
-	builtInTypes ++;
+	builtInTypes -> next = malloc(sizeof(TTEntry));
+	builtInTypes = builtInTypes -> next;
 	builtInTypes -> id = "bool";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseBool;
@@ -386,18 +389,22 @@ void symbolCheckProgram(RootNode* root) {
 	builtInVals -> type = builtInTypes;
 	builtInVals -> isConstant = 1;
 	addSymbolEntry(masterContx, builtInVals);
-	builtInTypes ++;
+	builtInTypes -> next = malloc(sizeof(TTEntry));
+	builtInTypes = builtInTypes -> next;
 	builtInTypes -> id = "rune";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseRune;
 	builtInTypes -> comparable = 1;
 	addTypeEntry(masterContx, builtInTypes);
-	builtInTypes ++;
+	builtInTypes -> next = malloc(sizeof(TTEntry));
+	builtInTypes = builtInTypes -> next;
 	builtInTypes -> id = "string";
 	builtInTypes -> underlyingType = identifierType;
 	builtInTypes -> val.nonCompositeType.type = baseString;
 	builtInTypes -> comparable = 1;
 	addTypeEntry(masterContx, builtInTypes);
+	builtInTypes -> next = NULL;
+	builtInTypes = placeHolder;
 	masterContx = scopedContext(masterContx);
 	TopDeclarationNode *iter = root -> startDecls;
 	while (iter != NULL) {
