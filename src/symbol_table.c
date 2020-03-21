@@ -426,6 +426,7 @@ void symbolCheckProgram(RootNode* root) {
 			symbolCheckVarDecl(iter -> actualRealDeclaration.varDecl, masterContx, 0);
 		} else if (iter -> declType == funcDeclType){
 			
+			
 			STEntry *s = malloc(sizeof(STEntry));
 			s -> id = iter -> actualRealDeclaration.funcDecl -> identifier;
 			s -> isConstant = 1;
@@ -577,6 +578,10 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 			t -> underlyingType = badType;
 			return t;
 		}
+		if (identifier == NULL) {
+			return assignee -> entry.t;
+		}
+		
 		t -> underlyingType = assignee -> entry.t -> underlyingType;
 		t -> val.nonCompositeType.type = assignee -> entry.t -> val.nonCompositeType.type;
 		t -> val.sliceType.type = assignee -> entry.t -> val.sliceType.type;
@@ -628,6 +633,8 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 		VarDeclNode *sMembs = holder -> structMembers;
 		Context *tentativeContext = newContext();
 		STEntry *memberEntry;
+		IdChain* idMover = malloc(sizeof(IdChain));
+		t -> val.structType.fieldNames = idMover;
 		int returnCode;
 		while (sMembs != NULL) {
 			if (head == NULL && identifier == NULL){
@@ -642,7 +649,8 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 				t -> underlyingType = badType;
 				return t;
 			}
-			t -> comparable *= innerType -> comparable;
+			t -> comparable *= innerType -> comparable;   //this line scares me
+			
 			
 			memberEntry = malloc(sizeof(STEntry));
 			memberEntry -> id = sMembs -> identifier;
@@ -653,9 +661,25 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 				t -> underlyingType = badType;
 				return t;
 			}
+			
+			idMover -> identifier = sMembs -> identifier;
 			sMembs = sMembs -> nextDecl;
+			
+			if (sMembs == NULL) {
+				idMover -> next = NULL;
+			} else {
+				
+				idMover -> next = malloc(sizeof(IdChain));
+				idMover = idMover -> next;
+			}
+			
+			
 		}
 		t -> val.structType.fields = tentativeContext;
+		
+		IdChain* temp = t -> val.structType.fieldNames;
+		
+		
 	} else {
 		fprintf(stderr, "I was passed a bad TypeDeclNode. You shouldn't ever see this.\n");
 		return NULL;
@@ -689,6 +713,7 @@ void symbolCheckVarDecl(VarDeclNode* declNode, Context* contx, int placement) { 
 		s -> id = varDeclIter -> identifier;
 		s -> type = makeAnonymousTTEntry(contx, varDeclIter -> typeThing);
 		s -> isConstant = 0;
+		varDeclIter -> whoAmI = s;
 		
 		if (s -> type -> underlyingType == badType) {
 			fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", varDeclIter -> lineno, s -> id);
@@ -698,6 +723,12 @@ void symbolCheckVarDecl(VarDeclNode* declNode, Context* contx, int placement) { 
 			if (addSymbolEntry(contx, s) != 0) {
 				if (placement == 2) {
 					varDeclIter -> iDoDeclare = 0;
+					PolymorphicEntry* toBeShort = getEntry(contx, s -> id);
+					if (toBeShort -> isSymbol == 0) {
+						fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared as a type in this scope\n", varDeclIter -> lineno, s -> id);
+						exit(1);
+					}
+					varDeclIter -> whoAmI = toBeShort -> entry.s;
 				} else {
 					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", varDeclIter -> lineno, s -> id);
 					exit(1);

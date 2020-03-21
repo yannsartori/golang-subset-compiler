@@ -13,6 +13,7 @@ int isExpressionAddressable(Exp* exp);
 int isValidOpAssignStmt(Stmt* stmt);
 void typecheckSwitchStatements(Stmt* stmt);
 void functionWeeder(FuncDeclNode* function);
+void typeCheckVarDecl(VarDeclNode* decl);
 
 TTEntry *getExpressionType(Exp *e)
 {
@@ -33,15 +34,47 @@ int isNumericType(TTEntry *t) { return t != NULL && isNonCompositeType(t) && (t-
 int isIntegerType(TTEntry *t) { return t != NULL && isNonCompositeType(t) && (t->val.nonCompositeType.type == baseInt || t->val.nonCompositeType.type == baseRune); }
 int isBool(TTEntry *t) { return t != NULL && isNonCompositeType(t) && t->val.nonCompositeType.type == baseBool; }
 int isOrdered(TTEntry *t) { return isNumericType(t) || (isNonCompositeType(t) && t->val.nonCompositeType.type == baseString); }
-int typeEquality(TTEntry *t1, TTEntry *t2) //only used for comparison operations
+int typeEquality(TTEntry *t1, TTEntry *t2)
 {
+	if ( t1 == NULL || t2 == NULL ) return t1 == t2;
+	
+	if ( t1->id == NULL && t2->id == NULL )
+	{
 	if ( t1->underlyingType == arrayType && t2->underlyingType == arrayType )
-	{
-		return typeEquality(t1->val.arrayType.type, t2->val.arrayType.type) && t1->val.arrayType.size == t2->val.arrayType.size;
-	}
-	if ( t1->underlyingType == sliceType && t2->underlyingType == sliceType )
-	{
-		return typeEquality(t1->val.sliceType.type, t2->val.sliceType.type);
+		{
+			return typeEquality(t1->val.arrayType.type, t2->val.arrayType.type) && t1->val.arrayType.size == t2->val.arrayType.size;
+		}
+		else if ( t1->underlyingType == sliceType && t2->underlyingType == sliceType )
+		{
+			return typeEquality(t1->val.sliceType.type, t2->val.sliceType.type);
+		}
+		else if ( t1->underlyingType == structType && t2->underlyingType == structType )
+		{
+		//iterate through entries and call type equality on the fields. return false if any are false, true if all are true
+			IdChain* iter1 = t1 -> val.structType.fieldNames;
+			IdChain* iter2 = t2 -> val.structType.fieldNames;
+			PolymorphicEntry* hold1;
+			PolymorphicEntry* hold2;
+			while (iter1 != NULL) {
+				if (iter2 == NULL) {
+					return 0;
+				}
+				if (strcmp(iter1 -> identifier, iter2 -> identifier) != 0) {
+					return 0;
+				}
+				hold1 = getEntry(t1 -> val.structType.fields, iter1 -> identifier);
+				hold2 = getEntry(t2 -> val.structType.fields, iter2 -> identifier);
+				if (typeEquality(hold1 -> entry.s -> type, hold2 -> entry.s -> type) == 0) {
+					return 0;
+				}
+				iter1 = iter1 -> next;
+				iter2 = iter2 -> next;
+			}
+			if (iter2 != NULL) {
+				return 0;
+			}
+			return 1;
+		}
 	}
 	return t1 == t2;
 }
@@ -56,14 +89,30 @@ char * typeToString(TTEntry *t)
 		return str;
 	}
 
-
-	if ( t->underlyingType == arrayType )
-	{
-		sprintf(str, "[%d]%s", t->val.arrayType.size, typeToString(t->val.arrayType.type));
-	}
-	else if ( t->underlyingType == sliceType )
-	{
-		sprintf(str, "[]%s", typeToString(t->val.sliceType.type));
+	if (t -> id == NULL) {
+		if ( t->underlyingType == arrayType )
+		{
+			sprintf(str, "[%d]%s", t->val.arrayType.size, typeToString(t->val.arrayType.type));
+		}
+		else if ( t->underlyingType == sliceType )
+		{
+			sprintf(str, "[]%s", typeToString(t->val.sliceType.type));
+		}
+		else if ( t->underlyingType == structType )
+		{
+			sprintf(str, "struct { ");
+			//iterate through entries and call print on the fields.
+			IdChain* iter = t -> val.structType.fieldNames;
+			PolymorphicEntry* hold;
+			while (iter != NULL) {
+				strcat(str, iter -> identifier);
+				strcat(str, " ");
+				strcat(str, typeToString(getEntry(t -> val.structType.fields, iter -> identifier) -> entry.s -> type));
+				strcat(str, "; ");
+				iter = iter -> next;
+			}
+			strcat(str, "}");
+		}
 	}
 	else
 	{
@@ -322,7 +371,7 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 					PolymorphicEntry *structField = getEntry(baseType->val.structType.fields, e->val.access.accessor->val.id);
 					if ( structField == NULL || !structField->isSymbol )
 					{
-						fprintf(stderr, "Error: (%d) Struct %s has no field called %s", e->lineno, typeToString(baseType), e->val.access.accessor->val.id);
+						fprintf(stderr, "Error: (%d) Struct %s has no field called %s\n", e->lineno, typeToString(baseType), e->val.access.accessor->val.id);
 						exit(1);
 					}
 					return structField->entry.t;
@@ -338,7 +387,7 @@ TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with t
 					}
 					if ( elemType != listType->val.sliceType.type )
 					{
-						fprintf(stderr, "Error: (%d) Cannot append elements of type %s to types %s", e->lineno, typeToString(elemType), typeToString(listType));
+						fprintf(stderr, "Error: (%d) Cannot append elements of type %s to types %s\n", e->lineno, typeToString(elemType), typeToString(listType));
 						exit(1);
 					}
 					return listType;
@@ -513,10 +562,11 @@ void typeCheckStatement(Stmt* stmt){
 		//TODO
 		//For denali to implement
 		case StmtKindTypeDeclaration:
+			//printf("Something at least\n");
 			break;
 		case StmtKindVarDeclaration:
-			break;
 		case StmtKindShortDeclaration:
+			typeCheckVarDecl(stmt -> val.varDeclaration);
 			break;
 	}
 
@@ -526,8 +576,23 @@ void typeCheckStatement(Stmt* stmt){
 }
 
 
-void typeCheckProgram(RootNode rootNode) {
-	
+void typeCheckProgram(RootNode* rootNode) {
+	TopDeclarationNode* topIter = rootNode -> startDecls;
+	while (topIter != NULL){
+		if (topIter -> declType == variDeclType) {
+			typeCheckVarDecl(topIter -> actualRealDeclaration.varDecl);
+		} else if (topIter -> declType == typeDeclType) {
+			//Do nothing?
+			//printf("types are type-correct;\n");
+		} else if (topIter -> declType == funcDeclType) {
+			functionWeeder(topIter -> actualRealDeclaration.funcDecl);
+			typeCheckStatement(topIter -> actualRealDeclaration.funcDecl -> blockStart);
+		} else {
+			printf("How did I get here?\n");
+		}
+		
+		topIter = topIter -> nextTopDecl;
+	}
 }
 
 
@@ -965,3 +1030,42 @@ void functionWeeder(FuncDeclNode* function){
 
 
 }
+
+void typeCheckVarDecl(VarDeclNode* decl) {
+	if (decl == NULL) {
+		return;
+	}
+	
+	if (decl -> value == NULL){
+		return;
+	}
+	
+	TTEntry* expType = typeCheckExpression(decl -> value);
+	
+	if (decl -> typeThing -> kind == inferType) {
+		if (decl -> iDoDeclare == 1) {
+			decl -> whoAmI -> type = expType;
+		} else {
+			if (!typeEquality(decl -> whoAmI -> type, expType)) {
+				
+				fprintf(stderr,"Error: (line %d) %s cannot be assigned to %s\n", decl -> lineno, typeToString(expType), typeToString(decl -> whoAmI -> type));
+				exit(1);
+			}
+		}
+	} else {
+		if (!typeEquality(expType, decl -> whoAmI -> type)) {
+			fprintf(stderr,"Error: (line %d) %s cannot be assigned to %s\n", decl -> lineno, typeToString(expType), typeToString(decl -> whoAmI -> type));
+			exit(1);
+		}
+	}
+	
+	
+	typeCheckVarDecl(decl -> nextDecl);
+	typeCheckVarDecl(decl -> multiDecl);
+	
+}
+
+
+
+
+

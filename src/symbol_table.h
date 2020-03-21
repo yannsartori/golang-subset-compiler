@@ -34,7 +34,7 @@ struct TTEntry { //base types have id = type and basetype = basetype to simplify
 		struct {BaseType type;} nonCompositeType; //int float etc 
 		struct {TTEntry *type;} sliceType; //if slice []T, returns T
 		struct {TTEntry *type; int size;} arrayType; //if arr [n]T, n == size, T == type
-		struct {Context *fields;} structType; // (id, type)1, (id,type)2, ...
+		struct {Context *fields; IdChain* fieldNames;} structType; // (id, type)1, (id,type)2, ...
 		struct {STEntry *args; TTEntry *ret;} functionType; //(Type1, Type2, ...) : TypeRet
 	} val;
 	int comparable;

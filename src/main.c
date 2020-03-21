@@ -3,9 +3,10 @@
 #include<string.h>
 #include "ast.h"
 #include "pretty_printer.h"
-void symbolCheckProgram(RootNode* root);
 
+void symbolCheckProgram(RootNode* root);
 void printSymbolProgram(RootNode* rootNode);
+void typeCheckProgram(RootNode* rootNode);
 
 void yyparse();
 int yylex();
@@ -44,6 +45,10 @@ int main(int argc, char * argv[])
 	} else if ( !strcmp(argv[1], "typecheck") )
 	{
 		yyparse();
+		symbolCheckProgram(rootNode);
+		typeCheckProgram(rootNode);
+		
+		printf("OK.\n");
 		//symbolchecknoprint
 		//typecheck
 	} else {
