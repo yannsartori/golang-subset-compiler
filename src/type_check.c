@@ -26,7 +26,7 @@ TTEntry *getBuiltInType(char *id)
 	while ( cur != NULL )
 	{
 		if ( strcmp(cur->id, id) == 0 ) return cur;
-		printf("%s\n", cur -> id);
+		//printf("%s\n", cur -> id);
 		cur = cur -> next;
 	}
 	printf("looked for a built-in (%s), couldn't find it. You should never see this.\n", id);
@@ -874,8 +874,9 @@ int isExpressionAssignable(Exp* exp){
 		return 0;
 	}
 
+
 	switch (exp->kind){
-		case identifierType : 
+		case expKindIdentifier : 
 			return isExpressionAddressable(exp);
 		default: 
 			return 1;
@@ -915,6 +916,7 @@ int isValidAssignPair(Exp* left,Exp* right){
 
 			exit(1);
 		}
+
 
 		if (!statementTypeEquality(leftType,rightType)){
 			fprintf(stderr,"Error: (line %d) %s cannot be assigned to %s\n",left->lineno,typeToString(rightType),typeToString(leftType));

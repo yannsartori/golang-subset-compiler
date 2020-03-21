@@ -38,7 +38,6 @@ int main(int argc, char * argv[])
 
 
 		symbolCheckProgram(rootNode);
-		puts("Got here");
 		printSymbolProgram(rootNode);
 		
 
@@ -48,9 +47,8 @@ int main(int argc, char * argv[])
 		symbolCheckProgram(rootNode);
 		typeCheckProgram(rootNode);
 		
-		printf("OK.\n");
-		//symbolchecknoprint
-		//typecheck
+		printf("OK\n");
+
 	} else {
 		printf("sorry, I didn't get that\n");
 	}
