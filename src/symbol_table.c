@@ -301,7 +301,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 			while (typeDeclIter != NULL) {
 				t = makeNamedTTEntry(context, typeDeclIter);
 				if (t -> underlyingType == badType) {
-					fprintf(stderr, "Error: (line %d) %s\n", stmt -> lineno, typeDeclIter -> actualType -> identification, t -> id);
+					fprintf(stderr, "Error: (line %d) %s\n", stmt -> lineno, t -> id);
 					exit(1);
 				}
 				
@@ -436,14 +436,14 @@ void symbolCheckProgram(RootNode* root) {
 			
 			STEntry *s = malloc(sizeof(STEntry));
 			s -> id = iter -> actualRealDeclaration.funcDecl -> identifier;
-			s -> isConstant = 1;
+			s -> isConstant = 2;
 			iter -> actualRealDeclaration.funcDecl -> symbolEntry = s;
 			
 			Context* functionContext = scopedContext(masterContx);
 			
 			if (strcmp(s -> id, "init") == 0) {
 				if (iter -> actualRealDeclaration.funcDecl -> returnType != NULL || iter -> actualRealDeclaration.funcDecl -> argsDecls != NULL) {
-					fprintf(stderr, "Error: (line %d) init must have no arguments and void return type", iter -> actualRealDeclaration.funcDecl -> lineno);
+					fprintf(stderr, "Error: (line %d) init must have no arguments and void return type\n", iter -> actualRealDeclaration.funcDecl -> lineno);
 					exit(1);
 				}
 				symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
@@ -452,7 +452,7 @@ void symbolCheckProgram(RootNode* root) {
 				
 				if (strcmp(s -> id, "main") == 0) {
 					if (iter -> actualRealDeclaration.funcDecl -> returnType != NULL || iter -> actualRealDeclaration.funcDecl -> argsDecls != NULL) {
-						fprintf(stderr, "Error: (line %d) main must have no arguments and void return type", iter -> actualRealDeclaration.funcDecl -> lineno);
+						fprintf(stderr, "Error: (line %d) main must have no arguments and void return type\n", iter -> actualRealDeclaration.funcDecl -> lineno);
 						exit(1);
 					}
 				}
@@ -474,7 +474,7 @@ void symbolCheckProgram(RootNode* root) {
 				} else {
 					s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
 					if (s -> type -> val.functionType.ret -> underlyingType == badType) {
-						fprintf(stderr, "Error: (line %d) problem with function return type: %s", iter -> actualRealDeclaration.funcDecl -> lineno, s -> type -> val.functionType.ret -> id);
+						fprintf(stderr, "Error: (line %d) problem with function return type: %s\n", iter -> actualRealDeclaration.funcDecl -> lineno, s -> type -> val.functionType.ret -> id);
 						exit(1);
 					}
 				}
@@ -652,6 +652,7 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 				innerType = makeSubTTEntry(contx, sMembs -> typeThing, head, inSlice);
 			}
 			if (innerType -> underlyingType == badType) {
+				printf("hello\n");
 				t -> id = innerType -> id;
 				t -> underlyingType = badType;
 				return t;
