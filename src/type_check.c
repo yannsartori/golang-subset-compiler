@@ -535,6 +535,7 @@ void typeCheckStatement(Stmt* stmt){
 			type = typeCheckExpression(stmt->val.ifStmt.expression);
 			if (!isBool(type)){
 				fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]\n",stmt->val.ifStmt.expression->lineno,typeToString(type));
+				exit(1);
 			}
 			typeCheckStatement(stmt->val.ifStmt.block);
 			typeCheckStatement(stmt->val.ifStmt.elseBlock);
@@ -767,18 +768,29 @@ int clauseListBreakCheck(switchCaseClause* clauseList,char* functionName){
 	}
 
 
-	return statementIsProperlyTerminated(clauseList->statementList,functionName) && clauseListBreakCheck(clauseList->next,functionName);
+
+	if (statementIsProperlyTerminated(clauseList->statementList,functionName) ){
+		if (clauseList->next == NULL){
+			return 1;
+		}else{
+			return clauseListBreakCheck(clauseList->next,functionName);
+		}
+	}
+	
 }
 
 
 int weedSwitchStatementClauseList(Stmt* stmt, char* functionName){
-
+	
+	if (stmt == NULL){
+		return 1;
+	}
 
 	if (isDefaultCasePresent(stmt->val.switchStmt.clauseList)){
 		return clauseListBreakCheck(stmt->val.switchStmt.clauseList,functionName);
 
 	}else{
-		fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [no default case]\n",stmt->val.switchStmt.clauseList->lineno,functionName);
+		fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [no default case]\n",stmt->lineno,functionName);
 		exit(1);
 	}
 
@@ -817,7 +829,7 @@ int statementIsProperlyTerminated(Stmt* stmt, char* funcName){
 				return 1;
 			}
 		case StmtKindWhileLoop : 
-			if (stmt->val.whileLoop.conditon == NULL){
+			if (stmt->val.whileLoop.conditon != NULL){
 				fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [loop condition not empty]\n",stmt->lineno,funcName);
 				exit(1);
 			}
@@ -828,7 +840,7 @@ int statementIsProperlyTerminated(Stmt* stmt, char* funcName){
 				return 1;
 			}
 		case StmtKindThreePartLoop : 
-			if (stmt->val.forLoop.condition == NULL){
+			if (stmt->val.forLoop.condition != NULL){
 				fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [loop condition not empty]\n",stmt->lineno,funcName);
 				exit(1);
 			}
@@ -877,7 +889,7 @@ int isPrintable(Exp* exp){
 	
 	
 	if (!isNonCompositeType(type)){
-		fprintf(stderr,"Error: (line %d) print, println expects base types [received %s]\n",exp->lineno,typeToString(type));
+		fprintf(stderr,"Error: (line %d) print, println expect base types [received %s]\n",exp->lineno,typeToString(type));
 		exit(1);
 	}
 
@@ -889,7 +901,7 @@ int isPrintable(Exp* exp){
 
 		return 1;	
 	}else{
-		fprintf(stderr,"Error: (line %d) print, println expects base types [received %s]\n",exp->lineno,typeToString(type));
+		fprintf(stderr,"Error: (line %d) print, println expect base types [received %s]\n",exp->lineno,typeToString(type));
 		exit(1);
 	}
 
@@ -1093,6 +1105,10 @@ void typecheckSwitchStatements(Stmt* stmt){
 
 	}else{
 		type = typeCheckExpression(stmt->val.switchStmt.expression);
+		if (!type->comparable){
+			fprintf(stderr,"Error: (line %d) switch case expression must be of a comparable type\n",stmt->lineno);
+			exit(1);
+		}
 	}
 
 	typecheckSwitchCaseClause(stmt->val.switchStmt.clauseList,type);
