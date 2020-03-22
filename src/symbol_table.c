@@ -17,7 +17,7 @@ TTEntry *makeAnonymousTTEntry(Context* contx, TypeHolderNode *holder);
 TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identifier, TTEntry* head, int inSlice);
 void symbolCheckVarDecl(VarDeclNode* declNode, Context* contx, int placement);
 
-
+int reusingFunctionContext = 0;
 
 int hashCode(char * id)
 
@@ -206,8 +206,14 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 
 
 		case StmtKindBlock :
-						newContext = scopedContext(context);
-						symbolCheckStatement(stmt->val.block.stmt,newContext);
+						if (reusingFunctionContext){
+							reusingFunctionContext = 0;
+							symbolCheckStatement(stmt->val.block.stmt,context);
+							reusingFunctionContext = 1;
+						}else{
+							newContext = scopedContext(context);
+							symbolCheckStatement(stmt->val.block.stmt,newContext);
+						}
 						break;
 
 
@@ -519,8 +525,9 @@ void symbolCheckProgram(RootNode* root) {
 					}
 					argEntryIter -> next = NULL;
 				}
-				
+				reusingFunctionContext = 1;
 				symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
+				reusingFunctionContext = 0;
 			}
 			
 		} else {
