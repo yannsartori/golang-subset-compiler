@@ -1001,7 +1001,7 @@ void symbolPrintStructMembers(VarDeclNode *members, int indentLevel)
 {
 	if ( members == NULL ) return;
 	indent(indentLevel);
-	printf("%s", members->identifier);
+	printf("%s ", members->identifier);
 	if ( members->typeThing != NULL )
 	{
 		symbolPrintTypeHolder(members->typeThing, indentLevel);
