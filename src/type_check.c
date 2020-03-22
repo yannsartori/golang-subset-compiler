@@ -249,7 +249,7 @@ void notExpressionError(TTEntry *t, ExpressionKind e, int lineno)
 }
 void notMatchingTypes(TTEntry *t1, TTEntry *t2, ExpressionKind e, int lineno)
 {
-	fprintf(stderr, "Error: (%d) Operation %s requires equal types for both arguments (got %s and %s)", lineno, expKindToString(e), typeToString(t1), typeToString(t2));
+	fprintf(stderr, "Error: (%d) Operation %s requires equal types for both arguments (got %s and %s)\n", lineno, expKindToString(e), typeToString(t1), typeToString(t2));
 	exit(1);
 }
 
@@ -874,9 +874,12 @@ int isPrintable(Exp* exp){
 		puts("Oh no");
 		exit(1);
 	}
+
+	
 	
 	if (!isNonCompositeType(type)){
-		return 0;
+		fprintf(stderr,"Error: (line %d) print, println expects base types [received %s]\n",exp->lineno,typeToString(type));
+		exit(1);
 	}
 
 	if( type->val.nonCompositeType.type == baseBool 
@@ -887,7 +890,7 @@ int isPrintable(Exp* exp){
 
 		return 1;	
 	}else{
-		fprintf(stderr,"Error: (line %d) print expects base types [received %s]\n",exp->lineno,typeToString(type));
+		fprintf(stderr,"Error: (line %d) print, println expects base types [received %s]\n",exp->lineno,typeToString(type));
 		exit(1);
 	}
 
@@ -919,7 +922,7 @@ int isExpressionAddressable(Exp* exp){
 			}
 
 			PolymorphicEntry* polyEntry  = exp->contextEntry;
-			if (polyEntry->isSymbol && ! polyEntry->entry.s->isConstant){ //If a symbol and not a constant
+			if (polyEntry->isSymbol && (polyEntry->entry.s->isConstant == 0)  ){ //If a symbol and not a $ constant or a functions
 				return 1;
 			}else{
 				return 0; //If its not a symbol, its a type
@@ -937,14 +940,26 @@ int isExpressionAddressable(Exp* exp){
 
 }
 
+int isExpressionConst(Exp* exp){
+	if (exp == NULL){
+		return 0;
+	}
+
+	PolymorphicEntry* polyEntry  = exp->contextEntry;
+	return polyEntry->isSymbol && (polyEntry->entry.s->isConstant == 1) ;
+	
+
+}
+
 int isExpressionAssignable(Exp* exp){
 	if (exp == NULL){
 		return 0;
 	}
 
+
 	switch (exp->kind){
-		case identifierType : 
-			return isExpressionAddressable(exp);
+		case expKindIdentifier : 
+			return isExpressionAddressable(exp) || isExpressionConst(exp);
 		default: 
 			return 1;
 	}
@@ -983,6 +998,7 @@ int isValidAssignPair(Exp* left,Exp* right){
 
 			exit(1);
 		}
+
 
 		if (!statementTypeEquality(leftType,rightType)){
 			fprintf(stderr,"Error: (line %d) %s cannot be assigned to %s\n",left->lineno,typeToString(rightType),typeToString(leftType));
@@ -1086,6 +1102,11 @@ void typecheckSwitchStatements(Stmt* stmt){
 
 void functionWeeder(FuncDeclNode* function){
 	if (function == NULL){
+		return;
+	}
+	
+	if (strcmp(function -> identifier, "init") == 0) {
+		globalReturnType = NULL;
 		return;
 	}
 
