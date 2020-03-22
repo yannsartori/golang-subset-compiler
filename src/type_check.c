@@ -535,6 +535,7 @@ void typeCheckStatement(Stmt* stmt){
 			type = typeCheckExpression(stmt->val.ifStmt.expression);
 			if (!isBool(type)){
 				fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]\n",stmt->val.ifStmt.expression->lineno,typeToString(type));
+				exit(1);
 			}
 			typeCheckStatement(stmt->val.ifStmt.block);
 			typeCheckStatement(stmt->val.ifStmt.elseBlock);
@@ -888,7 +889,7 @@ int isPrintable(Exp* exp){
 	
 	
 	if (!isNonCompositeType(type)){
-		fprintf(stderr,"Error: (line %d) print, println expects base types [received %s]\n",exp->lineno,typeToString(type));
+		fprintf(stderr,"Error: (line %d) print, println expect base types [received %s]\n",exp->lineno,typeToString(type));
 		exit(1);
 	}
 
@@ -900,7 +901,7 @@ int isPrintable(Exp* exp){
 
 		return 1;	
 	}else{
-		fprintf(stderr,"Error: (line %d) print, println expects base types [received %s]\n",exp->lineno,typeToString(type));
+		fprintf(stderr,"Error: (line %d) print, println expect base types [received %s]\n",exp->lineno,typeToString(type));
 		exit(1);
 	}
 
@@ -1104,6 +1105,10 @@ void typecheckSwitchStatements(Stmt* stmt){
 
 	}else{
 		type = typeCheckExpression(stmt->val.switchStmt.expression);
+		if (!type->comparable){
+			fprintf(stderr,"Error: (line %d) switch case expression must be of a comparable type\n",stmt->lineno);
+			exit(1);
+		}
 	}
 
 	typecheckSwitchCaseClause(stmt->val.switchStmt.clauseList,type);
