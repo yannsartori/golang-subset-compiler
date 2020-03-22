@@ -767,18 +767,29 @@ int clauseListBreakCheck(switchCaseClause* clauseList,char* functionName){
 	}
 
 
-	return statementIsProperlyTerminated(clauseList->statementList,functionName) && clauseListBreakCheck(clauseList->next,functionName);
+
+	if (statementIsProperlyTerminated(clauseList->statementList,functionName) ){
+		if (clauseList->next == NULL){
+			return 1;
+		}else{
+			return clauseListBreakCheck(clauseList->next,functionName);
+		}
+	}
+	
 }
 
 
 int weedSwitchStatementClauseList(Stmt* stmt, char* functionName){
-
+	
+	if (stmt == NULL){
+		return 1;
+	}
 
 	if (isDefaultCasePresent(stmt->val.switchStmt.clauseList)){
 		return clauseListBreakCheck(stmt->val.switchStmt.clauseList,functionName);
 
 	}else{
-		fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [no default case]\n",stmt->val.switchStmt.clauseList->lineno,functionName);
+		fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [no default case]\n",stmt->lineno,functionName);
 		exit(1);
 	}
 
@@ -817,7 +828,7 @@ int statementIsProperlyTerminated(Stmt* stmt, char* funcName){
 				return 1;
 			}
 		case StmtKindWhileLoop : 
-			if (stmt->val.whileLoop.conditon == NULL){
+			if (stmt->val.whileLoop.conditon != NULL){
 				fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [loop condition not empty]\n",stmt->lineno,funcName);
 				exit(1);
 			}
@@ -828,7 +839,7 @@ int statementIsProperlyTerminated(Stmt* stmt, char* funcName){
 				return 1;
 			}
 		case StmtKindThreePartLoop : 
-			if (stmt->val.forLoop.condition == NULL){
+			if (stmt->val.forLoop.condition != NULL){
 				fprintf(stderr,"Error: line (%d) function %s does not have a terminating statement [loop condition not empty]\n",stmt->lineno,funcName);
 				exit(1);
 			}
