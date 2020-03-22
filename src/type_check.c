@@ -358,36 +358,37 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 					if ( baseType->underlyingType == funcType ) /**FUNCCALL**/
 					{
 						ExpList * curArgPassed = e->val.funcCall.arguments;
-						for ( STEntry *curArgSymbolEntry = baseType->val.functionType.args; curArgSymbolEntry; curArgSymbolEntry = curArgSymbolEntry->next )
+						int paramCount = 1;
+						for ( STEntry *curArgSymbolEntry = baseType->val.functionType.args; curArgSymbolEntry; curArgSymbolEntry = curArgSymbolEntry->next, paramCount++ )
 						{
 							if ( curArgPassed == NULL )
 							{
-								fprintf(stderr, "Error: (%d) %s called with too few arguments\n", e->lineno, baseType->id);
+								fprintf(stderr, "Error: (%d) %s called with too few arguments\n", e->lineno, e->val.funcCall.base->val.id);
 								exit(1);
 							}
 							TTEntry *curArgPassedType = _typeCheckExpression(curArgPassed->cur, wasType);
 							if ( *wasType ) notExpressionError(curArgPassedType, e->kind, e->lineno);
 							if ( curArgPassedType != curArgSymbolEntry->type )
 							{
-								fprintf(stderr, "Error: (%d) Expected parameter of type %s, received %s\n", e->lineno, typeToString(curArgSymbolEntry->type), typeToString(curArgPassedType));
+								fprintf(stderr, "Error: (%d) The %d argument of %s expects parameter of type %s, received %s\n", e->lineno, paramCount, e->val.funcCall.base->val.id, typeToString(curArgSymbolEntry->type), typeToString(curArgPassedType));
 								exit(1);
 							}
 							curArgPassed = curArgPassed->next;
 						}
 						if ( curArgPassed != NULL )
 						{
-							fprintf(stderr, "Error: (%d) %s called with too many arguments\n", e->lineno, baseType->id);
+							fprintf(stderr, "Error: (%d) %s called with too many arguments\n", e->lineno, e->val.funcCall.base->val.id);
 							exit(1);
 						}
 						return baseType->val.functionType.ret;
 					}
-
 					/**TYPECAST**/
 					if ( !(e->val.funcCall.arguments != NULL && e->val.funcCall.arguments->next == NULL ) )
 					{
 						fprintf(stderr, "Error: (%d) Typecasts need exactly one argument\n", e->lineno);
 						exit(1);
 					}
+						*wasType = 0;
 						TTEntry *toCast = _typeCheckExpression(e->val.funcCall.arguments->cur, wasType);
 						//TODO check if we can type cast arrays and stuff. Not specified in documentation, but
 						if ( *wasType ) notExpressionError(toCast, e->kind, e->lineno);
@@ -397,7 +398,6 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 						}
 						fprintf(stderr, "Error: (%d) Typecasts need to occur with either identical underlying types, numeric types, or an integer type to a string. Received types of %s and %s\n", e->lineno, typeToString(baseType), typeToString(toCast)); 
 						exit(1);
-					/**FUNCCALL**/
 				}
 				else if ( e->kind == expKindIndexing )
 				{
