@@ -1,6 +1,5 @@
 #ifndef GLOBAL_ENUM
 #define GLOBAL_ENUM
-
 typedef struct Stmt Stmt;
 typedef struct switchCaseClause switchCaseClause;
 
@@ -107,7 +106,6 @@ typedef enum {
 	expKindLength,
 	expKindCapacity,
 } ExpressionKind;
-
 typedef enum {
 	funcDeclType,
 	typeDeclType,
