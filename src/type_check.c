@@ -1020,6 +1020,11 @@ void functionWeeder(FuncDeclNode* function){
 	if (function == NULL){
 		return;
 	}
+	
+	if (strcmp(function -> identifier, "init") == 0) {
+		globalReturnType = NULL;
+		return;
+	}
 
 	TTEntry* returnType = function->symbolEntry->type->val.functionType.ret;
 	globalReturnType = returnType;
