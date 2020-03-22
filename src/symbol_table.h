@@ -25,7 +25,7 @@ struct STEntry {
 	char *id;
 	TTEntry *type; //points to a location in the TypeTable of the appropriate scope ofc
 	STEntry *next; //Bucket Collisions
-	int isConstant;			// set to 0 almost always. set to 1 for true and false at the base level and also functions.
+	int isConstant;			//0 for variables, 1 for constants and 2 for functions
 };
 struct TTEntry { //base types have id = type and basetype = basetype to simplify (hopefully) checks in the future
 	char *id;
