@@ -428,14 +428,13 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 						fprintf(stderr, "Error (%d) Field selection requires a base expression with underlying type struct, received %s\n", e->lineno, typeToString(baseType));
 						exit(1);
 					}
-					//cant use getEntry because that searches up the stack-- We only want this context.
 					PolymorphicEntry *structField = getEntry(baseType->val.structType.fields, e->val.access.accessor->val.id);
 					if ( structField == NULL || !structField->isSymbol )
 					{
 						fprintf(stderr, "Error: (%d) Struct %s has no field called %s\n", e->lineno, typeToString(baseType), e->val.access.accessor->val.id);
 						exit(1);
 					}
-					return structField->entry.t;
+					return structField->entry.s->type;
 				}
 				else if ( e->kind == expKindAppend )
 				{
