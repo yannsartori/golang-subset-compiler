@@ -544,13 +544,13 @@ void typeCheckStatement(Stmt* stmt){
 		case StmtKindReturn:
 			if (stmt->val.returnVal.returnVal == NULL){
 				if (!statementTypeEquality(NULL,globalReturnType)){
-					fprintf(stderr,"Error: (lune %d) return expected %s but received %s\n",stmt->lineno,typeToString(globalReturnType),typeToString(NULL));
+					fprintf(stderr,"Error: (line %d) return expected %s but received %s\n",stmt->lineno,typeToString(globalReturnType),typeToString(NULL));
 					exit(1);
 				}
 			}else{
 				TTEntry* type = typeCheckExpression(stmt->val.returnVal.returnVal);
 				if (!statementTypeEquality(type,globalReturnType)){
-					fprintf(stderr,"Error: (lune %d) return expected %s but received %s",stmt->lineno,typeToString(globalReturnType),typeToString(type));
+					fprintf(stderr,"Error: (line %d) return expected %s but received %s\n",stmt->lineno,typeToString(globalReturnType),typeToString(type));
 					exit(1);
 				}
 
@@ -633,7 +633,7 @@ void typeCheckStatement(Stmt* stmt){
 		//TODO
 		//For denali to implement
 		case StmtKindTypeDeclaration:
-			//printf("Something at least\n");
+			
 			break;
 		case StmtKindVarDeclaration:
 			typeCheckVarDecl(stmt -> val.varDeclaration);
@@ -1151,6 +1151,10 @@ void typeCheckVarDecl(VarDeclNode* decl) {
 		return;
 	}
 	TTEntry* expType = typeCheckExpression(decl -> value);
+	if (!isExpressionAssignable(decl->value)){
+		fprintf(stderr,"Error: (line %d) type %s cannot be used as a value in a short declaration\n",decl->lineno,typeToString(expType));
+		exit(1);
+	}
 	if (decl -> typeThing -> kind == inferType) {
 		if (decl -> iDoDeclare == 1) {
 			decl -> whoAmI -> type = expType;
