@@ -344,17 +344,7 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 			{ //I switch to if statments here so I can declare stuff
 				if ( e->kind == expKindFuncCall )
 				{
-					if (  e->val.funcCall.base->kind != expKindIdentifier ) 
-					{
-						fprintf(stderr, "Error: (%d) Functions can only be called with identifiers\n", e->lineno); 
-						exit(1);
-					}
 					TTEntry *baseType = _typeCheckExpression(e->val.funcCall.base, wasType);
-					if ( strcmp(e->val.funcCall.base->val.id, "init") == 0 )
-					{
-						fprintf(stderr, "Error: (%d) init(.) may not be called\n", e->lineno);
-						exit(1);
-					}
 					if ( baseType->underlyingType == funcType ) /**FUNCCALL**/
 					{
 						ExpList * curArgPassed = e->val.funcCall.arguments;
@@ -383,11 +373,13 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 						return baseType->val.functionType.ret;
 					}
 					/**TYPECAST**/
-					if ( !(e->val.funcCall.arguments != NULL && e->val.funcCall.arguments->next == NULL ) )
+					else if ( *wasType )
 					{
-						fprintf(stderr, "Error: (%d) Typecasts need exactly one argument\n", e->lineno);
-						exit(1);
-					}
+						if ( !(e->val.funcCall.arguments != NULL && e->val.funcCall.arguments->next == NULL ) )
+						{
+							fprintf(stderr, "Error: (%d) Typecasts need exactly one argument\n", e->lineno);
+							exit(1);
+						}
 						*wasType = 0;
 						TTEntry *toCast = _typeCheckExpression(e->val.funcCall.arguments->cur, wasType);
 						//TODO check if we can type cast arrays and stuff. Not specified in documentation, but
@@ -398,6 +390,9 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 						}
 						fprintf(stderr, "Error: (%d) Typecasts need to occur with either identical underlying types, numeric types, or an integer type to a string. Received types of %s and %s\n", e->lineno, typeToString(baseType), typeToString(toCast)); 
 						exit(1);
+					}
+					fprintf(stderr, "Error: (%d) The expression does not refer to a function nor type\n", e->lineno); 
+					exit(1);
 				}
 				else if ( e->kind == expKindIndexing )
 				{
