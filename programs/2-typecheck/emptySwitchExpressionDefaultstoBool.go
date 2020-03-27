@@ -5,7 +5,6 @@ package main
 
 func main(){
 	switch {
-		var lst []int;
 		case 1 : break
 	}
 }
