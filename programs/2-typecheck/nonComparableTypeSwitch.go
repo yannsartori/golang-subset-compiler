@@ -1,10 +1,10 @@
-//Neil - empty switch condition defaults type of comparision to bool
+//Neil - switch expression must be of a comparable type
 package main
 
 
 
 func main(){
-	var lst [10]int;
+	var lst []int; //slices are not comparable
 	switch lst{
 
 	}
