@@ -162,7 +162,7 @@
 	RETURN_NO_PRINT( tINTERPRETEDSTRINGLIT )
 }
 
-`(([^\\`])|(\\[abfnrtv\\`"]))*` {
+`([^`])*` {
 	yylval.stringval = strdup(yytext); 
 	if ( printTokens ) printf("tRawStringLit(%s)\n", yytext);
 	RETURN_NO_PRINT( tRAWSTRINGLIT)
