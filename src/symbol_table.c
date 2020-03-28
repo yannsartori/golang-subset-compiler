@@ -493,7 +493,7 @@ void symbolCheckProgram(RootNode* root) {
 					argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
 					argEntryIter -> isConstant = 0;
 					if (argEntryIter -> type -> underlyingType == badType) {
-						fprintf(stderr, "Error: (line %d) %s\n", argsIter -> lineno, argEntryIter -> type -> id);
+						fprintf(stderr, "Error: (line %d) invalid type used to declare function argument %s: %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> type -> id);
 						exit(1);
 					};
 					if (strcmp(argEntryIter -> id, "_") != 0) {
@@ -510,7 +510,7 @@ void symbolCheckProgram(RootNode* root) {
 						argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
 						argEntryIter -> isConstant = 0;
 						if (argEntryIter -> type -> underlyingType == badType) {
-							fprintf(stderr, "Error: (line %d) %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> id);
+							fprintf(stderr, "Error: (line %d) invalid type used to declare function argument %s: %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> type -> id);
 							exit(1);
 						}
 						if (strcmp(argEntryIter -> id, "_") != 0) {
@@ -559,6 +559,7 @@ TTEntry *makeAnonymousTTEntry(Context* contx, TypeHolderNode *holder) {
 
 TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identifier, TTEntry* head, int inSlice){
 	
+	// Makes a TTEntry. In case of an error sets type to "badtype" and puts error message in "id"
 	
 	TTEntry *t = malloc(sizeof(TTEntry));
 	t -> id = identifier;
@@ -731,7 +732,7 @@ void symbolCheckVarDecl(VarDeclNode* declNode, Context* contx, int placement) { 
 		varDeclIter -> whoAmI = s;
 		
 		if (s -> type -> underlyingType == badType) {
-			fprintf(stderr, "Error: (line %d) invalid type used in variable declaration: %s\n", varDeclIter -> lineno, s -> id);
+			fprintf(stderr, "Error: (line %d) invalid type used in declaration of variable %s: %s\n", varDeclIter -> lineno, s -> id, s -> type -> id);
 			exit(1);
 		}
 		if (strcmp(s -> id, "_") != 0){
