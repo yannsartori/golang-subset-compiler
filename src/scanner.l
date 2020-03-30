@@ -7,7 +7,7 @@
 	#include "globalEnum.h"
     #include "parser.tab.h"
 	/*https://stackoverflow.com/a/21631261*/
-	#define yyterminate() if ( !ended ) { ended = !ended; SEMI_RETURN(';') } else return YY_NULL;
+	#define yyterminate() if ( !ended ) { ended = !ended; if ( needsSemiColon() ) {SEMI_RETURN(';') } else return YY_NULL;} else return YY_NULL;
 
 	#define SEMI_RETURN(token) yylineno--; inserted = 1; if ( printTokens ) puts(#token); lastToken = token; return token;
     #define RETURN(token) if ( inserted ) yylineno++; inserted = 0; if ( printTokens ) puts(#token); lastToken = token; return token;
