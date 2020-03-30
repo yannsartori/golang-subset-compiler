@@ -358,7 +358,7 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 							}
 							TTEntry *curArgPassedType = _typeCheckExpression(curArgPassed->cur, wasType);
 							if ( *wasType ) notExpressionError(curArgPassedType, e->kind, e->lineno);
-							if ( curArgPassedType != curArgSymbolEntry->type )
+							if ( !typeEquality(curArgPassedType, curArgSymbolEntry->type) )
 							{
 								fprintf(stderr, "Error: (%d) The %d argument of %s expects parameter of type %s, received %s\n", e->lineno, paramCount, e->val.funcCall.base->val.id, typeToString(curArgSymbolEntry->type), typeToString(curArgPassedType));
 								exit(1);
@@ -442,7 +442,7 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 						fprintf(stderr, "Error: (%d) Append requires an expression with underlying type slice, received %s\n", e->lineno, typeToString(listType));
 						exit(1);
 					}
-					if ( elemType != listType->val.sliceType.type )
+					if ( !typeEquality(elemType, listType->val.sliceType.type) )
 					{
 						fprintf(stderr, "Error: (%d) Cannot append elements of type %s to types %s\n", e->lineno, typeToString(elemType), typeToString(listType));
 						exit(1);
@@ -477,7 +477,7 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 	}
 }
 
-TTEntry *typeCheckExpression(Exp *e) //Note: this rejects any expressions with types as identifiers. I can't think of any instances where allowing them is desirable...
+TTEntry *typeCheckExpression(Exp *e)
 {
 	int *wasType = (int *) malloc(sizeof(int));
 	*wasType = 0;
