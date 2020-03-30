@@ -247,7 +247,7 @@ innerTypeDecls	: singleTypeDecl ';'				{$$ = $1;}
 singleTypeDecl	: tIDENTIFIER declType			{$$ = makeSingleTypeDecl($1, $2); $$ -> lineno = yylineno;}
 ;
 
-funcDecl		: funcFrontDecl block ';'
+funcDecl		: funcFrontDecl block
 						{$$ = $1; $$ -> blockStart = $2;}
 ;
 

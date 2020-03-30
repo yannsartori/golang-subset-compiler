@@ -1,16 +1,16 @@
 
 %{
-   #include "ast.h"
+   	#include "ast.h"
     extern int yylineno;
     #include <stdio.h>
     #include <stdlib.h>
 	#include "globalEnum.h"
     #include "parser.tab.h"
-    
-    #define RETURN(token) if ( printTokens ) puts(#token); lastToken = token; return token;
-    #define RETURN_NO_PRINT(token) lastToken = token; return token;
-	
+	#define SEMI_RETURN(token) yylineno--; inserted = 1; if ( printTokens ) puts(#token); lastToken = token; return token;
+    #define RETURN(token) if ( inserted ) yylineno++; inserted = 0; if ( printTokens ) puts(#token); lastToken = token; return token;
+    #define RETURN_NO_PRINT(token) if ( inserted ) yylineno++; inserted = 0; lastToken = token; return token;
     int lastToken = 0;
+	int inserted = 0;
     
     int needsSemiColon() {
 		return lastToken == tIDENTIFIER ||
@@ -39,7 +39,7 @@
 
 \n {
 	if (needsSemiColon()) {
-		RETURN( ';' )
+		SEMI_RETURN( ';' )
 	}
 }
 
@@ -130,7 +130,7 @@
 "/*"([^\*]|\*[^/]|\n)*"*/"	{
 	if ( printTokens ) printf("multi-comm\n" ); 
 	if (needsSemiColon()) {
-		RETURN( ';' )
+		SEMI_RETURN( ';' )
 	}
 }
 
