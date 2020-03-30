@@ -141,6 +141,7 @@ void symbolCheckExpression(Exp *e, Context *c)
 	else if ( e->kind == expKindFieldSelect || e->kind == expKindIndexing )
 	{
 		symbolCheckExpression(e->val.access.base, c);
+		symbolCheckExpression(e->val.access.accessor, c);
 	}
 	else if ( e->kind == expKindFuncCall )
 	{ 
