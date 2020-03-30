@@ -6,11 +6,15 @@
     #include <stdlib.h>
 	#include "globalEnum.h"
     #include "parser.tab.h"
+	/*https://stackoverflow.com/a/21631261*/
+	#define yyterminate() if ( !ended ) { ended = !ended; SEMI_RETURN(';') } else return YY_NULL;
+
 	#define SEMI_RETURN(token) yylineno--; inserted = 1; if ( printTokens ) puts(#token); lastToken = token; return token;
     #define RETURN(token) if ( inserted ) yylineno++; inserted = 0; if ( printTokens ) puts(#token); lastToken = token; return token;
     #define RETURN_NO_PRINT(token) if ( inserted ) yylineno++; inserted = 0; lastToken = token; return token;
     int lastToken = 0;
 	int inserted = 0;
+	int ended = 0;
     
     int needsSemiColon() {
 		return lastToken == tIDENTIFIER ||
@@ -208,9 +212,7 @@
 	if ( printTokens ) printf("tIdentifier(%s)\n", yytext);
 	RETURN_NO_PRINT( tIDENTIFIER )
     
-}
-
-              
+}     
 
 . {
 	fprintf(stderr, "Error: bad character found: %s, line: %d\n", yytext, yylineno); 

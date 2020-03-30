@@ -178,6 +178,7 @@ void shortDeclarationPostError(Stmt* stmt){
 %token <stringval> tRAWSTRINGLIT tINTERPRETEDSTRINGLIT
 %token <boolval> tBOOLVAL
 %token <identifier> tIDENTIFIER
+%token END
 
 %type <exp>  expression operand literal index selector appendExpression lengthExpression capExpression primaryExpression 
 %type <explist> expressionList arguments expressionSwitchCase maybeEmptyExpressionList
@@ -247,7 +248,7 @@ innerTypeDecls	: singleTypeDecl ';'				{$$ = $1;}
 singleTypeDecl	: tIDENTIFIER declType			{$$ = makeSingleTypeDecl($1, $2); $$ -> lineno = yylineno;}
 ;
 
-funcDecl		: funcFrontDecl block
+funcDecl		: funcFrontDecl block ';'
 						{$$ = $1; $$ -> blockStart = $2;}
 ;
 
