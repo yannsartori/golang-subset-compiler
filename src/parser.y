@@ -178,6 +178,7 @@ void shortDeclarationPostError(Stmt* stmt){
 %token <stringval> tRAWSTRINGLIT tINTERPRETEDSTRINGLIT
 %token <boolval> tBOOLVAL
 %token <identifier> tIDENTIFIER
+%token END
 
 %type <exp>  expression operand literal index selector appendExpression lengthExpression capExpression primaryExpression 
 %type <explist> expressionList arguments expressionSwitchCase maybeEmptyExpressionList
