@@ -64,10 +64,6 @@ char *enterInTable(char *id, void * pointer)
     sprintf(retVal, "__golite_decl_%s_%d",id, count + 1);
     return retVal;
 }
-char *structIdGen(TTEntry *t)
-{
-    return enterInTable(t->id, t);
-}
 char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
 {
     char *id, *retVal;
