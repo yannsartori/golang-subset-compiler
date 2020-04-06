@@ -115,7 +115,7 @@ typedef enum {
 typedef enum {
 	arrayType,
 	structType,
-	funcType, //TODO decide if this is the way
+	funcType, 
 	sliceType,
 	identifierType,
 	inferType,

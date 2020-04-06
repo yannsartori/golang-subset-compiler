@@ -18,6 +18,56 @@ char *tmpVarGen()
     sprintf(retVal, "__golite_temp_%d", tempVarCount++);
     return retVal;
 }
+char *enterInTable(char *id, void * pointer)
+{
+    int hash = hashCode(id);
+    int count = 0;
+    UniqueId *cur = idTable[hash];
+
+    if ( cur == NULL )
+    {
+        UniqueId *entry = (UniqueId *) malloc(sizeof(UniqueId));
+        entry->pointerAddress = pointer;
+        entry->next = NULL;
+        idTable[hash] = entry;
+
+        retVal = (char *) malloc(sizeof(char) * (50 + strlen(id));
+        sprintf(retVal, "__golite_decl_%s_%d", id, count);
+        return retVal;
+    }
+
+    while ( cur->next != NULL )
+    {
+        if ( cur->pointerAddress == pointer )
+        {
+            retVal = (char *) malloc(sizeof(char) * (50 + strlen(id)));
+            sprintf(retVal, "__golite_decl_%s_%d",id, count);
+            return retVal;
+        }
+        count++;
+        cur = cur->next;
+    }
+
+    if ( cur->pointerAddress == pointer )
+    {
+        retVal = (char *) malloc(sizeof(char) * (50 + strlen(id)));
+        sprintf(retVal, "__golite_decl_%s_%d",id, count);
+        return retVal;
+    }
+
+    UniqueId *entry = (UniqueId *) malloc(sizeof(UniqueId));
+    entry->pointerAddress = pointer;
+    entry->next = NULL;
+    cur->next = entry;
+
+    retVal = (char *) malloc(sizeof(char) * (50 + strlen(id)));
+    sprintf(retVal, "__golite_decl_%s_%d",id, count + 1);
+    return retVal;
+}
+char *structIdGen(TTEntry *t)
+{
+    return enterInTable(t->id, t);
+}
 char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
 {
     char *id, *retVal;
@@ -44,49 +94,7 @@ char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
     }
     else id = e->entry.t->id;
 
-    int hash = hashCode(e->entry.s->id);
-    int count = 0;
-    UniqueId *cur = idTable[hash];
-
-    if ( cur == NULL )
-    {
-        UniqueId *entry = (UniqueId *) malloc(sizeof(UniqueId));
-        entry->pointerAddress = e;
-        entry->next = NULL;
-        idTable[hash] = entry;
-
-        retVal = (char *) malloc(sizeof(char) * (50 + strlen(e->entry.s->id)));
-        sprintf(retVal, "__golite_decl_%s_%d",e->entry.s->id, count);
-        return retVal;
-    }
-
-    while ( cur->next != NULL )
-    {
-        if ( cur->pointerAddress == e )
-        {
-            retVal = (char *) malloc(sizeof(char) * (50 + strlen(e->entry.s->id)));
-            sprintf(retVal, "__golite_decl_%s_%d",e->entry.s->id, count);
-            return retVal;
-        }
-        count++;
-        cur = cur->next;
-    }
-
-    if ( cur->pointerAddress == e )
-    {
-        retVal = (char *) malloc(sizeof(char) * (50 + strlen(e->entry.s->id)));
-        sprintf(retVal, "__golite_decl_%s_%d",e->entry.s->id, count);
-        return retVal;
-    }
-
-    UniqueId *entry = (UniqueId *) malloc(sizeof(UniqueId));
-    entry->pointerAddress = e;
-    entry->next = NULL;
-    cur->next = entry;
-
-    retVal = (char *) malloc(sizeof(char) * (50 + strlen(e->entry.s->id)));
-    sprintf(retVal, "__golite_decl_%s_%d",e->entry.s->id, count + 1);
-    return retVal;
+    return enterInTable(id, e);
 }
 char *structMemb(char *memb)
 {
