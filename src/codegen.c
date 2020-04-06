@@ -65,6 +65,7 @@ char *enterInTable(char *id, void * pointer)
     return retVal;
 }
 char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
+//This should be able to be used for functions, struct types, and variable ids.
 {
     char *id, *retVal;
     if ( e->isSymbol ) {
@@ -87,10 +88,13 @@ char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
         }
         // this check can potentially be moved in the generation of declarations
         else if ( strcmp(id, "_") == 0 ) return tmpVarGen(); 
+        else return enterInTable(e->entry.s->id, e->entry.s);
     }
-    else id = e->entry.t->id;
-
-    return enterInTable(id, e);
+    else return enterInTable(e->entry.t->id, e->entry.t);
+}
+char *idGenJustType(TTEntry *t) //used for structs
+{
+    return enterInTable(t->id, t);
 }
 char *structMemb(char *memb)
 {
@@ -118,7 +122,7 @@ void rawStringCodeGen(char *s, FILE *f)
     }
     fprintf(f, "\"");
 }
-void generateCast(TTEntry *t, f)
+void generateCast(TTEntry *t, FILE *f)
 {
     if ( t->underlyingType == arrayType )
     {
@@ -128,8 +132,7 @@ void generateCast(TTEntry *t, f)
         //TODO
     } else if ( t->underlyingType == structType )
     {
-        //QUITE TENTATIVE
-        fprintf(f, "(%s *)", idGen)
+        fprintf(f, "(%s *)", idGenJustType(t));
     } else if ( t->underlyingType == identifierType )
     {
         switch ( t->val.nonCompositeType.type )
@@ -151,7 +154,7 @@ void expListCodeGen(ExpList *list, int curScope, FILE *f)
 	expCodeGen(list->cur, f);
 	if ( list->next != NULL )
 	{
-		printf(", ");
+		fprintf(f, ", ");
 		expListCodeGen(list->next, f);
 	}
 
@@ -198,10 +201,10 @@ void expCodeGen(Exp *exp, FILE *f)
             {
                 if ( exp->val.funcCall.base->contextEntry->entry.type->val.nonCompositeType.type == baseString )
                 {
-                    fprintf(f, "stringCast(");
+                    fprintf(f, "stringCast("); //helper function in templateCode.h
                     expListCodeGen(exp->val.funcCall.arguments);
                     fprintf(f, ")");
-                } else //trust c's implicit cast
+                } else //trust c's implicit cast. Since we only do this on non composite types we should be good
                 {
                     expListCodeGen(exp->val.funcCall.arguments);
                 }
@@ -213,8 +216,6 @@ void expCodeGen(Exp *exp, FILE *f)
                     //TODO
             }
             else {
-                //THIS should throw an error
-                //ez to check if it is out of b
                 fprintf(f, "(")
                 generateCast(exp->val.access.base->contextEntry->entry.t->val.arrayType.type);
                 fprintf(f, "(");
@@ -231,14 +232,15 @@ void expCodeGen(Exp *exp, FILE *f)
 		case expKindFieldSelect:
 			expCodeGen(exp->val.access.base, f);
 			fprintf(f, ".");
-            char retVal[strlen(exp->val.access.accessor->val.id) + 15];
-			fprintf(f, structMemb(exp->val.access.accessor->val.id, retVal));
+            char * retVal = structMemb(exp->val.access.accessor->val.id);
+			fprintf(f, "%s", retVal);
+            free(retVal);
 			break;
 		case expKindAppend:
             //TODO
 			break;
 		case expKindLength:;
-            TTEntry *type = typeCheckExpression(e->val.builtInBody);
+            TTEntry *type = getExpressionType(e->val.builtInBody);
 			switch(type->underlyingType)
             {
                 case arrayType:
@@ -290,7 +292,7 @@ void expCodeGen(Exp *exp, FILE *f)
 			fprintf(f, "(");
 			switch (exp->kind) {
 				case expKindAddition:;
-                    TEntry *type = typeCheckExpression(e->val.left);
+                    TEntry *type = getExpressionType(e->val.left);
                     if (type->val.nonCompositeType.type == baseString)
                     {
                         fprintf(f, "concat(");
