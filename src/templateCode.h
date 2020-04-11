@@ -4,10 +4,19 @@
  * In our generated code, we can refer to these functions using their
  * signatures, as is normal...
 */
+
+/* Also, depending on things go, we might want to have *another* header
+ * file, which contains our typedefs and function headers, since c isn't
+ * groovy and doesn't allow for function calls before they are declared.
+ * This is primarily arising from the fear that we write stuff in a weird order
+ * Regardless, this shouldn't be too grave of an issue to resolve
+*/
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include "symbol_table.h" //Necessary for comparison functions (maybe)
+#include "global_enum.h" //Necessary for comparison functions
 typedef struct __golite_slice __golite_slice;
 typedef union __golite_poly_entry __golite_poly_entry;
 union __golite_poly_entry {
@@ -19,9 +28,73 @@ union __golite_poly_entry {
 };
 struct __golite_slice {
     int size;
-    int __capacity;
-    __golite_poly_entry *data;
+    int capacity;
+    __golite_poly_entry **arrPointer;
 };
+__golite_poly_entry createPolyInt(int x)
+{
+    __golite_poly_entry p;
+    p.intVal = x;
+    return p;
+}
+__golite_poly_entry createPolyFloat(double x)
+{
+    __golite_poly_entry p;
+    p.floatVal = x;
+    return p;
+}
+__golite_poly_entry createPolyRune(char x)
+{
+    __golite_poly_entry p;
+    p.runeVal = x;
+    return p;
+}
+//I think doing pointer copying is fine for the following. Test!
+__golite_poly_entry createPolyString(char * x)
+{
+    __golite_poly_entry p;
+    p.stringVal = x;
+    return p;
+}
+__golite_poly_entry createPolyVoid(void * x)
+{
+    __golite_poly_entry p;
+    p.polyVal = x;
+    return p;
+}
+__golite_slice *append(__golite_slice *slice, __golite_poly_entry elem)
+{
+    __golite_slice *newSlice = (__golite_slice *) malloc(sizeof(__golite_slice));
+    if ( slice == NULL || slice->capacity == 0 )
+    {
+        newSlice->size = 1;
+        newSlice->capacity = 2;
+        newSlice->arrPointer = (__golite_poly_entry **) malloc(sizeof(__golite_poly_entry *));
+        *(newSlice->arrPointer) = (__golite_poly_entry *) malloc(sizeof(__golite_poly_entry) * newSlice->capacity);
+        *(*(newSlice->arrPointer) + 0) = elem; 
+    }
+    else if ( slice->size < slice->capacity )
+    {
+        *(*(slice->arrPointer) + slice->size) = elem;
+        newSlice->size = slice->size + 1;
+        newSlice->capacity = slice->capacity;
+        newSlice->arrPointer = (__golite_poly_entry **) malloc(sizeof(__golite_poly_entry *));
+        *(newSlice->arrPointer) = *(slice->arrPointer);
+    }
+    else 
+    {
+        newSlice->size = slice->size + 1;
+        newSlice->capacity = slice->capacity * 2;
+        newSlice->arrPointer = (__golite_poly_entry **) malloc(sizeof(__golite_poly_entry *));
+        *(newSlice->arrPointer) = (__golite_poly_entry *) malloc(sizeof(__golite_poly_entry) * newSlice->capacity);
+        for ( int i = 0; i < slice->capacity; i++ )
+        {
+            *(*(newSlice->arrPointer) + i) = *(*(slice->arrPointer) + i);
+        }
+        *(*(newSlice->arrPointer) + slice->capacity) = elem;
+    }
+    return newSlice;
+}
 __golite_poly_entry * arrGet(__golite_poly_entry * arr, int pos, int length, int lineno)
 {
     if ( pos >= length || pos < 0 )
@@ -31,6 +104,19 @@ __golite_poly_entry * arrGet(__golite_poly_entry * arr, int pos, int length, int
     }
     return *(arr + pos);
 }
+__golite_poly_entry * sliceGet(__golite_slice *slice, int pos, int lineno)
+{
+    if ( pos >= slice->size || pos < 0 )
+    {
+        fprintf(stderr, "Error: (runtime, %d) index out of range [%d] with length %d", lineno, pos, slice->size);
+        exit(1);
+    }
+    return *(*(slice->arrPointer) + pos);
+}
+int structEquality(void * struct1, void * struct2, char * structName);
+char *concat(char *__s1, char *__s2);
+char *stringCast(char c);
+
 char *concat(char *__s1, char *__s2)
 {
     char *__cat = (char *) malloc(sizeof(char) * (strlen(s1) + strlen(s2) + 1));
@@ -44,4 +130,100 @@ char *stringCast(char c)
     *ret = c;
     *(ret + 1) = '\0';
     return ret;
+}
+int arrEquality(__golite_poly_entry *arr1, __golite_poly_entry *arr2, char *typeChain, int arrLength)
+{
+    //AY->Array, ST->Struct, SG->String, RE->rune, IR->Integer, FT->Float
+    char code[3];
+    char size[10];
+    char structName[100];
+    code[0] = typeChain[0];
+    code[1] = typeChain[1];
+    code[2] = '\0';
+
+    int comparsionMode = 0;
+    int curPos = 2; 
+    if ( strcmp(code, "IR") == 0 ) comparisonMode = 0;
+    else if ( strcmp(code, "RE") == 0 ) comparisonMode = 1;
+    else if ( strcmp(code, "FT") == 0 ) comparisonMode = 2;
+    else if ( strcmp(code, "SG") == 0 ) comparisonMode = 3;
+    else if ( strcmp(code, "ST") == 0 )
+    {
+        do
+        {
+            structName[curPos - 2] = *(typeChain + curPos);
+            curPos++;
+        } while ( *(typeChain + curPos) != '\0');
+        structName[curPos - 2] = '\0';
+        comparisonMode = 4;
+    } else if ( strcmp(code, "AY") == 0 )
+    {
+        do
+        {
+            size[curPos - 2] = *(typeChain + curPos);
+            curPos++;
+        } while ( '0' <= *(typeChain + curPos) && *(typeChain + curPos) <= '9');
+        size[curPos - 2] = '\0';
+        comparisonMode = 5;
+    }
+    //I think doing the comparison outside the for loop makes the code slightly more efficient
+    //albeit gross
+    switch( comparisonMode )
+    {
+        case 0:
+        free(typeChain);
+        for ( int i = 0; i < arrLength; i++ )
+        {
+            if ( (*(arr1 + i)).intVal != (*(arr2 + i)).intVal ) ) return 0;
+        }
+        break;
+
+        case 1:
+        free(typeChain);
+        for ( int i = 0; i < arrLength; i++ )
+        {
+            if ( (*(arr1 + i)).runeVal  != (*(arr2 + i)).runeVal  ) return 0;
+        }
+        break;
+        
+        case 2:
+        free(typeChain);
+        for ( int i = 0; i < arrLength; i++ )
+        {
+            if ( (*(arr1 + i)).floatVal  != (*(arr2 + i)).floatVal  ) return 0;
+        }
+        break;
+        
+        case 3:
+        free(typeChain);
+        for ( int i = 0; i < arrLength; i++ )
+        {
+            if ( strcmp((*(arr1 + i)).stringVal, (*(arr2 + i)).stringVal) != 0 ) return 0;
+        }
+        break;
+        
+        case 4:
+        free(typeChain);
+        for ( int i = 0; i < arrLength; i++ )
+        {
+            if ( !structEquality((*(arr1 + i)).polyVal, (*(arr2 + i)).polyVal, structName) ) return 0;
+        }
+        break;
+        
+        case 5:
+        char * newType = malloc(sizeof(char) * (strlen(typeChain) - curPos + 1));
+        strcpy(newType, (*(arr2 + i)).polyVal), *(typeChain + curPos));
+        free(typeChain);
+        for ( int i = 0; i < arrLength; i++ )
+        {
+            if ( !arrEquality((__golite_poly_entry *) (*(arr1 + i)).polyVal), (__golite_poly_entry *) (((*(arr2 + i)).polyVal), *(typeChain + curPos), atoi(size)) ) {
+                free(newType);
+                return 0;
+            }
+        }
+        free(newType);
+        break;
+    }
+    return 1;
+    
 }
