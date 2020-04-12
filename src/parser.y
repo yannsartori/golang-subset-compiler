@@ -178,6 +178,7 @@ void shortDeclarationPostError(Stmt* stmt){
 %token <stringval> tRAWSTRINGLIT tINTERPRETEDSTRINGLIT
 %token <boolval> tBOOLVAL
 %token <identifier> tIDENTIFIER
+%token END
 
 %type <exp>  expression operand literal index selector appendExpression lengthExpression capExpression primaryExpression 
 %type <explist> expressionList arguments expressionSwitchCase maybeEmptyExpressionList
@@ -415,8 +416,8 @@ simpleStatement:
 			| expression  {if (isFuncCall($1)) {$$ = makeExpressionStmt($1); } else {expressionStmtError();}     } /* 2.8.3 sketchy, (needs to be a function call)*/ 
 
 
-			| tIDENTIFIER tIncrement {Exp* exp = makeExpIdentifier($1);blankIncCheck(exp);$$ = makeIncStmt(exp);} // 2.8.7 , Blank identifier, not _
-			| tIDENTIFIER tDecrement {Exp* exp = makeExpIdentifier($1);blankDecCheck(exp);$$ = makeDecStmt(exp);}// 2.8.7 , Blank identifier, not _ 
+			| expression tIncrement {Exp* exp = $1;blankIncCheck(exp);$$ = makeIncStmt(exp);} // 2.8.7 , Blank identifier, not _
+			| expression tDecrement {Exp* exp = $1;blankDecCheck(exp);$$ = makeDecStmt(exp);}// 2.8.7 , Blank identifier, not _ 
 
 
 
