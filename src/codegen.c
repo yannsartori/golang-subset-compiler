@@ -785,19 +785,23 @@ void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
 }
 
 //TODO, does not involve code formatting
-void simpleStmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
+void simpleStmtCodeGen(Stmt* stmt,int indentLevel,FILE* fp){
     if (stmt == NULL){
         return;
     }
 
     switch (stmt->kind){
+        case StmtKindAssignment:
+            break;
+        case StmtKindShortDeclaration:
+            break;
         case StmtKindExpression :
             break;
         case StmtKindInc:
             break;
         case StmtKindDec:
             break;
-        case StmtKindAssignment:
+        case StmtKindOpAssignment:
             break;
     }
 }
@@ -818,10 +822,12 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             break;
         case StmtKindExpression:
             indent(indentLevel,fp);
-            expCodeGen(stmt->val.expression.expr,fp);
+            simpleStmtCodeGen(stmt,indentLevel,fp);
+            fprintf(fp,";\n");
             break;
         StmtKindAssignment:
             //LOTS TO DO, MULTIPLE ASSIGNMENT.  TEMP VARS
+            simpleStmtCodeGen(stmt,indentLevel,fp);
             break;
     
         StmtKindPrint:

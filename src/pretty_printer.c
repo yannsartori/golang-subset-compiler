@@ -132,16 +132,18 @@ void printStmt(Stmt* stmt, int indentLevel){
                                 break;
 		
 		case StmtKindInc: indent(indentLevel);
-							prettyExp(stmt->val.incStmt.exp);
-							printf("++;\n");
+							printSimpleStatement(stmt);
+							printf("\n");
 							break;
 		case StmtKindDec: indent(indentLevel);
-							prettyExp(stmt->val.decStmt.exp);
-							printf("--;\n");
+							printSimpleStatement(stmt);
+							printf("\n");
 							break;
-		case StmtKindOpAssignment : indent(indentLevel);
-									printOpAssignmentStmt(stmt);
-									printf("\n");
+		case StmtKindOpAssignment : 
+						indent(indentLevel);
+						printSimpleStatement(stmt);
+						printf("\n");
+						break;
 
         
     }
@@ -225,16 +227,24 @@ void printSimpleStatement(Stmt* stmt){
     }
     switch (stmt->kind){
 
-        case StmtKindExpression : prettyExp(stmt->val.expression.expr);
-									
-                                    
+        case StmtKindExpression : prettyExp(stmt->val.expression.expr);  
                                     break;
                                     
         case StmtKindAssignment : printAssignmentStmt(stmt);
                                     break;
 		case StmtKindShortDeclaration : prettyVarDeclSimpleStatement(stmt->val.varDeclaration);
 										break;
-    
+		case StmtKindInc:
+			prettyExp(stmt->val.incStmt.exp);
+			printf("++");
+			break;
+		case StmtKindDec:
+			prettyExp(stmt->val.decStmt.exp);
+			printf("--");
+			break;
+		case StmtKindOpAssignment:
+			printOpAssignmentStmt(stmt);
+			break;
        
     }
 }
