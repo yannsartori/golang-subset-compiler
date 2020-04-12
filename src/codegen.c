@@ -23,11 +23,13 @@ char *tmpVarGen()
     sprintf(retVal, "__golite_temp_%d", tempVarCount++);
     return retVal;
 }
+
 char *enterInTable(char *id, void * pointer)
 {
     int hash = hashCode(id);
     int count = 0;
     UniqueId *cur = idTable[hash];
+    char* retVal;
 
     if ( cur == NULL )
     {
@@ -36,7 +38,7 @@ char *enterInTable(char *id, void * pointer)
         entry->next = NULL;
         idTable[hash] = entry;
 
-        retVal = (char *) malloc(sizeof(char) * (50 + strlen(id));
+        retVal = (char *) malloc(sizeof(char) * (50 + strlen(id)));
         sprintf(retVal, "__golite_decl_%s_%d", id, count);
         return retVal;
     }
@@ -71,23 +73,23 @@ char *enterInTable(char *id, void * pointer)
 }
 char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
 //This should be able to be used for functions, struct types, and variable ids.
-{
+{  
     char *id, *retVal;
     if ( e->isSymbol ) {
         id = e->entry.s->id;
-        if ( e->entry.s.isConstant == 2 && strcmp(id, "main") == 0 )
+        if ( e->entry.s->isConstant == 2 && strcmp(id, "main") == 0 )
         {
            return strcpy(retVal, "__golite_main");
         }
         //generates init names in declaration order
         //so in the generated main, while (i := 0) < initCount, generate __golite_init_i(), then generate __golite_main
-        else if ( e->entry.s.isConstant == 2 && strcmp(id, "init") == 0 )
+        else if ( e->entry.s->isConstant == 2 && strcmp(id, "init") == 0 )
         {
             retVal = (char *) malloc(sizeof(char) * 20);
             sprintf(retVal, "__golite_init_%d", initCount++); 
             return retVal;
         }
-        else if ( e->entry.s.isConstant == 1 ) //an unshadowed boolean
+        else if ( e->entry.s->isConstant == 1 ) //an unshadowed boolean
         {
             return strcpy(retVal, id); //either "true" or "false". If we import stdbool this works
         }
@@ -170,7 +172,7 @@ void generateStructEquality(TTEntry *structType, FILE *f)
     /* 
     int STRUCT_NAME_equality(STRUCT_NAME x, STRUCT_NAME y) {
         return 
-    */
+    
     IdChain *cur = structType->val.structType.fieldNames;
     Context *ctx = structType->val.structType.fields;
     while ( cur != NULL )
@@ -211,8 +213,8 @@ void generateStructEquality(TTEntry *structType, FILE *f)
         }
         free(fieldName);
         cur = cur->next;
-    }
-    fprintf("1;\n}\n"); //Handles if all our fields are blank.
+    }*/
+    fprintf(f,"1;\n}\n"); //Handles if all our fields are blank.
     /* && 1;
     }
     */
@@ -264,10 +266,13 @@ void expListCodeGen(ExpList *list, int curScope, FILE *f)
 	if ( list->next != NULL )
 	{
 		fprintf(f, ", ");
-		expListCodeGen(list->next, f);
+		//expListCodeGen(list->next, f);
 	}
 
 }
+
+
+/*
 void expCodeGen(Exp *exp, FILE *f)
 {
     if ( exp == NULL ) return;
@@ -572,7 +577,7 @@ void expCodeGen(Exp *exp, FILE *f)
                 case expKindLEQ:
                     //TODO clean up the ordered expression codes
                     //low priority
-                    TEntry *type = getExpressionType(e->val.left)
+                    TEntry *type = getExpressionType(e->val.left);
                     switch ( type->val.nonCompositeType.type )
                     {
                         case baseInt:
@@ -593,7 +598,7 @@ void expCodeGen(Exp *exp, FILE *f)
                     }
 					break;
 				case expKindGEQ:
-					TEntry *type = getExpressionType(e->val.left)
+					TEntry *type = getExpressionType(e->val.left);
                     switch ( type->val.nonCompositeType.type )
                     {
                         case baseInt:
@@ -614,7 +619,7 @@ void expCodeGen(Exp *exp, FILE *f)
                     }
 					break;
 				case expKindLess:
-					TEntry *type = getExpressionType(e->val.left)
+					TEntry *type = getExpressionType(e->val.left);
                     switch ( type->val.nonCompositeType.type )
                     {
                         case baseInt:
@@ -694,4 +699,227 @@ void expCodeGen(Exp *exp, FILE *f)
 			fprintf(f, ")");
 			
 	}
+}
+
+*/
+
+
+void expCodeGen(Exp *exp, FILE *f){
+
+}
+
+static void indent(int indentLevel,FILE* fp){
+    for(int i = 0; i < indentLevel; i++){
+        fprintf(fp,"\t");
+    }
+}
+
+
+
+void printCodeGen(ExpList* list,int indentLevel,FILE* fp){
+    if (list == NULL){
+        return;
+    }
+
+    Exp* exp = list->cur;
+    TTEntry* type = exp->contextEntry->entry.s->type;
+    //Implicit assumption that we have a type that resolves to a printable base type
+    indent(indentLevel,fp);
+    switch (type->val.nonCompositeType.type){
+        case baseInt:
+            fprintf(fp,"printf(\"%%d\",");
+            break;
+        case baseFloat64:
+            fprintf(fp,"printf(\"%%lf\",");
+            break;
+        case baseRune:
+            fprintf(fp,"printf(\"%%d\",(int)");
+            break;
+        case baseString:
+            fprintf(fp,"printf(\"%%s\",");
+            break;
+        case baseBool: //QUITE UNCERTAIN DEPENDS ON REPRESENTATION OF BOOL
+            fprintf(fp,"printf(\"%%d\",");
+            break;
+    }
+
+    expCodeGen(exp,fp);
+    fprintf(fp,");\\n");
+
+    printCodeGen(list->next,indentLevel,fp);
+}
+
+
+void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
+    if (list == NULL){
+        fprintf(fp,"printf(\"\\n\")\n");
+        return;
+    }
+
+    Exp* exp = list->cur;
+    TTEntry* type = exp->contextEntry->entry.s->type;
+    //Implicit assumption that we have a type that resolves to a printable base type
+    indent(indentLevel,fp);
+    switch (type->val.nonCompositeType.type){
+        case baseInt:
+            fprintf(fp,"printf(\"%%d \",");
+            break;
+        case baseFloat64:
+            fprintf(fp,"printf(\"%%lf \",");
+            break;
+        case baseRune:
+            fprintf(fp,"printf(\"%%d \",(int)");
+            break;
+        case baseString:
+            fprintf(fp,"printf(\"%%s \",");
+            break;
+        case baseBool: //QUITE UNCERTAIN DEPENDS ON REPRESENTATION OF BOOL
+            fprintf(fp,"printf(\"%%d \",");
+            break;
+    }
+
+    expCodeGen(exp,fp);
+    fprintf(fp,");\n");
+
+    printlnCodeGen(list->next,indentLevel,fp);
+}
+
+//TODO, does not involve code formatting
+void simpleStmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
+    if (stmt == NULL){
+        return;
+    }
+
+    switch (stmt->kind){
+        case StmtKindExpression :
+            break;
+        case StmtKindInc:
+            break;
+        case StmtKindDec:
+            break;
+        case StmtKindAssignment:
+            break;
+    }
+}
+
+void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
+    if (stmt == NULL){
+        return;
+    }
+
+    switch (stmt->kind){
+        //WARNING RENAME VARIABLES IN INNER SCOPE USING SCOPELEVEL
+        case StmtKindBlock:
+            indent(indentLevel,fp);
+            printf("{\n");
+            stmtCodeGen(stmt->val.block.stmt,indentLevel+1,fp);
+            indent(indentLevel,fp);
+            printf("}\n");
+            break;
+        case StmtKindExpression:
+            indent(indentLevel,fp);
+            expCodeGen(stmt->val.expression.expr,fp);
+            break;
+        StmtKindAssignment:
+            //LOTS TO DO, MULTIPLE ASSIGNMENT.  TEMP VARS
+            break;
+    
+        StmtKindPrint:
+            printCodeGen(stmt->val.print.list,indentLevel,fp);
+            break;
+        StmtKindPrintln:
+            printlnCodeGen(stmt->val.println.list,indentLevel,fp);
+            break;
+        StmtKindIf:
+            indent(indentLevel,fp);
+            fprintf(fp,"{\n");
+
+            if(stmt->val.ifStmt.statement != NULL){
+                stmtCodeGen(stmt->val.ifStmt.statement,indentLevel+1,fp);
+            }
+
+            indent(indentLevel+1,fp);
+            fprintf(fp,"if(");
+            expCodeGen(stmt->val.ifStmt.expression,fp);
+            fprintf(fp,")\n");
+
+            stmtCodeGen(stmt->val.ifStmt.block,indentLevel,fp);
+
+
+            indent(indentLevel,fp);
+            fprintf(fp,"}\n");
+
+            break;
+
+
+            
+        StmtKindReturn:
+            indent(indentLevel,fp);
+            fprintf(fp,"return ");
+            if (stmt->val.returnVal.returnVal != NULL){
+                expCodeGen(stmt->val.returnVal.returnVal,fp);
+            }
+            fprintf(fp,";\n");
+            break;
+
+        StmtKindElse:
+            indent(indentLevel,fp);
+            fprintf(fp,"else \n");
+
+
+            stmtCodeGen(stmt->val.elseStmt.block,indentLevel,fp);
+            
+            break;
+        StmtKindSwitch: // Lots to do
+            break;
+        StmtKindInfLoop:
+            indent(indentLevel,fp);
+            fprintf(fp,"while(1)\n");
+            stmtCodeGen(stmt->val.infLoop.block,indentLevel,fp);
+            break;
+
+        StmtKindWhileLoop:
+            indent(indentLevel,fp);
+            fprintf(fp,"while(");
+            expCodeGen(stmt->val.whileLoop.conditon,fp);
+            fprintf(fp,")\n");
+            stmtCodeGen(stmt->val.whileLoop.block,indentLevel,fp);
+            break;
+        StmtKindThreePartLoop:
+            //Subtle issues need to be dealt with
+           break;
+
+
+        StmtKindBreak:
+            indent(indentLevel,fp);
+            fprintf(fp,"break;\n");
+            break;
+        StmtKindContinue:
+            indent(indentLevel,fp);
+            fprintf(fp,"continue;\n");
+            break;
+
+        StmtKindOpAssignment:
+            //Subtle issues (+= with a string for example)
+            break;
+        StmtKindInc:
+            simpleStmtCodeGen(stmt,indentLevel,fp);
+            fprintf(fp,";\n");
+            break;
+        StmtKindDec:
+            simpleStmtCodeGen(stmt,indentLevel,fp);
+            fprintf(fp,";\n");
+            break;
+
+        //Note for Denali, remember that simple statements must not always end in a newline
+        StmtKindTypeDeclaration:
+            break;
+        StmtKindVarDeclaration:
+            break;
+        StmtKindShortDeclaration: 
+            break;
+        
+    }
+
+    stmtCodeGen(stmt->next,indentLevel,fp);
 }
