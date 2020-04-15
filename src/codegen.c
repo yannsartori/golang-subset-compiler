@@ -272,7 +272,7 @@ void expListCodeGen(ExpList *list, int curScope, FILE *f)
 }
 
 
-/*
+
 void expCodeGen(Exp *exp, FILE *f)
 {
     if ( exp == NULL ) return;
@@ -701,12 +701,12 @@ void expCodeGen(Exp *exp, FILE *f)
 	}
 }
 
-*/
+/*
 
 
 void expCodeGen(Exp *exp, FILE *f){
 
-}
+}*/
 
 static void indent(int indentLevel,FILE* fp){
     for(int i = 0; i < indentLevel; i++){
@@ -825,18 +825,18 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             simpleStmtCodeGen(stmt,indentLevel,fp);
             fprintf(fp,";\n");
             break;
-        StmtKindAssignment:
+        case StmtKindAssignment:
             //LOTS TO DO, MULTIPLE ASSIGNMENT.  TEMP VARS
             simpleStmtCodeGen(stmt,indentLevel,fp);
             break;
     
-        StmtKindPrint:
+        case StmtKindPrint:
             printCodeGen(stmt->val.print.list,indentLevel,fp);
             break;
-        StmtKindPrintln:
+        case StmtKindPrintln:
             printlnCodeGen(stmt->val.println.list,indentLevel,fp);
             break;
-        StmtKindIf:
+        case StmtKindIf:
             indent(indentLevel,fp);
             fprintf(fp,"{\n");
 
@@ -859,7 +859,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 
 
             
-        StmtKindReturn:
+        case StmtKindReturn:
             indent(indentLevel,fp);
             fprintf(fp,"return ");
             if (stmt->val.returnVal.returnVal != NULL){
@@ -868,7 +868,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             fprintf(fp,";\n");
             break;
 
-        StmtKindElse:
+        case StmtKindElse:
             indent(indentLevel,fp);
             fprintf(fp,"else \n");
 
@@ -876,53 +876,53 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             stmtCodeGen(stmt->val.elseStmt.block,indentLevel,fp);
             
             break;
-        StmtKindSwitch: // Lots to do
+        case StmtKindSwitch: // Lots to do
             break;
-        StmtKindInfLoop:
+        case StmtKindInfLoop:
             indent(indentLevel,fp);
             fprintf(fp,"while(1)\n");
             stmtCodeGen(stmt->val.infLoop.block,indentLevel,fp);
             break;
 
-        StmtKindWhileLoop:
+        case StmtKindWhileLoop:
             indent(indentLevel,fp);
             fprintf(fp,"while(");
             expCodeGen(stmt->val.whileLoop.conditon,fp);
             fprintf(fp,")\n");
             stmtCodeGen(stmt->val.whileLoop.block,indentLevel,fp);
             break;
-        StmtKindThreePartLoop:
+        case StmtKindThreePartLoop:
             //Subtle issues need to be dealt with
            break;
 
 
-        StmtKindBreak:
+        case StmtKindBreak:
             indent(indentLevel,fp);
             fprintf(fp,"break;\n");
             break;
-        StmtKindContinue:
+        case StmtKindContinue:
             indent(indentLevel,fp);
             fprintf(fp,"continue;\n");
             break;
 
-        StmtKindOpAssignment:
+        case StmtKindOpAssignment:
             //Subtle issues (+= with a string for example)
             break;
-        StmtKindInc:
+        case StmtKindInc:
             simpleStmtCodeGen(stmt,indentLevel,fp);
             fprintf(fp,";\n");
             break;
-        StmtKindDec:
+        case StmtKindDec:
             simpleStmtCodeGen(stmt,indentLevel,fp);
             fprintf(fp,";\n");
             break;
 
         //Note for Denali, remember that simple statements must not always end in a newline
-        StmtKindTypeDeclaration:
+        case StmtKindTypeDeclaration:
             break;
-        StmtKindVarDeclaration:
+        case StmtKindVarDeclaration:
             break;
-        StmtKindShortDeclaration: 
+        case StmtKindShortDeclaration: 
             break;
         
     }
