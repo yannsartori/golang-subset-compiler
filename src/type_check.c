@@ -440,7 +440,7 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 						exit(1);
 					}
 					if ( baseType->underlyingType == arrayType ) {
-						e->contextEntry = makeTypeEntry(baseType->val.arrayType.type)
+						e->contextEntry = makeTypeEntry(baseType->val.arrayType.type);
 						return baseType->val.arrayType.type;
 					}
 					e->contextEntry = makeTypeEntry(baseType->val.arrayType.type);
