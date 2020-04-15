@@ -131,9 +131,10 @@ char *stringCast(char c)
     *(ret + 1) = '\0';
     return ret;
 }
-int arrEquality(__golite_poly_entry *arr1, __golite_poly_entry *arr2, char *typeChain, int arrLength)
+__golite_poly_entry *arrCopy(__golite_poly_entry *arr, char *typeChain, int arrLength)
 {
     //AY->Array, ST->Struct, SG->String, RE->rune, IR->Integer, FT->Float
+    __golite_poly_entry *newArr = (__golite_poly_entry *) malloc(sizeof(__golite_poly_entry) * length);
     char code[3];
     char size[10];
     char structName[100];
@@ -143,6 +144,66 @@ int arrEquality(__golite_poly_entry *arr1, __golite_poly_entry *arr2, char *type
 
     int comparsionMode = 0;
     int curPos = 2; 
+    if ( strcmp(code, "AY") == 0 )
+    {
+        do
+        {
+            size[curPos - 2] = *(typeChain + curPos);
+            curPos++;
+        } while ( '0' <= *(typeChain + curPos) && *(typeChain + curPos) <= '9');
+        size[curPos - 2] = '\0';
+        comparisonMode = 1;
+    } else if ( strcmp(code, "ST") == 0 )
+    {
+        do
+        {
+            structName[curPos - 2] = *(typeChain + curPos);
+            curPos++;
+        } while ( *(typeChain + curPos) != '\0');
+        structName[curPos - 2] = '\0';
+        comparisonMode = 2;
+    }
+    if ( comparisonMode == 0 )
+    {
+        for ( int i = 0; i < arrLength; arr++ )
+        {
+            newArr[i] = arr[i];
+        }
+    } else if ( comparisonMode == 1 )
+    {
+        char * newType = malloc(sizeof(char) * (strlen(typeChain) - curPos + 1));
+        strcpy(newType, (*(arr2 + i)).polyVal), *(typeChain + curPos));
+        free(typeChain);
+        for ( int i = 0; i < arrLength; i++ )
+        {
+            newArr[i] = arrCopy((__golite_poly_entry *) arr[i].polyVal, *(typeChain + curPos), atoi(size)) 
+        }
+        free(newType);
+    } else if ( comparisonMode == 2 )
+    {
+        free(typeChain);
+        for ( int i = 0; i < arrLength; i++ )
+        {
+            __golite_poly_entry e;
+            e.polyVal = structCopy(arr[i].polyVal, structName);
+            newArr[i] = e;
+        }
+    }
+    return newArr;
+}
+int arrEquality(__golite_poly_entry *arr1, __golite_poly_entry *arr2, char *typeChain, int arrLength)
+{
+    //AY->Array, ST->Struct, SE->Slice, SG->String, RE->rune, IR->Integer, FT->Float
+    char code[3];
+    char size[10];
+    char structName[100];
+    code[0] = typeChain[0];
+    code[1] = typeChain[1];
+    code[2] = '\0';
+
+    int comparsionMode = 0;
+    int curPos = 2; 
+    //we don't worry about slices becuase they would have been rejected by typechecker
     if ( strcmp(code, "IR") == 0 ) comparisonMode = 0;
     else if ( strcmp(code, "RE") == 0 ) comparisonMode = 1;
     else if ( strcmp(code, "FT") == 0 ) comparisonMode = 2;

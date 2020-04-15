@@ -168,18 +168,18 @@ void generateCast(TTEntry *t, FILE *f)
 // for every struct equality we generate. This is necessary for array comparisons.
 void generateStructEquality(TTEntry *structType, FILE *f)
 {
-    fprintf(f, "int %s_equality(%s x, %s y) {\n\treturn ", idGenJustType(structType), idGenJustType(structType), idGenJustType(structType));
+    fprintf(f, "int %s_equality(%s *x, %s *y) {\n\treturn ", idGenJustType(structType), idGenJustType(structType), idGenJustType(structType));
     /* 
-    int STRUCT_NAME_equality(STRUCT_NAME x, STRUCT_NAME y) {
+    int STRUCT_NAME_equality(STRUCT_NAME *x, STRUCT_NAME *y) {
         return 
     
     IdChain *cur = structType->val.structType.fieldNames;
     Context *ctx = structType->val.structType.fields;
     while ( cur != NULL )
     {
-        TTEntry *t = getEntry(c, cur->id)->entry.t; //Gets the type of the id
+        TTEntry *t = getEntry(ctx, cur->id)->entry.t; //Gets the type of the id
         char *fieldName = structMemb(cur->id);
-        if ( strcmp(cur->id, "_") == 0 )
+        if ( strcmp(cur->id, "_") == 0 ) //we don't compare blanks
         {
             cur = cur->next;
             free(fieldName);
@@ -194,33 +194,104 @@ void generateStructEquality(TTEntry *structType, FILE *f)
                     case baseBool:
                     case baseFloat64:
                     case baseRune:
-                        fprintf(f, "x.%s == y.%s && ", fieldName, fieldName);
+                        fprintf(f, "x->%s == y->%s && ", fieldName, fieldName); //ez
                         break;
                     case baseString:
-                        fprintf(f, "strcmp(x.%s, y.%s) == 0 && ", fieldName, fieldName);
+                        fprintf(f, "strcmp(x->%s, y->%s) == 0 && ", fieldName, fieldName);
                         break;
                 }
                 break;
             case structType:
-                fprintf(f, "%s_equality(x.%s, y.%s) && ", idGenJustType(t), fieldName, fieldName);
+                //this calls directly the struct equality, because we can mainly. Calling the
+                // struct equality that switches on name works as well
+                fprintf(f, "%s_equality(x->%s, y->%s) && ", idGenJustType(t), fieldName, fieldName);
                 break;
             case arrType:
                 char * typeChain = (char *) malloc(sizeof(char) * 999);
                 generateTypeChain(t->val.arrayType.type, typeChain);
-                fprintf(f, "arrEquality(x.%s, y.%s, %s, %d) && ", fieldName, fieldName, typeChain, t->val.arrayType.size);
+                fprintf(f, "arrEquality(x->%s, y->%s, %s, %d) && ", fieldName, fieldName, typeChain, t->val.arrayType.size);
                 free(typeChain);
                 break;
         }
         free(fieldName);
         cur = cur->next;
-    }*/
-    fprintf(f,"1;\n}\n"); //Handles if all our fields are blank.
+
+    }
+    fprintf(f, "1;\n}\n"); //Handles if all our fields are blank, trivially equal......
+
     /* && 1;
     }
     */
 }
-//AY->Array, ST->Struct, SG->String, RE->rune, IR->Integer, FT->Float
+//The same deal as above...
+//we need a void *structCopy(void *struct, char * structName), which
+//acts identically to the above
+//The function generated gets used in ensuring call by value.
+//I don't think memcpy would work... If there was a field that was
+//an array, for instance, it would copy by reference which is not
+//desired. Also I couldn't figure out how to propagate the size of
+//the struct
+void generateStructCopy(TTEntry *structType, FILE *f)
+{
+    fprintf(f, "void* %s_copy(%s *x) {\n", idGenJustType(structType), idGenJustType(structType), idGenJustType(structType));
+    fprintf(f, "\t%s *y = (%s *) malloc(sizeof(%s));\n", idGenJustType(structType), idGenJustType(structType), idGenJustType(structType));
+    /* 
+    void * STRUCT_NAME_copy(STRUCT_NAME *x) {
+        STRUCT_NAME *y = (STRUCT_NAME *) malloc(sizeof(STRUCT_NAME));
+
+    */
+    IdChain *cur = structType->val.structType.fieldNames;
+    Context *ctx = structType->val.structType.fields;
+    while ( cur != NULL )
+    {
+        TTEntry *t = getEntry(ctx, cur->id)->entry.t; //Gets the type of the id
+        char *fieldName = structMemb(cur->id);
+        if ( strcmp(cur->id, "_") == 0 ) //we don't copy....
+        {
+            cur = cur->next;
+            free(fieldName);
+            continue;
+        }
+        switch (t->underlyingType)
+        {
+            case identifierType:
+                switch ( t->val.nonCompositeType.base )
+                {
+                    case baseInt:
+                    case baseBool:
+                    case baseFloat64:
+                    case baseRune:
+                        fprintf(f, "\ty->%s = x->%s;\n", fieldName, fieldName);
+                        break;
+                    case baseString:
+                        fprintf(f, "\tstrcpy(y->%s, x->%s);\n", fieldName, fieldName);
+                        break;
+                }
+                break;
+            case structType:
+                fprintf(f, "\ty->%s = %s_copy(x->%s);\n", idGenJustType(t), fieldName, fieldName);
+                break;
+            case sliceType:
+                fprintf(f, "\ty->%s = x->%s;\n", fieldName, fieldName);
+                break;
+            case arrType:
+                char * typeChain = (char *) malloc(sizeof(char) * 999);
+                generateTypeChain(t->val.arrayType.type, typeChain);
+                fprintf(f, "\ty->%s = arrCopy(x->%s, %s, %d);\n", fieldName, fieldName, typeChain, t->val.arrayType.size);
+                free(typeChain);
+                break;
+        }
+        free(fieldName);
+        cur = cur->next;
+    }
+    fprintf(f, "\t return y;\n}"); 
+}
+//AY->Array, ST->Struct, SG->String, RE->rune, IR->Integer, FT->Float, 
 //I don't think there's a better way to do this...
+//Note: I intentionally don't add slices. This is because the ret val
+//of this function is only used in arrayEquality, which would reject
+//slices in equality in typechecking, and in arrCopy, but that doesn't
+//matter since the reference gets copied.
 void generateTypeChain(TTEntry *t, char *typeChain)
 {
     switch (t->underlyingType)
@@ -271,7 +342,41 @@ void expListCodeGen(ExpList *list, int curScope, FILE *f)
 
 }
 
+// These are pretty much duplicated because I wasn't sure if anyone 
+// else needs a "pure" expression list generation... If noone else 
+// needs it we can just remove it.
+void funcExpListCodeGen(ExpList *list, int curScope, FILE *f)
+{
+    if ( list == NULL || list->cur == NULL ) return;
+    TTEntry *type = getExpressionType(list->cur);
 
+    //If you have var x [5][][5]int, we can stop copying at the slice
+    
+    switch ( type->baseType )
+    {
+        case identifierType: //normally c call b value
+        case sliceType: //copies the pointer
+            expCodeGen(list->cur, f); 
+            break;
+        case arrayType:
+            char * typeChain = (char *) malloc(sizeof(char) * 999);
+            strcpy(typeChain, "");
+            generateTypeChain(type->val.arrayType.type, typeChain);
+            fprintf(f, "arrayCopy(");
+            expCodeGen(list->cur, f);
+            fprintf(f, ", %s, %d)", typeChain, type->val.arrayType.size);
+            free(typeChain);
+        case structType:
+            fprintf(f, "structCopy(");
+            expCodeGen(list->cur, f); 
+            fprintf(f, ", %s)", idGenJustType(t));
+    }
+	if ( list->next != NULL )
+	{
+		fprintf(f, ", ");
+		expListCodeGen(list->next, f);
+	}
+}
 
 void expCodeGen(Exp *exp, FILE *f)
 {
@@ -305,12 +410,11 @@ void expCodeGen(Exp *exp, FILE *f)
 			fprintf(f, "%s", exp->val.stringLit);
 			break;
 		case expKindFuncCall:
-            //TODO fix to account for call-by-value
 			if (exp->val.funcCall.base->contextEntry->isSymbol) //true function call not a type cast
             {
                 fprintf(idGen(exp->val.funcCall.base->contextEntry));
                 fprintf(f, "(");
-			    expListCodeGen(exp->val.funcCall.arguments, f);
+			    funcExpListCodeGen(exp->val.funcCall.arguments, f);
 			    fprintf(f, ")");
             } else //type cast
             {
@@ -456,35 +560,23 @@ void expCodeGen(Exp *exp, FILE *f)
                         fprintf(f, ");");  
                     }
                     else {
-					    expCodeGen(exp->val.binary.left, f);
-					    fprintf(f, " + " );
-					    expCodeGen(exp->val.binary.right, f);
+					    standardBinaryGen(exp, f, "+");
                     }
                     break;
 				case expKindSubtraction:
-					expCodeGen(exp->val.binary.left, f);
-					fprintf(f, " - " );
-					expCodeGen(exp->val.binary.right, f);
+                    standardBinaryGen(exp, f, "-");
 					break;
 				case expKindMultiplication:
-					expCodeGen(exp->val.binary.left, f);
-					fprintf(f, " * " );
-					expCodeGen(exp->val.binary.right, f);
+                    standardBinaryGen(exp, f, "*");
 					break;
 				case expKindDivision:
-					expCodeGen(exp->val.binary.left, f);
-					fprintf(f, " / " );
-					expCodeGen(exp->val.binary.right, f);
+                    standardBinaryGen(exp, f, "/");
 					break;
 				case expKindLogicOr:
-					expCodeGen(exp->val.binary.left, f);
-					fprintf(f, " || " );
-					expCodeGen(exp->val.binary.right, f);
+                    standardBinaryGen(exp, f, "||");
 					break;
 				case expKindLogicAnd:
-					expCodeGen(exp->val.binary.left, f);
-					fprintf(f, " && " );
-					expCodeGen(exp->val.binary.right, f);
+                    standardBinaryGen(exp, f, "&&");
 					break;
 				case expKindNEQ:
 					TEntry *type = getExpressionType(e->val.left);
@@ -575,131 +667,73 @@ void expCodeGen(Exp *exp, FILE *f)
                     }
 					break;
                 case expKindLEQ:
-                    //TODO clean up the ordered expression codes
-                    //low priority
-                    TEntry *type = getExpressionType(e->val.left);
-                    switch ( type->val.nonCompositeType.type )
-                    {
-                        case baseInt:
-                        case baseBool:
-                        case baseFloat64:
-                        case baseRune:
-                            expCodeGen(exp->val.binary.left, f);
-                            fprintf(f, " <= " );
-                            expCodeGen(exp->val.binary.right, f);
-                            break;
-                        case baseString:
-                            fprintf(f, "strcmp(");
-                            expCodeGen(exp->val.binary.left, f);
-                            fprintf(f, ", ");
-                            expCodeGen(exp->val.binary.right, f);
-                            fprintf(f, ") <= 0");
-                            break;
-                    }
+
+                    orderedBinaryGen(exp, f, "<=");
 					break;
 				case expKindGEQ:
-					TEntry *type = getExpressionType(e->val.left);
-                    switch ( type->val.nonCompositeType.type )
-                    {
-                        case baseInt:
-                        case baseBool:
-                        case baseFloat64:
-                        case baseRune:
-                            expCodeGen(exp->val.binary.left, f);
-                            fprintf(f, " >= " );
-                            expCodeGen(exp->val.binary.right, f);
-                            break;
-                        case baseString:
-                            fprintf(f, "strcmp(");
-                            expCodeGen(exp->val.binary.left, f);
-                            fprintf(f, ", ");
-                            expCodeGen(exp->val.binary.right, f);
-                            fprintf(f, ") >= 0");
-                            break;
-                    }
+                    orderedBinaryGen(exp, f, ">=");
 					break;
 				case expKindLess:
-					TEntry *type = getExpressionType(e->val.left);
-                    switch ( type->val.nonCompositeType.type )
-                    {
-                        case baseInt:
-                        case baseBool:
-                        case baseFloat64:
-                        case baseRune:
-                            expCodeGen(exp->val.binary.left, f);
-                            fprintf(f, " < " );
-                            expCodeGen(exp->val.binary.right, f);
-                            break;
-                        case baseString:
-                            fprintf(f, "strcmp(");
-                            expCodeGen(exp->val.binary.left, f);
-                            fprintf(f, ", ");
-                            expCodeGen(exp->val.binary.right, f);
-                            fprintf(f, ") < 0");
-                            break;
-                    }
+                    orderedBinaryGen(exp, f, "<");
 					break;
 				case expKindGreater:
-					TEntry *type = getExpressionType(e->val.left)
-                    switch ( type->val.nonCompositeType.type )
-                    {
-                        case baseInt:
-                        case baseBool:
-                        case baseFloat64:
-                        case baseRune:
-                            expCodeGen(exp->val.binary.left, f);
-                            fprintf(f, " > " );
-                            expCodeGen(exp->val.binary.right, f);
-                            break;
-                        case baseString:
-                            fprintf(f, "strcmp(");
-                            expCodeGen(exp->val.binary.left, f);
-                            fprintf(f, ", ");
-                            expCodeGen(exp->val.binary.right, f);
-                            fprintf(f, ") > 0");
-                            break;
-                    }
+                    orderedBinaryGen(exp, f, ">");
 					break;
 				case expKindMod:
-					expCodeGen(exp->val.binary.left, f);
-					fputs(" % ", f); //for denali <3
-					expCodeGen(exp->val.binary.right, f);
+                    standardBinaryGen(exp, f, "%%");
 					break;
 				case expKindBitAnd:
-					expCodeGen(exp->val.binary.left, f);
-					fprintf(f, " & " );
-					expCodeGen(exp->val.binary.right, f);
+                    standardBinaryGen(exp, f, "&");
 					break;
 				case expKindBitOr:
-					expCodeGen(exp->val.binary.left, f);
-					fprintf(f, " | " );
-					expCodeGen(exp->val.binary.right, f);
+                    standardBinaryGen(exp, f, "|");
 					break;
-				case expKindBitNotBinary:
-					expCodeGen(exp->val.binary.left, f);
-					fprintf(f, " ^ " );
-					expCodeGen(exp->val.binary.right, f);
+				case expKindBitNotBinary: //lol
+                    standardBinaryGen(exp, f, "^");
 					break;
 				case expKindBitShiftLeft:
-					expCodeGen(exp->val.binary.left, f);
-					fprintf(f, " << " );
-					expCodeGen(exp->val.binary.right, f);
+                    standardBinaryGen(exp, f, "<<");
 					break;
 				case expKindBitShiftRight:
-					expCodeGen(exp->val.binary.left, f);
-					fprintf(f, " >> " );
-					expCodeGen(exp->val.binary.right, f);
+                    standardBinaryGen(exp, f, ">>");
 					break;
 				case expKindBitAndNot:
-					expCodeGen(exp->val.binary.left, f);
-					fprintf(f, " &~ " );
-					expCodeGen(exp->val.binary.right, f);
+                    standardBinaryGen(exp, f, "&~");
 					break;
 			}
 			fprintf(f, ")");
 			
 	}
 }
+
+void standardBinaryGen(Exp *exp, FILE *f, char *op)
+{
+    expCodeGen(exp->val.binary.left, f);
+	fprintf(f, " %s ", op );
+	expCodeGen(exp->val.binary.right, f);
+}
+void orderedBinaryGen(Exp *exp, FILE *f, char *op)
+{
+    TEntry *type = getExpressionType(exp->val.left)
+    switch ( type->val.nonCompositeType.type )
+    {
+        case baseInt:
+        case baseBool:
+        case baseFloat64:
+        case baseRune:
+            expCodeGen(exp->val.binary.left, f);
+            fprintf(f, " %s ", op);
+            expCodeGen(exp->val.binary.right, f);
+            break;
+        case baseString:
+            fprintf(f, "strcmp(");
+            expCodeGen(exp->val.binary.left, f);
+            fprintf(f, ", ");
+            expCodeGen(exp->val.binary.right, f);
+            fprintf(f, ") %s 0", op);
+            break;
+    }
+
 
 /*
 
