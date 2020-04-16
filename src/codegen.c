@@ -169,7 +169,7 @@ void generateCast(TTEntry *t, FILE *f)
 void generateStructEquality(TTEntry *structType, FILE *f)
 {
     fprintf(f, "int %s_equality(%s *x, %s *y) {\n\treturn ", idGenJustType(structType), idGenJustType(structType), idGenJustType(structType));
-    /* 
+    
     int STRUCT_NAME_equality(STRUCT_NAME *x, STRUCT_NAME *y) {
         return 
     
@@ -330,7 +330,7 @@ void generateTypeChain(TTEntry *t, char *typeChain)
     return;
 }
 
-/*
+
 void expListCodeGen(ExpList *list, int curScope, FILE *f)
 {
 	if ( list == NULL || list->cur == NULL ) return;
@@ -737,7 +737,7 @@ void orderedBinaryGen(Exp *exp, FILE *f, char *op)
     }
 
 
-*/
+
 
 static void indent(int indentLevel,FILE* fp){
     for(int i = 0; i < indentLevel; i++){
@@ -780,10 +780,10 @@ void printCodeGen(ExpList* list,int indentLevel,FILE* fp){
     printCodeGen(list->next,indentLevel,fp);
 }
 
-
+/*
 void expCodeGen(Exp* exp, FILE* fp){
 
-}
+}*/
 
 void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
     if (list == NULL){
@@ -819,27 +819,7 @@ void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
     printlnCodeGen(list->next,indentLevel,fp);
 }
 
-//TODO, does not involve code formatting
-void simpleStmtCodeGen(Stmt* stmt,int indentLevel,FILE* fp){
-    if (stmt == NULL){
-        return;
-    }
 
-    switch (stmt->kind){
-        case StmtKindAssignment:
-            break;
-        case StmtKindShortDeclaration:
-            break;
-        case StmtKindExpression :
-            break;
-        case StmtKindInc:
-            break;
-        case StmtKindDec:
-            break;
-        case StmtKindOpAssignment:
-            break;
-    }
-}
 
 void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
     if (left == NULL || right == NULL){
@@ -1123,7 +1103,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             fprintf(fp,";\n");
             break;
 
-        //Note for Denali, remember that simple statements must not always end in a newline
+
         case StmtKindTypeDeclaration:
             break;
         case StmtKindVarDeclaration:
