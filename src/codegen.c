@@ -6,7 +6,6 @@
 #include "ast.h"
 #include "symbol_table.h"
 
-
 UniqueId * idTable[TABLE_SIZE];
 int initCount = 0;
 int tempVarCount = 0;
@@ -223,6 +222,7 @@ void generateStructEquality(TTEntry *structType, FILE *f)
     }
     */
 }
+
 //The same deal as above...
 //we need a void *structCopy(void *struct, char * structName), which
 //acts identically to the above
@@ -231,22 +231,22 @@ void generateStructEquality(TTEntry *structType, FILE *f)
 //an array, for instance, it would copy by reference which is not
 //desired. Also I couldn't figure out how to propagate the size of
 //the struct
-void generateStructCopy(TTEntry *structType, FILE *f)
+void generateStructCopy(TTEntry *structType_, FILE *f)
 {
-    fprintf(f, "void* %s_copy(%s *x) {\n", idGenJustType(structType), idGenJustType(structType), idGenJustType(structType));
-    fprintf(f, "\t%s *y = (%s *) malloc(sizeof(%s));\n", idGenJustType(structType), idGenJustType(structType), idGenJustType(structType));
+    fprintf(f, "void* %s_copy(%s *x) {\n", idGenJustType(structType_), idGenJustType(structType_), idGenJustType(structType_));
+    fprintf(f, "\t%s *y = (%s *) malloc(sizeof(%s));\n", idGenJustType(structType_), idGenJustType(structType_), idGenJustType(structType_));
     /* 
     void * STRUCT_NAME_copy(STRUCT_NAME *x) {
         STRUCT_NAME *y = (STRUCT_NAME *) malloc(sizeof(STRUCT_NAME));
 
     */
-    IdChain *cur = structType->val.structType.fieldNames;
-    Context *ctx = structType->val.structType.fields;
+    IdChain *cur = structType_->val.structType.fieldNames;
+    Context *ctx = structType_->val.structType.fields;
     while ( cur != NULL )
     {
-        TTEntry *t = getEntry(ctx, cur->id)->entry.t; //Gets the type of the id
-        char *fieldName = structMemb(cur->id);
-        if ( strcmp(cur->id, "_") == 0 ) //we don't copy....
+        TTEntry *t = getEntry(ctx, cur->identifier)->entry.t; //Gets the type of the id
+        char *fieldName = structMemb(cur->identifier);
+        if ( strcmp(cur->identifier, "_") == 0 ) //we don't copy....
         {
             cur = cur->next;
             free(fieldName);
@@ -255,7 +255,7 @@ void generateStructCopy(TTEntry *structType, FILE *f)
         switch (t->underlyingType)
         {
             case identifierType:
-                switch ( t->val.nonCompositeType.base )
+                switch ( t->val.nonCompositeType.type)
                 {
                     case baseInt:
                     case baseBool:
@@ -274,7 +274,7 @@ void generateStructCopy(TTEntry *structType, FILE *f)
             case sliceType:
                 fprintf(f, "\ty->%s = x->%s;\n", fieldName, fieldName);
                 break;
-            case arrType:
+            case arrayType:
                 char * typeChain = (char *) malloc(sizeof(char) * 999);
                 generateTypeChain(t->val.arrayType.type, typeChain);
                 fprintf(f, "\ty->%s = arrCopy(x->%s, %s, %d);\n", fieldName, fieldName, typeChain, t->val.arrayType.size);
@@ -329,7 +329,7 @@ void generateTypeChain(TTEntry *t, char *typeChain)
     return;
 }
 
-
+/*
 void expListCodeGen(ExpList *list, int curScope, FILE *f)
 {
 	if ( list == NULL || list->cur == NULL ) return;
@@ -390,7 +390,7 @@ void expCodeGen(Exp *exp, FILE *f)
             } else
             {
                 char *retVal = idGen(exp->contextEntry);
-                fprintf(f, "%s",  retVal));
+                fprintf(f, "%s",  retVal);
                 free(retVal);
             }
             break;
@@ -412,7 +412,7 @@ void expCodeGen(Exp *exp, FILE *f)
 		case expKindFuncCall:
 			if (exp->val.funcCall.base->contextEntry->isSymbol) //true function call not a type cast
             {
-                fprintf(idGen(exp->val.funcCall.base->contextEntry));
+                fprintf(f,idGen(exp->val.funcCall.base->contextEntry));
                 fprintf(f, "(");
 			    funcExpListCodeGen(exp->val.funcCall.arguments, f);
 			    fprintf(f, ")");
@@ -442,13 +442,13 @@ void expCodeGen(Exp *exp, FILE *f)
                 break;
             }
             else {
-                fprintf(f, "(")
+                fprintf(f, "(");
                 generateCast(exp->val.access.base->contextEntry->entry.t->val.arrayType.type);
                 fprintf(f, "(arrGet(");
 			    expCodeGen(exp->val.access.base, f);
                 fprintf(f, ", ");
 			    expCodeGen(exp->val.access.accessor, f);
-                fprintf(f, ", ")
+                fprintf(f, ", ");
                 fprintf(f, exp->val.access.base->contextEntry->entry.t->val.arrayType.size);
 			    fprintf(f, ", %d)))", exp->lineno);
                 break;
@@ -513,7 +513,7 @@ void expCodeGen(Exp *exp, FILE *f)
             }
 			break;
 		case expKindCapacity:;
-			TEntry *type = getExpressionType(e->val.builtInBody);
+			TTEntry *type = getExpressionType(e->val.builtInBody);
 			switch ( type->underlyingType )
             {
                 case arrayType:
@@ -714,6 +714,7 @@ void standardBinaryGen(Exp *exp, FILE *f, char *op)
 }
 void orderedBinaryGen(Exp *exp, FILE *f, char *op)
 {
+
     TEntry *type = getExpressionType(exp->val.left)
     switch ( type->val.nonCompositeType.type )
     {
@@ -735,12 +736,7 @@ void orderedBinaryGen(Exp *exp, FILE *f, char *op)
     }
 
 
-/*
-
-
-void expCodeGen(Exp *exp, FILE *f){
-
-}*/
+*/
 
 static void indent(int indentLevel,FILE* fp){
     for(int i = 0; i < indentLevel; i++){
@@ -783,6 +779,10 @@ void printCodeGen(ExpList* list,int indentLevel,FILE* fp){
     printCodeGen(list->next,indentLevel,fp);
 }
 
+
+void expCodeGen(Exp* exp, FILE* fp){
+
+}
 
 void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
     if (list == NULL){
@@ -840,13 +840,91 @@ void simpleStmtCodeGen(Stmt* stmt,int indentLevel,FILE* fp){
     }
 }
 
+void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
+    if (left == NULL || right == NULL){
+        return;
+    }
+
+    
+    //Broken (replace void* by actual type)
+    //Generate all temp assignments then assign them after temp assignments complete
+    char* temp = tmpVarCount();
+    indent(indentLevel,fp);
+    fprintf(fp,"void* %s = %s;\n",temp,idGen(right->cur->contextEntry));
+
+    assignStmtCodeGen(left->next,right->next,indentLevel,fp);
+
+    indent(indentLevel,fp);
+    fprintf(fp,"%s = %s;\n",idGen(left->cur->contextEntry),temp);
+
+
+}
+
+
+
+
+
+void expListToBool( ExpList* list, char* exp1,FILE* fp){
+    //explistToBool should never be called with an empty list 
+    Exp* temp = makeExpIdentifier(exp1);
+    temp->contextEntry->isSymbol = 1;
+    temp->contextEntry->entry = list->cur->contextEntry->entry;
+    //Creating a dummy equality node to simplify codegen
+    Exp* equal = makeExpBinary(temp,list->cur,expKindEQ);
+    expCodeGen(equal,fp);
+
+    free(temp);
+    free(equal);
+
+    if (list->next == NULL){
+        return;
+    }else{
+        fprintf(fp, " || ");
+        expListToBool(list->next,exp1,fp);
+    }
+}
+
+void switchToIfCodeGen(char* exp,switchCaseClause* list,int indentLevel, FILE* fp){
+    if (list == NULL){
+        return;
+    }
+    if (list->expressionList == NULL){ //Default case (I'm not generating code after default cases as it cannot execute)
+        indent(indentLevel,fp);
+        fprintf(fp,"if (1) {\n");
+
+        stmtCodeGen(list->statementList,indentLevel+1,fp);
+
+        indent(indentLevel,fp);
+        fprintf(fp,"}\n");
+
+        return;
+    }else{
+        indent(indentLevel,fp);
+        fprintf(fp,"if(");
+        expListToBool(list->expressionList,exp,fp);
+        fprint(fp,"){\n");
+        
+        stmtCodeGen(list->statementList,indentLevel+1,fp);
+        
+        indent(indentLevel,fp);
+        fprintf(fp,"}\n");
+
+        fprintf(fp,"else{");
+
+        switchToIfCodeGen(exp,list->next,indentLevel+1,fp);
+
+        indent(indentLevel,fp);
+        fprint(fp,"}\n");
+
+    }
+}
+
 void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
     if (stmt == NULL){
         return;
     }
 
     switch (stmt->kind){
-        //WARNING RENAME VARIABLES IN INNER SCOPE USING SCOPELEVEL
         case StmtKindBlock:
             indent(indentLevel,fp);
             printf("{\n");
@@ -860,8 +938,8 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             fprintf(fp,";\n");
             break;
         case StmtKindAssignment:
-            //LOTS TO DO, MULTIPLE ASSIGNMENT.  TEMP VARS
-            simpleStmtCodeGen(stmt,indentLevel,fp);
+            //This is broken (need to assign types properly for temp vars,using void* for now)
+            assignStmtCodeGen(stmt->val.assignment.lhs,stmt->val.assignment.rhs,indentLevel,fp);
             break;
     
         case StmtKindPrint:
@@ -910,7 +988,28 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             stmtCodeGen(stmt->val.elseStmt.block,indentLevel,fp);
             
             break;
-        case StmtKindSwitch: // Lots to do
+        case StmtKindSwitch: 
+            //Enclosing the switch stmt in a while loop to handle break stmts was Alex's idea
+            indent(indentLevel,fp);
+            fprintf(fp,"while{\n");
+
+            stmtCodeGen(stmt->val.switchStmt.statement,indentLevel,fp);//initial declaration
+
+            char* temp = tmpVarGen();
+            indent(indentLevel+1,fp);
+            fprintf(fp,"void* %s = ",temp);
+            expCodeGen(stmt->val.switchStmt.expression,fp);
+            fprintf(fp,";\n");
+
+
+            switchToIfCodeGen(temp,stmt->val.switchStmt.clauseList,indentLevel+1,fp);
+            
+
+            indent(indentLevel+1,fp);
+            fprintf(fp,"break;\n");
+
+            indent(indentLevel,fp);
+            fprintf(fp,"}\n");
             break;
         case StmtKindInfLoop:
             indent(indentLevel,fp);
