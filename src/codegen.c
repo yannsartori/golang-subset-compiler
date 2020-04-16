@@ -9,6 +9,7 @@
 UniqueId * idTable[TABLE_SIZE];
 int initCount = 0;
 int tempVarCount = 0;
+int labelCount = 0;
 
 typedef struct UniqueId UniqueId;
 struct UniqueId {
@@ -919,6 +920,48 @@ void switchToIfCodeGen(char* exp,switchCaseClause* list,int indentLevel, FILE* f
     }
 }
 
+char* makeLabel(){
+	char* ptr = malloc(sizeof(char)*32);
+	sprintf(ptr,"label%d",labelCount++);
+	return ptr;
+}
+
+void localContinueReplace(Stmt* stmt,char* label){//Replaces or loop continues by appropriate gotos
+		if (stmt == NULL){
+			return;
+		}
+
+		Stmt* next;
+
+		switch (stmt->kind){
+			case StmtKindBlock:
+                localContinueReplace(stmt->val.block.stmt,label);
+				break;
+    		case StmtKindIf:
+    			localContinueReplace(stmt->val.ifStmt.block,label);
+    			localContinueReplace(stmt->val.ifStmt.elseBlock,label);
+    			break;
+    		case StmtKindElse:
+    			localContinueReplace(stmt->val.elseStmt.block,label);
+    			break;
+    		case StmtKindSwitch:
+    			for(switchCaseClause* cur = stmt->val.switchStmt.clauseList; cur != NULL; cur = cur->next){
+    				localContinueReplace(cur->statementList,label);
+    			}
+    			break;
+    		case StmtKindContinue:
+    			//Transmute a continue node into a goto node
+    			next = stmt->next;
+    			stmt->kind = StmtKindGoto;
+    			stmt->val.gotoStmt.label = label;
+    			stmt->next = next;
+    			break;
+
+		}
+
+		localContinueReplace(stmt->next,label);
+}
+
 void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
     if (stmt == NULL){
         return;
@@ -962,7 +1005,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             fprintf(fp,")\n");
 
             stmtCodeGen(stmt->val.ifStmt.block,indentLevel,fp);
-
+            localContinueReplace(stmt->val.forLoop.block,NULL);//TODO
 
             indent(indentLevel,fp);
             fprintf(fp,"}\n");
@@ -1025,8 +1068,38 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             stmtCodeGen(stmt->val.whileLoop.block,indentLevel,fp);
             break;
         case StmtKindThreePartLoop:
-            //Subtle issues need to be dealt with
-           break;
+            
+            indent(indentLevel,fp);
+            fprintf(fp,"{\n");
+
+            stmtCodeGen(stmt->val.forLoop.init,indentLevel+1,fp);
+
+            indent(indentLevel+1,fp);
+            fprintf(fp,"while(");
+            expCodeGen(stmt->val.forLoop.condition,fp);
+            fprint(fp,"){\n");
+
+            char* label = makeLabel();
+            localContinueReplace(stmt->val.forLoop.block,label);
+            stmtCodeGen(stmt->val.forLoop.block->val.block.stmt,indentLevel+2,fp);
+
+
+            indent(indentLevel+2,fp);
+            fprintf(fp,"%s:\n",label);
+
+            stmtCodeGen(stmt->val.forLoop.inc,indentLevel+2,fp);
+
+            indent(indentLevel+1,fp);
+            fprintf(fp,"}\n");
+
+            indent(indentLevel,fp);
+            fprintf(fp,"}\n");
+            break;
+
+        case StmtKindGoto:
+            indent(indentLevel,fp);
+            fprintf(fp,"goto %s;",stmt->val.gotoStmt.label);
+            break;
 
 
         case StmtKindBreak:
