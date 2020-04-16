@@ -894,3 +894,15 @@ Stmt* makeDecStmt(Exp* exp){
 
     return ptr;
 }
+
+Stmt* makeGotoStmt(char* label){
+    Stmt* ptr = malloc(sizeof(Stmt));
+
+    if (ptr == NULL){
+        return NULL;
+    }
+
+    ptr->kind = StmtKindGoto;
+    ptr->val.gotoStmt.label = label;
+    return ptr;
+}

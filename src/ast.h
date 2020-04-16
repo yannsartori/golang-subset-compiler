@@ -90,6 +90,8 @@ struct Stmt{
 
 		struct {Exp* exp;} decStmt;
 
+		struct {char* label;} gotoStmt;//Not actually a feature of golite, this helps me during codegen
+
         //Break and continue are encoded in kind
 
 		VarDeclNode* varDeclaration;
