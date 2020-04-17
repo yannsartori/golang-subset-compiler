@@ -761,7 +761,6 @@ void expCodeGen(Exp *exp, FILE *f)
 	}
 } 
 
-/* remove this above
 static void indent(int indentLevel,FILE* fp){
     for(int i = 0; i < indentLevel; i++){
         fprintf(fp,"\t");
@@ -806,7 +805,7 @@ void printCodeGen(ExpList* list,int indentLevel,FILE* fp){
 /*
 void expCodeGen(Exp* exp, FILE* fp){
 
-}#OLDENDCOMMENT
+}*/
 
 void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
     if (list == NULL){
@@ -1245,7 +1244,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 
 /*
  * Definitely not done but this one honestly seems like the easiest
- #OLDENDCOMMENT
+ */
 
 void funcCodeGen(FuncDeclNode* func, FILE* fp) {
 	char* retTypeName, funcName;
@@ -1253,28 +1252,28 @@ void funcCodeGen(FuncDeclNode* func, FILE* fp) {
 	for (int i = 0; i<10; i++) {
 		funcArgsCodeGen();
 	}
-	fprintf(fp, ")\n"); /* ask neil abouat brackets #OLDENDCOMMENT
+	fprintf(fp, ")\n"); /* ask neil abouat brackets */
 	stmtCodeGen(func -> blockStart, 0, fp);
 	
 }
 
 /*
  * Definitely not done
- #OLDENDCOMMENT
+ */
 
 void varDeclCodeGen(VarDeclNode* decl, FILE* fp) {
 	
 	if (isBlank()) {
 		/*
 		 * do something
-		 #OLDENDCOMMENT
+		 */
 	}
 	
 	char* typeName, varName;
 	fprintf(fp, "%s %s" typeName, varName);
 	if (1) {
 		fprintf(fp, " = 0;\n");
-		/* Include a function to initialize it to zero? maybe this could be related to the comparison thing? #OLDENDCOMMENT
+		/* Include a function to initialize it to zero? maybe this could be related to the comparison thing? */
 	} else {
 		fprintf(fp, " = ");
 		expCodeGen(decl -> value, fp);
@@ -1285,7 +1284,7 @@ void varDeclCodeGen(VarDeclNode* decl, FILE* fp) {
 
 /*
  * Not done but honestly I'm not rattled. Unless we're going to make up comparisons based on types. 
- #OLDENDCOMMENT
+ */
 
 void typeDeclCodeGen(TypeDeclNode* decl, FILE* fp) {
 	
@@ -1298,13 +1297,13 @@ void typeDeclCodeGen(TypeDeclNode* decl, FILE* fp) {
 void totalCodeGen(Rootnode* root) {
 	/*
 	 * Open a file
-	 #OLDENDCOMMENT
+	 */
 	
 	FILE* output;
 	
 	/*
 	 * print headers, maybe. Idk
-	 #OLDENDCOMMENT
+	 */
 	
 	
 	TopDeclarationNode* mainIter = root -> startDecls;
