@@ -963,3 +963,108 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 
     stmtCodeGen(stmt->next,indentLevel,fp);
 }
+
+
+
+/*
+ * Definitely not done but this one honestly seems like the easiest
+ */
+
+void funcCodeGen(FuncDeclNode* func, FILE* fp) {
+	char* retTypeName, funcName;
+	fprintf(fp, "%s %s(", retTypeName, funcName);
+	for (int i = 0; i<10; i++) {
+		funcArgsCodeGen();
+	}
+	fprintf(fp, ")\n"); /* ask neil abouat brackets */
+	stmtCodeGen(func -> blockStart, 0, fp);
+	
+}
+
+/*
+ * Definitely not done
+ */
+
+void varDeclCodeGen(VarDeclNode* decl, FILE* fp) {
+	
+	if (isBlank()) {
+		/*
+		 * do something
+		 */
+	}
+	
+	char* typeName, varName;
+	fprintf(fp, "%s %s" typeName, varName);
+	if (1) {
+		fprintf(fp, " = 0;\n");
+		/* Include a function to initialize it to zero? maybe this could be related to the comparison thing? */
+	} else {
+		fprintf(fp, " = ");
+		expCodeGen(decl -> value, fp);
+		fprintf(fp, ";\n");
+	}
+	
+}
+
+/*
+ * Not done but honestly I'm not rattled. Unless we're going to make up comparisons based on types. 
+ */
+
+void typeDeclCodeGen(TypeDeclNode* decl, FILE* fp) {
+	
+	char* oldtype, newtype;
+	fprintf(fp, "typedef %s %s;\n\n", oldtype, newtype);
+}
+
+
+
+void totalCodeGen(Rootnode* root) {
+	/*
+	 * Open a file
+	 */
+	
+	FILE* output;
+	
+	/*
+	 * print headers, maybe. Idk
+	 */
+	
+	
+	TopDeclarationNode* mainIter = root -> startDecls;
+	
+	
+	while (mainIter != NULL) {
+		if (mainIter -> declType == funcDeclType) {
+			funcCodeGen(mainIter -> actualRealDeclaration.funcDecl, output);
+		} else if (mainIter -> declType == variDeclType){
+			varDeclCodeGen(mainIter -> actualRealDeclaration.varDecl, output);
+		} else if (mainIter -> declType == typeDeclType){
+			typeDeclCodeGen(mainIter -> actualRealDeclaration.typeDecl, output);
+		}
+		mainIter = mainIter -> nextTopDecl;
+	}
+	
+	
+	/*
+	 * 
+	 * print all the declarations. This WILL be harder than you think.
+	 * 
+	 * 
+	 */
+	
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
