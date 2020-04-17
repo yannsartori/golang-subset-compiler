@@ -169,7 +169,7 @@ void generateCast(TTEntry *t, FILE *f)
 void generateStructEquality(TTEntry *structType, FILE *f)
 {
     fprintf(f, "int %s_equality(%s *x, %s *y) {\n\treturn ", idGenJustType(structType), idGenJustType(structType), idGenJustType(structType));
-    
+    /* 
     int STRUCT_NAME_equality(STRUCT_NAME *x, STRUCT_NAME *y) {
         return 
     
@@ -330,7 +330,7 @@ void generateTypeChain(TTEntry *t, char *typeChain)
     return;
 }
 
-
+/*
 void expListCodeGen(ExpList *list, int curScope, FILE *f)
 {
 	if ( list == NULL || list->cur == NULL ) return;
@@ -737,7 +737,7 @@ void orderedBinaryGen(Exp *exp, FILE *f, char *op)
     }
 
 
-
+*/
 
 static void indent(int indentLevel,FILE* fp){
     for(int i = 0; i < indentLevel; i++){
@@ -835,8 +835,10 @@ void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
 
     assignStmtCodeGen(left->next,right->next,indentLevel,fp);
 
-    indent(indentLevel,fp);
-    fprintf(fp,"%s = %s;\n",idGen(left->cur->contextEntry),temp);
+    if (!isBlank(left->cur)){ 
+        indent(indentLevel,fp);
+        fprintf(fp,"%s = %s;\n",idGen(left->cur->contextEntry),temp);
+    }
 
 
 }
@@ -1092,7 +1094,107 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             break;
 
         case StmtKindOpAssignment:
-            //Subtle issues (+= with a string for example)
+            {
+                Exp* lhs = stmt->val.opAssignment.lhs;
+                Exp* rhs = stmt->val.opAssignment.rhs;
+                TTEntry* type;
+
+                switch (stmt->val.opAssignment.kind) {
+				case expKindAddition:
+					type = lhs->contextEntry->entry.s->type;
+                    if(type->val.nonCompositeType.type == baseString){
+                        char* temp = tmpVarGen();
+                        indent(indentLevel,fp);
+                        fprintf(fp,"char** %s = &(",temp);
+                        expCodeGen(lhs,fp);
+                        fprintf(fp,");\n");
+
+                        indent(indentLevel,fp);
+                        fprintf(fp,"*%s = concat(*%s,");
+                        expCodeGen(rhs,fp);
+                        fprintf(fp,");\n");
+
+
+                    }else{
+                        indent(indentLevel,fp);
+                        expCodeGen(lhs,fp);
+                        fprintf(fp," += " );
+                        expCodeGen(rhs,fp);
+                        fprintf(fp,";\n");
+                    }
+					break;
+				case expKindSubtraction:
+                    indent(indentLevel,fp);
+                    expCodeGen(lhs,fp);
+					fprintf(fp," -= " );
+                    expCodeGen(rhs,fp);
+                    fprintf(fp,";\n");
+					break;
+				case expKindMultiplication:
+					indent(indentLevel,fp);
+                    expCodeGen(lhs,fp);
+					fprintf(fp," *= " );
+                    expCodeGen(rhs,fp);
+                    fprintf(fp,";\n");
+					break;
+				case expKindDivision:
+					indent(indentLevel,fp);
+                    expCodeGen(lhs,fp);
+					fprintf(fp," /= " );
+                    expCodeGen(rhs,fp);
+                    fprintf(fp,";\n");
+                    break;
+				case expKindMod:
+					indent(indentLevel,fp);
+                    expCodeGen(lhs,fp);
+					fprintf(fp," %= " );
+                    expCodeGen(rhs,fp);
+                    fprintf(fp,";\n");
+                    break;
+				case expKindBitAnd:
+					indent(indentLevel,fp);
+                    expCodeGen(lhs,fp);
+					fprintf(fp," &= " );
+                    expCodeGen(rhs,fp);
+                    fprintf(fp,";\n");
+                    break;
+				case expKindBitOr:
+					indent(indentLevel,fp);
+                    expCodeGen(lhs,fp);
+					fprintf(fp," |= " );
+                    expCodeGen(rhs,fp);
+                    fprintf(fp,";\n");
+                    break;
+				case expKindBitNotBinary:
+					indent(indentLevel,fp);
+                    expCodeGen(lhs,fp);
+					fprintf(fp," ^= " );
+                    expCodeGen(rhs,fp);
+                    fprintf(fp,";\n");
+                    break;
+				case expKindBitShiftLeft:
+					indent(indentLevel,fp);
+                    expCodeGen(lhs,fp);
+					fprintf(fp," <<= " );
+                    expCodeGen(rhs,fp);
+                    fprintf(fp,";\n");
+                    break;
+				case expKindBitShiftRight:
+					indent(indentLevel,fp);
+                    expCodeGen(lhs,fp);
+					fprintf(fp," >>= " );
+                    expCodeGen(rhs,fp);
+                    fprintf(fp,";\n");
+                    break;
+				case expKindBitAndNot:
+					indent(indentLevel,fp);
+                    expCodeGen(lhs,fp);
+                    fprintf(fp," &= ~(");
+                    expCodeGen(rhs,fp);
+                    fprintf(fp,");\n");
+					break;
+			}
+            }
             break;
         case StmtKindInc:
             simpleStmtCodeGen(stmt,indentLevel,fp);
