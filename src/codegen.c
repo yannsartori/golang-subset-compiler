@@ -39,7 +39,7 @@ char *enterInTable(char *id, void * pointer)
         idTable[hash] = entry;
 
         retVal = (char *) malloc(sizeof(char) * (50 + strlen(id)));
-        sprintf(retVal, "__golite_decl_%s_%d", id, count);
+        sprintf(retVal, "__golite_decl_%s_%d_%d", id, hash, count);
         return retVal;
     }
 
@@ -48,7 +48,7 @@ char *enterInTable(char *id, void * pointer)
         if ( cur->pointerAddress == pointer )
         {
             retVal = (char *) malloc(sizeof(char) * (50 + strlen(id)));
-            sprintf(retVal, "__golite_decl_%s_%d",id, count);
+            sprintf(retVal, "__golite_decl_%s_%d_%d",id, hash, count);
             return retVal;
         }
         count++;
@@ -58,7 +58,7 @@ char *enterInTable(char *id, void * pointer)
     if ( cur->pointerAddress == pointer )
     {
         retVal = (char *) malloc(sizeof(char) * (50 + strlen(id)));
-        sprintf(retVal, "__golite_decl_%s_%d",id, count);
+        sprintf(retVal, "__golite_decl_%s_%d_%d",id, hash, count);
         return retVal;
     }
 
@@ -68,7 +68,7 @@ char *enterInTable(char *id, void * pointer)
     cur->next = entry;
 
     retVal = (char *) malloc(sizeof(char) * (50 + strlen(id)));
-    sprintf(retVal, "__golite_decl_%s_%d",id, count + 1);
+    sprintf(retVal, "__golite_decl_%s_%d_%d",id, hash, count + 1);
     return retVal;
 }
 char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
