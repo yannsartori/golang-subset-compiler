@@ -1129,11 +1129,11 @@ void typecheckSwitchStatements(Stmt* stmt){
 	TTEntry* type;
 	if (stmt->val.switchStmt.expression == NULL){ //Empty expression corresponds to boolean
 		// I'm trying to summon the boolean type entry
-		Exp* exp = makeExpIntLit(1);
+		Exp* exp = makeExpIntLit(0);
 		Exp* exp1 = makeExpBinary(exp,exp,expKindEQ);
+		stmt->val.switchStmt.expression = exp1;
 		type = typeCheckExpression(exp1);
-		free(exp1);
-		free(exp);
+		
 
 	}else{
 		type = typeCheckExpression(stmt->val.switchStmt.expression);

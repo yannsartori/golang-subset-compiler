@@ -48,6 +48,7 @@ typedef enum {
 	StmtKindOpAssignment,
 	StmtKindInc,
 	StmtKindDec,
+	StmtKindGoto,
 
 	StmtKindTypeDeclaration,
 	StmtKindVarDeclaration,
