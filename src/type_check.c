@@ -1217,3 +1217,141 @@ void typeCheckVarDecl(VarDeclNode* decl) {
 
 
 
+
+
+int structVariantCounter = 0;
+
+
+typedef struct Entry{
+	char* id;
+	TTEntry* type;
+}Entry;
+
+
+typedef enum{
+	EntryNode,
+	LabelNode
+}TrieType;
+
+typedef struct Trie{
+	TrieType genre;
+	union{
+		Entry* entry;
+		int label;
+	}variant;
+
+	struct Trie* sibling;
+	struct Trie* child;
+}Trie;
+
+
+Entry* makeEntry(char* id, TTEntry* type){
+	Entry* ptr = malloc(sizeof(Entry));
+
+	ptr->id = id;
+	ptr->type = type;
+
+	return ptr;
+}
+
+Trie* makeTrie(TrieType genre){
+	Trie* ptr = malloc(sizeof(Trie));
+
+	ptr->genre = genre;
+	return ptr;
+}
+
+
+Trie* findSibling(Trie* trie,TTEntry* structEntry, char* id){
+	if (trie == NULL){
+		return NULL;
+	}
+
+	if (trie->genre == LabelNode){
+		return findSibling(trie->sibling,structEntry,id);
+	}else{
+		if (strcmp(id,trie->variant.entry->id) == 0){
+			TTEntry* queriedType = getEntry(structEntry->val.structType.fields,id)->entry.s->type;
+			if (typeEquality(queriedType,trie->variant.entry->type)){
+				return trie;
+			}else{
+				return findSibling(trie->sibling,structEntry,id);
+			}
+		}else{
+			return findSibling(trie->sibling,structEntry,id);
+		}
+	}
+
+}
+
+Trie* makeLabelNode(){
+	Trie* ptr = makeTrie(LabelNode);
+	ptr->variant.label = structVariantCounter++;
+	return ptr;
+}
+
+Trie* encodeInfo(Trie* trie,TTEntry* structEntry, IdChain* chain){
+	if (chain == NULL){
+		Trie* cur = trie;
+		while(cur != NULL){
+			if (cur->genre == LabelNode){
+				return trie;//Already in the trie
+			}
+			cur = cur->sibling;
+		}
+		Trie* temp = makeLabelNode();
+		temp->sibling = trie;
+
+		return temp;
+		
+	}
+
+	Trie* sibling = findSibling(trie,structEntry,chain->identifier);
+	if (sibling == NULL){ 
+		
+			Trie* ptr = makeTrie(EntryNode);
+			ptr->variant.entry->type = getEntry(structEntry->val.structType.fields,chain->identifier)->entry.s->type;
+			ptr->variant.entry->id = chain->identifier;
+
+			ptr->sibling = trie;
+			return ptr;
+		
+	}else{
+		sibling->child = encodeInfo(sibling->child,structEntry,chain->next);
+		return trie;
+
+	}
+
+
+}
+
+int helperLookUpLabel(Trie* trie,TTEntry* structEntry,IdChain* chain){
+	if (chain == NULL){
+		Trie* cur = trie;
+		while(cur != NULL){
+			if (cur->genre == LabelNode){
+				return cur->variant.label;
+			}
+
+			cur = cur->sibling;
+		}
+
+		return -1; //NOT FOUND
+	}
+
+
+	Trie* sibling = findSibling(trie,structEntry,chain->identifier);
+	if (sibling == NULL){
+		return -1;//NOT FOUND
+	}else{
+		return helperLookUpLabel(sibling->child,structEntry,chain->next);
+	}
+}
+
+int LookUpLabel(Trie* trie, TTEntry* structEntry){
+	return helperLookUpLabel(trie,structEntry,structEntry->val.structType.fieldNames);
+}
+
+
+
+

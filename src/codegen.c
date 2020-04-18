@@ -705,7 +705,7 @@ void expCodeGen(Exp *exp, FILE *f)
                             break;
                         case structType:
                             fprintf(f, "%s_equality(", idGenJustType(type));
-                            expCodeGen(exp->val.binary.left, f);
+                         ,   expCodeGen(exp->val.binary.left, f);
                             fprintf(f, ", ");
                             expCodeGen(exp->val.binary.right, f);
                             fprintf(f, ")");
