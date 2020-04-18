@@ -5,11 +5,10 @@
 #include "globalEnum.h"
 #include "ast.h"
 #include "symbol_table.h"
-
-UniqueId * idTable[TABLE_SIZE];
-int initCount = 0;
-int tempVarCount = 0;
-int labelCount = 0;
+int hashCode(char * id); //symbol_table.c
+TTEntry *getExpressionType(Exp *e); //type_check.c
+void expCodeGen(Exp *exp, FILE *f);
+void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp);
 
 typedef struct UniqueId UniqueId;
 struct UniqueId {
@@ -17,7 +16,16 @@ struct UniqueId {
     UniqueId *next;
 };
 
+<<<<<<< HEAD
 char *tmpVarGen() /* for temporary variables, maybe blanks */
+=======
+UniqueId * idTable[TABLE_SIZE];
+int initCount = 0;
+int tempVarCount = 0;
+int labelCount = 0;
+
+char *tmpVarGen()
+>>>>>>> f8817604062b7f13d9cc4723f81d27d445dbf646
 {
     char *retVal = (char *) malloc(sizeof(char) * 30);
     sprintf(retVal, "__golite_temp_%d", tempVarCount++);
@@ -39,7 +47,7 @@ char *enterInTable(char *id, void * pointer) /* Puts id in the UniqueId table. T
         idTable[hash] = entry;
 
         retVal = (char *) malloc(sizeof(char) * (50 + strlen(id)));
-        sprintf(retVal, "__golite_decl_%s_%d_%d", id, hash, count);
+        sprintf(retVal, "__golite_decl_%s_%d", id, count);
         return retVal;
     }
 
@@ -48,7 +56,7 @@ char *enterInTable(char *id, void * pointer) /* Puts id in the UniqueId table. T
         if ( cur->pointerAddress == pointer )
         {
             retVal = (char *) malloc(sizeof(char) * (50 + strlen(id)));
-            sprintf(retVal, "__golite_decl_%s_%d_%d",id, hash, count);
+            sprintf(retVal, "__golite_decl_%s_%d", id, count);
             return retVal;
         }
         count++;
@@ -58,7 +66,7 @@ char *enterInTable(char *id, void * pointer) /* Puts id in the UniqueId table. T
     if ( cur->pointerAddress == pointer )
     {
         retVal = (char *) malloc(sizeof(char) * (50 + strlen(id)));
-        sprintf(retVal, "__golite_decl_%s_%d_%d",id, hash, count);
+        sprintf(retVal, "__golite_decl_%s_%d", id, count);
         return retVal;
     }
 
@@ -68,7 +76,7 @@ char *enterInTable(char *id, void * pointer) /* Puts id in the UniqueId table. T
     cur->next = entry;
 
     retVal = (char *) malloc(sizeof(char) * (50 + strlen(id)));
-    sprintf(retVal, "__golite_decl_%s_%d_%d",id, hash, count + 1);
+    sprintf(retVal, "__golite_decl_%s_%d", id, count + 1);
     return retVal;
 }
 char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
@@ -118,6 +126,36 @@ char *structMemb(char *memb)
     return retVal;
 }
 
+void standardBinaryGen(Exp *exp, const char *op, FILE *f)
+{
+    expCodeGen(exp->val.binary.left, f);
+	fprintf(f, " %s ", op );
+	expCodeGen(exp->val.binary.right, f);
+}
+void orderedBinaryGen(Exp *exp, const char *op, FILE *f)
+{
+    TTEntry *type = getExpressionType(exp->val.binary.left);
+    switch ( type->val.nonCompositeType.type )
+    {
+        case baseInt:
+        case baseBool:
+        case baseFloat64:
+        case baseRune:
+            expCodeGen(exp->val.binary.left, f);
+            fprintf(f, " %s ", op);
+            expCodeGen(exp->val.binary.right, f);
+            break;
+        case baseString:
+            fprintf(f, "strcmp(");
+            expCodeGen(exp->val.binary.left, f);
+            fprintf(f, ", ");
+            expCodeGen(exp->val.binary.right, f);
+            fprintf(f, ") %s 0", op);
+            break;
+    }
+
+}
+
 void rawStringCodeGen(char *s, FILE *f)
 {
     fprintf(f, "\"");
@@ -134,162 +172,7 @@ void rawStringCodeGen(char *s, FILE *f)
     }
     fprintf(f, "\"");
 }
-void generateCast(TTEntry *t, FILE *f)
-{
-    if ( t->underlyingType == arrayType )
-    {
-        fprintf(f, "(__golite_poly_entry *)"); return;
-    } else if ( t->underlyingType == sliceType )
-    {
-        //TODO
-    } else if ( t->underlyingType == structType )
-    {
-        fprintf(f, "(%s *)", idGenJustType(t));
-    } else if ( t->underlyingType == identifierType )
-    {
-        switch ( t->val.nonCompositeType.type )
-        {
-            case baseBool:
-            case baseInt: fprintf(f, "(int)"); return;
-            case baseFloat64: fprintf(f, "(double)"); return;
-            case baseRune: fprintf(f, "(char)"); return;
-            case baseString: fprintf(f, "(char *)"); return;
-        }
-    } else {
-        fprintf(stderr, "There is a buggggg fix it (generate cast)");
-        exit(1);
-    }
-}
-// URGENT*** This method *needs* to get called after each struct type declaration 
-// (and placed in the correct spot of the code i.e. outermost scope)
 
-// Also I don't know how were are going to do this exactly yet, but this needs to occur:
-// We need to *******generate******** a function 
-// int structEquality(void * struct1, void * struct2, char * structName)
-// which basically is a giant if else on the struct name that checks,
-// if (structName == structTypeA), 
-//     return structTypeA_equality((structTypeA *) struct1, (structTypeA *) struct2);
-// for every struct equality we generate. This is necessary for array comparisons.
-void generateStructEquality(TTEntry *structType, FILE *f)
-{
-    fprintf(f, "int %s_equality(%s *x, %s *y) {\n\treturn ", idGenJustType(structType), idGenJustType(structType), idGenJustType(structType));
-    /* 
-    int STRUCT_NAME_equality(STRUCT_NAME *x, STRUCT_NAME *y) {
-        return 
-    
-    IdChain *cur = structType->val.structType.fieldNames;
-    Context *ctx = structType->val.structType.fields;
-    while ( cur != NULL )
-    {
-        TTEntry *t = getEntry(ctx, cur->id)->entry.t; //Gets the type of the id
-        char *fieldName = structMemb(cur->id);
-        if ( strcmp(cur->id, "_") == 0 ) //we don't compare blanks
-        {
-            cur = cur->next;
-            free(fieldName);
-            continue;
-        }
-        switch (t->underlyingType)
-        {
-            case identifierType:
-                switch ( t->val.nonCompositeType.base )
-                {
-                    case baseInt:
-                    case baseBool:
-                    case baseFloat64:
-                    case baseRune:
-                        fprintf(f, "x->%s == y->%s && ", fieldName, fieldName); //ez
-                        break;
-                    case baseString:
-                        fprintf(f, "strcmp(x->%s, y->%s) == 0 && ", fieldName, fieldName);
-                        break;
-                }
-                break;
-            case structType:
-                //this calls directly the struct equality, because we can mainly. Calling the
-                // struct equality that switches on name works as well
-                fprintf(f, "%s_equality(x->%s, y->%s) && ", idGenJustType(t), fieldName, fieldName);
-                break;
-            case arrType:
-                char * typeChain = (char *) malloc(sizeof(char) * 999);
-                generateTypeChain(t->val.arrayType.type, typeChain);
-                fprintf(f, "arrEquality(x->%s, y->%s, %s, %d) && ", fieldName, fieldName, typeChain, t->val.arrayType.size);
-                free(typeChain);
-                break;
-        }
-        free(fieldName);
-        cur = cur->next;
-
-    }
-    fprintf(f, "1;\n}\n"); //Handles if all our fields are blank, trivially equal......
-
-    /* && 1;
-    }
-    */
-}
-
-//The same deal as above...
-//we need a void *structCopy(void *struct, char * structName), which
-//acts identically to the above
-//The function generated gets used in ensuring call by value.
-//I don't think memcpy would work... If there was a field that was
-//an array, for instance, it would copy by reference which is not
-//desired. Also I couldn't figure out how to propagate the size of
-//the struct
-void generateStructCopy(TTEntry *structType_, FILE *f)
-{
-    fprintf(f, "void* %s_copy(%s *x) {\n", idGenJustType(structType_), idGenJustType(structType_), idGenJustType(structType_));
-    fprintf(f, "\t%s *y = (%s *) malloc(sizeof(%s));\n", idGenJustType(structType_), idGenJustType(structType_), idGenJustType(structType_));
-    /* 
-    void * STRUCT_NAME_copy(STRUCT_NAME *x) {
-        STRUCT_NAME *y = (STRUCT_NAME *) malloc(sizeof(STRUCT_NAME));
-    */
-    IdChain *cur = structType_->val.structType.fieldNames;
-    Context *ctx = structType_->val.structType.fields;
-    while ( cur != NULL )
-    {
-        TTEntry *t = getEntry(ctx, cur->identifier)->entry.t; //Gets the type of the id
-        char *fieldName = structMemb(cur->identifier);
-        if ( strcmp(cur->identifier, "_") == 0 ) //we don't copy....
-        {
-            cur = cur->next;
-            free(fieldName);
-            continue;
-        }
-        switch (t->underlyingType)
-        {
-            case identifierType:
-                switch ( t->val.nonCompositeType.type)
-                {
-                    case baseInt:
-                    case baseBool:
-                    case baseFloat64:
-                    case baseRune:
-                        fprintf(f, "\ty->%s = x->%s;\n", fieldName, fieldName);
-                        break;
-                    case baseString:
-                        fprintf(f, "\tstrcpy(y->%s, x->%s);\n", fieldName, fieldName);
-                        break;
-                }
-                break;
-            case structType:
-                fprintf(f, "\ty->%s = %s_copy(x->%s);\n", idGenJustType(t), fieldName, fieldName);
-                break;
-            case sliceType:
-                fprintf(f, "\ty->%s = x->%s;\n", fieldName, fieldName);
-                break;
-            case arrayType:
-                char * typeChain = (char *) malloc(sizeof(char) * 999);
-                generateTypeChain(t->val.arrayType.type, typeChain);
-                fprintf(f, "\ty->%s = arrCopy(x->%s, %s, %d);\n", fieldName, fieldName, typeChain, t->val.arrayType.size);
-                free(typeChain);
-                break;
-        }
-        free(fieldName);
-        cur = cur->next;
-    }
-    fprintf(f, "\t return y;\n}"); 
-}
 //AY->Array, ST->Struct, SG->String, RE->rune, IR->Integer, FT->Float, 
 //I don't think there's a better way to do this...
 //Note: I intentionally don't add slices. This is because the ret val
@@ -332,9 +215,182 @@ void generateTypeChain(TTEntry *t, char *typeChain)
     }
     return;
 }
+void generateCast(TTEntry *t, FILE *f)
+{
+    if ( t->underlyingType == arrayType )
+    {
+        fprintf(f, "(__golite_poly_entry *)");
+    } else if ( t->underlyingType == sliceType )
+    {
+        fprintf(f, "(__golite_slice *)");
+    } else if ( t->underlyingType == structType )
+    {
+        fprintf(f, "(%s *)", idGenJustType(t));
+    } else if ( t->underlyingType == identifierType )
+    {
+        switch ( t->val.nonCompositeType.type )
+        {
+            case baseBool:
+            case baseInt: fprintf(f, "(int)"); return;
+            case baseFloat64: fprintf(f, "(double)"); return;
+            case baseRune: fprintf(f, "(char)"); return;
+            case baseString: fprintf(f, "(char *)"); return;
+        }
+    } else {
+        fprintf(stderr, "There is a buggggg fix it (generate cast)");
+        exit(1);
+    }
+}
+void generateUnionAccess(TTEntry *t, FILE *f)
+{
+    if ( t->underlyingType == identifierType )
+    {
+        switch ( t->val.nonCompositeType.type )
+        {
+            case baseBool:
+            case baseInt: fprintf(f, ".intVal"); return;
+            case baseFloat64: fprintf(f, ".floatVal"); return;
+            case baseRune: fprintf(f, ".runeVal"); return;
+            case baseString: fprintf(f, ".stringVal"); return;
+        }
+    }
+    else
+    {
+            fprintf(f, ".polyVal"); 
+    }
+}
+// URGENT*** This method *needs* to get called after each struct type declaration 
+// (and placed in the correct spot of the code i.e. outermost scope)
 
-/*
-void expListCodeGen(ExpList *list, int curScope, FILE *f)
+// Also I don't know how were are going to do this exactly yet, but this needs to occur:
+// We need to *******generate******** a function 
+// int structEquality(void * struct1, void * struct2, char * structName)
+// which basically is a giant if else on the struct name that checks,
+// if (structName == structTypeA), 
+//     return structTypeA_equality((structTypeA *) struct1, (structTypeA *) struct2);
+// for every struct equality we generate. This is necessary for array comparisons.
+void generateStructEquality(TTEntry *sType, FILE *f)
+{
+    fprintf(f, "int %s_equality(%s *x, %s *y) {\n\treturn ", idGenJustType(sType), idGenJustType(sType), idGenJustType(sType));
+    /* 
+    int STRUCT_NAME_equality(STRUCT_NAME *x, STRUCT_NAME *y) {
+        return 
+    */
+    IdChain *cur = sType->val.structType.fieldNames;
+    Context *ctx = sType->val.structType.fields;
+    while ( cur != NULL )
+    {
+        TTEntry *t = getEntry(ctx, cur->identifier)->entry.t; //Gets the type of the id
+        char *fieldName = structMemb(cur->identifier);
+        if ( strcmp(cur->identifier, "_") == 0 ) //we don't compare blanks
+        {
+            cur = cur->next;
+            free(fieldName);
+            continue;
+        }
+        switch ( t->underlyingType )
+        {
+            case identifierType:
+                switch ( t->val.nonCompositeType.type )
+                {
+                    case baseInt:
+                    case baseBool:
+                    case baseFloat64:
+                    case baseRune:
+                        fprintf(f, "x->%s == y->%s && ", fieldName, fieldName); //ez
+                        break;
+                    case baseString:
+                        fprintf(f, "strcmp(x->%s, y->%s) == 0 && ", fieldName, fieldName);
+                        break;
+                }
+                break;
+            case structType:
+                //this calls directly the struct equality, because we can mainly. Calling the
+                // struct equality that switches on name works as well
+                fprintf(f, "%s_equality(x->%s, y->%s) && ", idGenJustType(t), fieldName, fieldName);
+                break;
+            case arrayType:;
+                char * typeChain = (char *) malloc(sizeof(char) * 999);
+                generateTypeChain(t->val.arrayType.type, typeChain);
+                fprintf(f, "arrEquality(x->%s, y->%s, %s, %d) && ", fieldName, fieldName, typeChain, t->val.arrayType.size);
+                free(typeChain);
+                break;
+        }
+        free(fieldName);
+        cur = cur->next;
+
+    }
+    fprintf(f, "1;\n}\n"); //Handles if all our fields are blank, trivially equal......
+
+    /* && 1;
+    }
+    */
+}
+
+//The same deal as above...
+//we need a void *structCopy(void *struct, char * structName), which
+//acts identically to the above
+//The function generated gets used in ensuring call by value.
+//I don't think memcpy would work... If there was a field that was
+//an array, for instance, it would copy by reference which is not
+//desired. Also I couldn't figure out how to propagate the size of
+//the struct
+void generateStructCopy(TTEntry *structType_, FILE *f)
+{
+    fprintf(f, "void* %s_copy(%s *x) {\n", idGenJustType(structType_), idGenJustType(structType_));
+    fprintf(f, "\t%s *y = (%s *) malloc(sizeof(%s));\n", idGenJustType(structType_), idGenJustType(structType_), idGenJustType(structType_));
+    /* 
+    void * STRUCT_NAME_copy(STRUCT_NAME *x) {
+        STRUCT_NAME *y = (STRUCT_NAME *) malloc(sizeof(STRUCT_NAME));
+    */
+    IdChain *cur = structType_->val.structType.fieldNames;
+    Context *ctx = structType_->val.structType.fields;
+    while ( cur != NULL )
+    {
+        TTEntry *t = getEntry(ctx, cur->identifier)->entry.t; //Gets the type of the id
+        char *fieldName = structMemb(cur->identifier);
+        if ( strcmp(cur->identifier, "_") == 0 ) //we don't copy....
+        {
+            cur = cur->next;
+            free(fieldName);
+            continue;
+        }
+        switch (t->underlyingType)
+        {
+            case identifierType:
+                switch ( t->val.nonCompositeType.type)
+                {
+                    case baseInt:
+                    case baseBool:
+                    case baseFloat64:
+                    case baseRune:
+                        fprintf(f, "\ty->%s = x->%s;\n", fieldName, fieldName);
+                        break;
+                    case baseString:
+                        fprintf(f, "\tstrcpy(y->%s, x->%s);\n", fieldName, fieldName);
+                        break;
+                }
+                break;
+            case structType:
+                fprintf(f, "\ty->%s = %s_copy(x->%s);\n", idGenJustType(t), fieldName, fieldName);
+                break;
+            case sliceType:
+                fprintf(f, "\ty->%s = x->%s;\n", fieldName, fieldName);
+                break;
+            case arrayType:;
+                char * typeChain = (char *) malloc(sizeof(char) * 999);
+                generateTypeChain(t->val.arrayType.type, typeChain);
+                fprintf(f, "\ty->%s = arrCopy(x->%s, %s, %d);\n", fieldName, fieldName, typeChain, t->val.arrayType.size);
+                free(typeChain);
+                break;
+        }
+        free(fieldName);
+        cur = cur->next;
+    }
+    fprintf(f, "\t return y;\n}"); 
+}
+
+void expListCodeGen(ExpList *list, FILE *f)
 {
 	if ( list == NULL || list->cur == NULL ) return;
 	expCodeGen(list->cur, f);
@@ -349,20 +405,20 @@ void expListCodeGen(ExpList *list, int curScope, FILE *f)
 // These are pretty much duplicated because I wasn't sure if anyone 
 // else needs a "pure" expression list generation... If noone else 
 // needs it we can just remove it.
-void funcExpListCodeGen(ExpList *list, int curScope, FILE *f)
+void funcExpListCodeGen(ExpList *list, FILE *f)
 {
     if ( list == NULL || list->cur == NULL ) return;
     TTEntry *type = getExpressionType(list->cur);
 
     //If you have var x [5][][5]int, we can stop copying at the slice
     
-    switch ( type->baseType )
+    switch ( type->underlyingType )
     {
         case identifierType: //normally c call b value
         case sliceType: //copies the pointer
             expCodeGen(list->cur, f); 
             break;
-        case arrayType:
+        case arrayType:;
             char * typeChain = (char *) malloc(sizeof(char) * 999);
             strcpy(typeChain, "");
             generateTypeChain(type->val.arrayType.type, typeChain);
@@ -373,7 +429,7 @@ void funcExpListCodeGen(ExpList *list, int curScope, FILE *f)
         case structType:
             fprintf(f, "structCopy(");
             expCodeGen(list->cur, f); 
-            fprintf(f, ", %s)", idGenJustType(t));
+            fprintf(f, ", %s)", idGenJustType(type));
     }
 	if ( list->next != NULL )
 	{
@@ -384,11 +440,12 @@ void funcExpListCodeGen(ExpList *list, int curScope, FILE *f)
 
 void expCodeGen(Exp *exp, FILE *f)
 {
+    TTEntry *type;
     if ( exp == NULL ) return;
 	switch ( exp->kind )
 	{
 		case expKindIdentifier:
-            if ( e->contextEntry->entry.s->isConstant == 1 ) //is true or false, no shadowing...
+            if ( exp->contextEntry->entry.s->isConstant == 1 ) //is true or false, no shadowing...
             {
                 fprintf(f, "%s", exp->val.id); //use stdbool!!!!
             } else
@@ -414,63 +471,66 @@ void expCodeGen(Exp *exp, FILE *f)
 			fprintf(f, "%s", exp->val.stringLit);
 			break;
 		case expKindFuncCall:
-			if (exp->val.funcCall.base->contextEntry->isSymbol) //true function call not a type cast
+			if ( exp->val.funcCall.base->contextEntry->isSymbol ) //true function call not a type cast
             {
-                fprintf(f,idGen(exp->val.funcCall.base->contextEntry));
+                fprintf(f, "%s", idGen(exp->val.funcCall.base->contextEntry));
                 fprintf(f, "(");
 			    funcExpListCodeGen(exp->val.funcCall.arguments, f);
 			    fprintf(f, ")");
             } else //type cast
             {
-                if ( exp->val.funcCall.base->contextEntry->entry.type->val.nonCompositeType.type == baseString )
+                if ( exp->val.funcCall.base->contextEntry->entry.t->val.nonCompositeType.type == baseString )
                 {
                     fprintf(f, "stringCast("); //helper function in templateCode.h
-                    expListCodeGen(exp->val.funcCall.arguments);
+                    expListCodeGen(exp->val.funcCall.arguments, f);
                     fprintf(f, ")");
                 } else //trust c's implicit cast. Since we only do this on non composite types we should be good
                 {
-                    expListCodeGen(exp->val.funcCall.arguments);
+                    expListCodeGen(exp->val.funcCall.arguments, f);
                 }
             }
 			break;
 		case expKindIndexing:
             if ( exp->val.access.base->contextEntry->entry.t->underlyingType == sliceType )
             {
-                fprintf(f, "(")
-                generateCast(exp->val.access.base->contextEntry->entry.t->val.sliceType.type);
+                fprintf(f, "(");
+                generateCast(exp->val.access.base->contextEntry->entry.t->val.sliceType.type, f);
                 fprintf(f, "(sliceGet(");
 			    expCodeGen(exp->val.access.base, f);
                 fprintf(f, ", ");
 			    expCodeGen(exp->val.access.accessor, f);
-			    fprintf(f, ", %d)))", exp->lineno);
+			    fprintf(f, ", %d))", exp->lineno);
+                generateUnionAccess(exp->val.access.base->contextEntry->entry.t->val.sliceType.type, f);
+                fprintf(f, ")");
                 break;
             }
             else {
                 fprintf(f, "(");
-                generateCast(exp->val.access.base->contextEntry->entry.t->val.arrayType.type);
+                generateCast(exp->val.access.base->contextEntry->entry.t->val.arrayType.type, f);
                 fprintf(f, "(arrGet(");
 			    expCodeGen(exp->val.access.base, f);
                 fprintf(f, ", ");
 			    expCodeGen(exp->val.access.accessor, f);
-                fprintf(f, ", ");
-                fprintf(f, exp->val.access.base->contextEntry->entry.t->val.arrayType.size);
-			    fprintf(f, ", %d)))", exp->lineno);
+                fprintf(f, ", %d, %d))", exp->val.access.base->contextEntry->entry.t->val.arrayType.size, exp->lineno);
+                generateUnionAccess(exp->val.access.base->contextEntry->entry.t->val.arrayType.type, f);
+                fprintf(f, ")");
                 break;
             }
 			break;
 		case expKindFieldSelect:
+            fprintf(f, "(");
+            generateCast(exp->val.access.base->contextEntry->entry.t, f);
 			expCodeGen(exp->val.access.base, f);
-			fprintf(f, ".");
+            fprintf(f, ")->");
             char * retVal = structMemb(exp->val.access.accessor->val.id);
 			fprintf(f, "%s", retVal);
             free(retVal);
 			break;
 		case expKindAppend:
-            //I don't think we need a cast........
             fprintf(f, "append(");
-            expCodeGen(exp->val.append.list);
+            expCodeGen(exp->val.append.list, f);
             fprintf(f, ", ");
-            TTEntry *type = getExpressionType(exp->val.append.elem);
+            type = getExpressionType(exp->val.append.elem);
             if ( type->underlyingType == identifierType )
             {
                 switch ( type->val.nonCompositeType.type )
@@ -494,11 +554,11 @@ void expCodeGen(Exp *exp, FILE *f)
                 fprintf(f, "createPolyVoid(");
                 break;
             }
-            expCodeGen(exp->val.append.elem);
+            expCodeGen(exp->val.append.elem, f);
             fprintf(f, "))");
 			break;
 		case expKindLength:;
-            TTEntry *type = getExpressionType(e->val.builtInBody);
+            type = getExpressionType(exp->val.builtInBody);
 			switch ( type->underlyingType )
             {
                 case arrayType:
@@ -506,18 +566,18 @@ void expCodeGen(Exp *exp, FILE *f)
                     break;
                 case sliceType:
                     fprintf(f, "(");
-                    expCodeGen(e->val.builtInBody, f);
+                    expCodeGen(exp->val.builtInBody, f);
                     fprintf(f, ")->size");
                     break;
                 case identifierType:
                     fprintf(f, "strlen(");
-                    expCodeGen(e->val.builtInBody, f);
+                    expCodeGen(exp->val.builtInBody, f);
                     fprintf(f, ")");
                     break;
             }
 			break;
 		case expKindCapacity:;
-			TTEntry *type = getExpressionType(e->val.builtInBody);
+			type = getExpressionType(exp->val.builtInBody);
 			switch ( type->underlyingType )
             {
                 case arrayType:
@@ -525,7 +585,7 @@ void expCodeGen(Exp *exp, FILE *f)
                     break;
                 case sliceType:
                     fprintf(f, "(");
-                    expCodeGen(e->val.builtInBody, f);
+                    expCodeGen(exp->val.builtInBody, f);
                     fprintf(f, ")->capacity");
                     break;
 		case expKindLogicNot: //switch statements <3
@@ -554,7 +614,7 @@ void expCodeGen(Exp *exp, FILE *f)
 			fprintf(f, "(");
 			switch (exp->kind) {
 				case expKindAddition:;
-                    TEntry *type = getExpressionType(e->val.left);
+                    type = getExpressionType(exp->val.binary.left);
                     if (type->val.nonCompositeType.type == baseString)
                     {
                         fprintf(f, "concat(");
@@ -564,26 +624,26 @@ void expCodeGen(Exp *exp, FILE *f)
                         fprintf(f, ");");  
                     }
                     else {
-					    standardBinaryGen(exp, f, "+");
+					    standardBinaryGen(exp, "+", f);
                     }
                     break;
 				case expKindSubtraction:
-                    standardBinaryGen(exp, f, "-");
+                    standardBinaryGen(exp, "-", f);
 					break;
 				case expKindMultiplication:
-                    standardBinaryGen(exp, f, "*");
+                    standardBinaryGen(exp, "*", f);
 					break;
 				case expKindDivision:
-                    standardBinaryGen(exp, f, "/");
+                    standardBinaryGen(exp, "/", f);
 					break;
 				case expKindLogicOr:
-                    standardBinaryGen(exp, f, "||");
+                    standardBinaryGen(exp, "||", f);
 					break;
 				case expKindLogicAnd:
-                    standardBinaryGen(exp, f, "&&");
+                    standardBinaryGen(exp, "&&", f);
 					break;
-				case expKindNEQ:
-					TEntry *type = getExpressionType(e->val.left);
+				case expKindNEQ:;
+					type = getExpressionType(exp->val.binary.left);
                     switch ( type->underlyingType )
                     {
                         case identifierType:
@@ -627,7 +687,7 @@ void expCodeGen(Exp *exp, FILE *f)
                     }
 					break;
 				case expKindEQ:;
-                    TEntry *type = getExpressionType(e->val.left);
+                    type = getExpressionType(exp->val.binary.left);
                     switch ( type->underlyingType )
                     {
                         case identifierType:
@@ -652,7 +712,7 @@ void expCodeGen(Exp *exp, FILE *f)
                             break;
                         case structType:
                             fprintf(f, "%s_equality(", idGenJustType(type));
-                            expCodeGen(exp->val.binary.left, f);
+                         ,   expCodeGen(exp->val.binary.left, f);
                             fprintf(f, ", ");
                             expCodeGen(exp->val.binary.right, f);
                             fprintf(f, ")");
@@ -671,76 +731,43 @@ void expCodeGen(Exp *exp, FILE *f)
                     }
 					break;
                 case expKindLEQ:
-
-                    orderedBinaryGen(exp, f, "<=");
+                    orderedBinaryGen(exp, "<=", f);
 					break;
 				case expKindGEQ:
-                    orderedBinaryGen(exp, f, ">=");
+                    orderedBinaryGen(exp, ">=", f);
 					break;
 				case expKindLess:
-                    orderedBinaryGen(exp, f, "<");
+                    orderedBinaryGen(exp, "<", f);
 					break;
 				case expKindGreater:
-                    orderedBinaryGen(exp, f, ">");
+                    orderedBinaryGen(exp, ">", f);
 					break;
 				case expKindMod:
-                    standardBinaryGen(exp, f, "%%");
+                    standardBinaryGen(exp, "%%", f);
 					break;
 				case expKindBitAnd:
-                    standardBinaryGen(exp, f, "&");
+                    standardBinaryGen(exp, "&", f);
 					break;
 				case expKindBitOr:
-                    standardBinaryGen(exp, f, "|");
+                    standardBinaryGen(exp, "|", f);
 					break;
 				case expKindBitNotBinary: //lol
-                    standardBinaryGen(exp, f, "^");
+                    standardBinaryGen(exp, "^", f);
 					break;
 				case expKindBitShiftLeft:
-                    standardBinaryGen(exp, f, "<<");
+                    standardBinaryGen(exp, "<<", f);
 					break;
 				case expKindBitShiftRight:
-                    standardBinaryGen(exp, f, ">>");
+                    standardBinaryGen(exp, ">>", f);
 					break;
 				case expKindBitAndNot:
-                    standardBinaryGen(exp, f, "&~");
+                    standardBinaryGen(exp, "&~", f);
 					break;
 			}
 			fprintf(f, ")");
-			
-	}
-}
-
-void standardBinaryGen(Exp *exp, FILE *f, char *op)
-{
-    expCodeGen(exp->val.binary.left, f);
-	fprintf(f, " %s ", op );
-	expCodeGen(exp->val.binary.right, f);
-}
-void orderedBinaryGen(Exp *exp, FILE *f, char *op)
-{
-
-    TEntry *type = getExpressionType(exp->val.left)
-    switch ( type->val.nonCompositeType.type )
-    {
-        case baseInt:
-        case baseBool:
-        case baseFloat64:
-        case baseRune:
-            expCodeGen(exp->val.binary.left, f);
-            fprintf(f, " %s ", op);
-            expCodeGen(exp->val.binary.right, f);
-            break;
-        case baseString:
-            fprintf(f, "strcmp(");
-            expCodeGen(exp->val.binary.left, f);
-            fprintf(f, ", ");
-            expCodeGen(exp->val.binary.right, f);
-            fprintf(f, ") %s 0", op);
-            break;
+        }
     }
-
-
-*/
+} 
 
 static void indent(int indentLevel,FILE* fp){
     for(int i = 0; i < indentLevel; i++){
@@ -777,16 +804,12 @@ void printCodeGen(ExpList* list,int indentLevel,FILE* fp){
             break;
     }
 
-    expCodeGen(exp,fp);
+    //expCodeGen(exp,fp);
     fprintf(fp,");\\n");
 
     printCodeGen(list->next,indentLevel,fp);
 }
 
-/*
-void expCodeGen(Exp* exp, FILE* fp){
-
-}*/
 
 void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
     if (list == NULL){
@@ -832,7 +855,7 @@ void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
     
     //Broken (replace void* by actual type)
     //Generate all temp assignments then assign them after temp assignments complete
-    char* temp = tmpVarCount();
+    char* temp = tmpVarGen();
     indent(indentLevel,fp);
     fprintf(fp,"void* %s = %s;\n",temp,idGen(right->cur->contextEntry));
 
@@ -888,7 +911,7 @@ void switchToIfCodeGen(char* exp,switchCaseClause* list,int indentLevel, FILE* f
         indent(indentLevel,fp);
         fprintf(fp,"if(");
         expListToBool(list->expressionList,exp,fp);
-        fprint(fp,"){\n");
+        fprintf(fp,"){\n");
         
         stmtCodeGen(list->statementList,indentLevel+1,fp);
         
@@ -900,7 +923,7 @@ void switchToIfCodeGen(char* exp,switchCaseClause* list,int indentLevel, FILE* f
         switchToIfCodeGen(exp,list->next,indentLevel+1,fp);
 
         indent(indentLevel,fp);
-        fprint(fp,"}\n");
+        fprintf(fp,"}\n");
 
     }
 }
@@ -952,6 +975,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
         return;
     }
 
+
     switch (stmt->kind){
         case StmtKindBlock:
             indent(indentLevel,fp);
@@ -962,7 +986,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             break;
         case StmtKindExpression:
             indent(indentLevel,fp);
-            simpleStmtCodeGen(stmt,indentLevel,fp);
+            expCodeGen(stmt->val.expression.expr,fp);
             fprintf(fp,";\n");
             break;
         case StmtKindAssignment:
@@ -1062,7 +1086,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             indent(indentLevel+1,fp);
             fprintf(fp,"while(");
             expCodeGen(stmt->val.forLoop.condition,fp);
-            fprint(fp,"){\n");
+            fprintf(fp,"){\n");
 
             char* label = makeLabel();
             localContinueReplace(stmt->val.forLoop.block,label);
@@ -1113,7 +1137,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
                         fprintf(fp,");\n");
 
                         indent(indentLevel,fp);
-                        fprintf(fp,"*%s = concat(*%s,");
+                        fprintf(fp,"*%s = concat(*%s,",temp,temp);
                         expCodeGen(rhs,fp);
                         fprintf(fp,");\n");
 
@@ -1150,7 +1174,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 				case expKindMod:
 					indent(indentLevel,fp);
                     expCodeGen(lhs,fp);
-					fprintf(fp," %= " );
+					fprintf(fp," %%= " );
                     expCodeGen(rhs,fp);
                     fprintf(fp,";\n");
                     break;
@@ -1196,30 +1220,39 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
                     expCodeGen(rhs,fp);
                     fprintf(fp,");\n");
 					break;
-			}
+			
             }
-            break;
-        case StmtKindInc:
-            simpleStmtCodeGen(stmt,indentLevel,fp);
-            fprintf(fp,";\n");
-            break;
-        case StmtKindDec:
-            simpleStmtCodeGen(stmt,indentLevel,fp);
-            fprintf(fp,";\n");
-            break;
+                break;
+            case StmtKindInc:
+                indent(indentLevel,fp);
+                expCodeGen(stmt->val.incStmt.exp,fp);
+                fprintf(fp,";\n");
+                break;
+            case StmtKindDec:
+                indent(indentLevel,fp);
+                expCodeGen(stmt->val.decStmt.exp,fp);
+                fprintf(fp,";\n");
+                break;
 
-
-        case StmtKindTypeDeclaration:
-            break;
-        case StmtKindVarDeclaration:
-            break;
-        case StmtKindShortDeclaration: 
-            break;
+            case StmtKindTypeDeclaration:
+                break;
+            case StmtKindVarDeclaration:
+                break;
+            case StmtKindShortDeclaration: 
+                break;
         
     }
 
     stmtCodeGen(stmt->next,indentLevel,fp);
+    }
 }
+
+
+
+
+
+
+
 
 
 
@@ -1356,13 +1389,6 @@ void totalCodeGen(Rootnode* root) {
 	 */
 	
 }
-
-
-
-
-
-
-
 
 
 
