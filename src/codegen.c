@@ -8,6 +8,7 @@
 int hashCode(char * id); //symbol_table.c
 TTEntry *getExpressionType(Exp *e); //type_check.c
 void expCodeGen(Exp *exp, FILE *f);
+void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp);
 
 typedef struct UniqueId UniqueId;
 struct UniqueId {
@@ -757,8 +758,8 @@ void expCodeGen(Exp *exp, FILE *f)
 					break;
 			}
 			fprintf(f, ")");
-			
-	}
+        }
+    }
 } 
 
 static void indent(int indentLevel,FILE* fp){
@@ -796,16 +797,12 @@ void printCodeGen(ExpList* list,int indentLevel,FILE* fp){
             break;
     }
 
-    expCodeGen(exp,fp);
+    //expCodeGen(exp,fp);
     fprintf(fp,");\\n");
 
     printCodeGen(list->next,indentLevel,fp);
 }
 
-/*
-void expCodeGen(Exp* exp, FILE* fp){
-
-}*/
 
 void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
     if (list == NULL){
@@ -851,7 +848,7 @@ void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
     
     //Broken (replace void* by actual type)
     //Generate all temp assignments then assign them after temp assignments complete
-    char* temp = tmpVarCount();
+    char* temp = tmpVarGen();
     indent(indentLevel,fp);
     fprintf(fp,"void* %s = %s;\n",temp,idGen(right->cur->contextEntry));
 
@@ -907,7 +904,7 @@ void switchToIfCodeGen(char* exp,switchCaseClause* list,int indentLevel, FILE* f
         indent(indentLevel,fp);
         fprintf(fp,"if(");
         expListToBool(list->expressionList,exp,fp);
-        fprint(fp,"){\n");
+        fprintf(fp,"){\n");
         
         stmtCodeGen(list->statementList,indentLevel+1,fp);
         
@@ -919,7 +916,7 @@ void switchToIfCodeGen(char* exp,switchCaseClause* list,int indentLevel, FILE* f
         switchToIfCodeGen(exp,list->next,indentLevel+1,fp);
 
         indent(indentLevel,fp);
-        fprint(fp,"}\n");
+        fprintf(fp,"}\n");
 
     }
 }
@@ -971,6 +968,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
         return;
     }
 
+
     switch (stmt->kind){
         case StmtKindBlock:
             indent(indentLevel,fp);
@@ -981,7 +979,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             break;
         case StmtKindExpression:
             indent(indentLevel,fp);
-            simpleStmtCodeGen(stmt,indentLevel,fp);
+            expCodeGen(stmt->val.expression.expr,fp);
             fprintf(fp,";\n");
             break;
         case StmtKindAssignment:
@@ -1081,7 +1079,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             indent(indentLevel+1,fp);
             fprintf(fp,"while(");
             expCodeGen(stmt->val.forLoop.condition,fp);
-            fprint(fp,"){\n");
+            fprintf(fp,"){\n");
 
             char* label = makeLabel();
             localContinueReplace(stmt->val.forLoop.block,label);
@@ -1132,7 +1130,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
                         fprintf(fp,");\n");
 
                         indent(indentLevel,fp);
-                        fprintf(fp,"*%s = concat(*%s,");
+                        fprintf(fp,"*%s = concat(*%s,",temp,temp);
                         expCodeGen(rhs,fp);
                         fprintf(fp,");\n");
 
@@ -1169,7 +1167,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 				case expKindMod:
 					indent(indentLevel,fp);
                     expCodeGen(lhs,fp);
-					fprintf(fp," %= " );
+					fprintf(fp," %%= " );
                     expCodeGen(rhs,fp);
                     fprintf(fp,";\n");
                     break;
@@ -1215,30 +1213,39 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
                     expCodeGen(rhs,fp);
                     fprintf(fp,");\n");
 					break;
-			}
+			
             }
-            break;
-        case StmtKindInc:
-            simpleStmtCodeGen(stmt,indentLevel,fp);
-            fprintf(fp,";\n");
-            break;
-        case StmtKindDec:
-            simpleStmtCodeGen(stmt,indentLevel,fp);
-            fprintf(fp,";\n");
-            break;
+                break;
+            case StmtKindInc:
+                indent(indentLevel,fp);
+                expCodeGen(stmt->val.incStmt.exp,fp);
+                fprintf(fp,";\n");
+                break;
+            case StmtKindDec:
+                indent(indentLevel,fp);
+                expCodeGen(stmt->val.decStmt.exp,fp);
+                fprintf(fp,";\n");
+                break;
 
-
-        case StmtKindTypeDeclaration:
-            break;
-        case StmtKindVarDeclaration:
-            break;
-        case StmtKindShortDeclaration: 
-            break;
+            case StmtKindTypeDeclaration:
+                break;
+            case StmtKindVarDeclaration:
+                break;
+            case StmtKindShortDeclaration: 
+                break;
         
     }
 
     stmtCodeGen(stmt->next,indentLevel,fp);
+    }
 }
+
+
+
+
+
+
+
 
 
 
@@ -1329,13 +1336,6 @@ void totalCodeGen(Rootnode* root) {
 	 */
 	
 }
-
-
-
-
-
-
-
 
 
 
