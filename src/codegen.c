@@ -17,14 +17,14 @@ struct UniqueId {
     UniqueId *next;
 };
 
-char *tmpVarGen()
+char *tmpVarGen() /* for temporary variables, maybe blanks */
 {
     char *retVal = (char *) malloc(sizeof(char) * 30);
     sprintf(retVal, "__golite_temp_%d", tempVarCount++);
     return retVal;
 }
 
-char *enterInTable(char *id, void * pointer)
+char *enterInTable(char *id, void * pointer) /* Puts id in the UniqueId table. This is a helper funciton. */
 {
     int hash = hashCode(id);
     int count = 0;
@@ -102,6 +102,10 @@ char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
 char *idGenJustType(TTEntry *t) //used for structs
 {
     return enterInTable(t->id, t);
+}
+char* idGenJustVar(STEntrey* s) 
+{
+	return enterInTable(s -> id, s);
 }
 char *structMemb(char *memb)
 {
@@ -239,7 +243,6 @@ void generateStructCopy(TTEntry *structType_, FILE *f)
     /* 
     void * STRUCT_NAME_copy(STRUCT_NAME *x) {
         STRUCT_NAME *y = (STRUCT_NAME *) malloc(sizeof(STRUCT_NAME));
-
     */
     IdChain *cur = structType_->val.structType.fieldNames;
     Context *ctx = structType_->val.structType.fields;
@@ -1241,22 +1244,65 @@ void funcCodeGen(FuncDeclNode* func, FILE* fp) {
 
 void varDeclCodeGen(VarDeclNode* decl, FILE* fp) {
 	
-	if (isBlank()) {
-		/*
-		 * do something
-		 */
+	
+	char * varName;
+	
+	if (strcmp(decl -> identifier, "_") == 0) {
+		varName = tmpVarGen();
+	} else {
+		varName = idGenJustVar(decl -> whoAmI);
 	}
 	
-	char* typeName, varName;
-	fprintf(fp, "%s %s" typeName, varName);
-	if (1) {
-		fprintf(fp, " = 0;\n");
-		/* Include a function to initialize it to zero? maybe this could be related to the comparison thing? */
+	if (decl -> whoAmI -> type -> underlyingType == identifierType) {
+		if (decl -> whoAmI -> type -> val.nonCompositeType.type == baseInt) {
+			fprintf(fp, "int %s = ", varName);
+		} else if (decl -> whoAmI -> type -> val.nonCompositeType.type == baseFloat64) {
+			fprintf(fp, "double %s = ", varName);
+		} else if (decl -> whoAmI -> type -> val.nonCompositeType.type == baseRune) {
+			fprintf(fp, "char %s = ", varName);
+		} else if (decl -> whoAmI -> type -> val.nonCompositeType.type == baseString) {
+			fprintf(fp, "char* %s = ", varName);
+		} else if (decl -> whoAmI -> type -> val.nonCompositeType.type == baseBool) {
+			fprintf(fp, "bool %s = ", varName);
+		} else {
+			fprintf(stderr, "fuck (this is really impossible), bad type during var decl");
+			exit(1);
+		}
+		
+		if (decl -> value == NULL) {
+			if (decl -> whoAmI -> type -> val.nonCompositeType == baseString) {
+				fprintf(fp, "\"\";\n");
+			} else {
+				fprintf(fp, "0;\n");
+			}
+		} else {
+			expCodeGen(decl -> value, fp);
+			fprintf(fp, ";\n");
+		}
+	} else if (decl -> whoAmI -> type -> underlyingType == arrayType) {
+		fprintf(fp, "__golite_poly_entry* %s = malloc(%d * sizeof(__golite_poly_entry));\n", varName, decl -> whoAmI -> type -> val.arrayType.size);
+		genInitAndZero(varName, decl -> whoAmI -> type, 0, fp);
+	} else if (decl -> whoAmI -> type -> underlyingType == sliceType) {
+		fprintf(fp, "__golite_slice* %s = malloc(%d * sizeof(__golite_poly_entry));\n", varName, decl -> whoAmI -> type -> val.arrayType.size);
+		fprintf(fp, "%s -> size = 0;\n", varName);
+		fprintf(fp, "%s -> capacity = 0;\n", varName);
+	} else if (decl -> whoAmI -> type -> underlyingType == structType) {
+		char* structName = idGenJustType(decl -> whoAmI -> type);
+		fprintf(fp, "%s* %s = malloc(sizeof(%s))", structName, varName, structName);
+		genInitAndZero(varName, decl -> whoAmI -> type, 0, fp);
 	} else {
-		fprintf(fp, " = ");
-		expCodeGen(decl -> value, fp);
-		fprintf(fp, ";\n");
+		fprintf(stderr, "fuck (this is impossible), bad type during var decl");
+		exit(1);
 	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 }
 
@@ -1282,6 +1328,9 @@ void totalCodeGen(Rootnode* root) {
 	/*
 	 * print headers, maybe. Idk
 	 */
+	
+	
+	printHeaders(root);
 	
 	
 	TopDeclarationNode* mainIter = root -> startDecls;
