@@ -16,16 +16,13 @@ struct UniqueId {
     UniqueId *next;
 };
 
-<<<<<<< HEAD
-char *tmpVarGen() /* for temporary variables, maybe blanks */
-=======
 UniqueId * idTable[TABLE_SIZE];
 int initCount = 0;
 int tempVarCount = 0;
 int labelCount = 0;
 
 char *tmpVarGen()
->>>>>>> f8817604062b7f13d9cc4723f81d27d445dbf646
+
 {
     char *retVal = (char *) malloc(sizeof(char) * 30);
     sprintf(retVal, "__golite_temp_%d", tempVarCount++);
