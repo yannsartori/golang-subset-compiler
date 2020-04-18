@@ -1290,7 +1290,7 @@ Trie* makeLabelNode(){
 	return ptr;
 }
 
-Trie* encodeInfo(Trie* trie,TTEntry* structEntry, IdChain* chain){
+Trie* helperEncodeInfo(Trie* trie,TTEntry* structEntry, IdChain* chain){
 	if (chain == NULL){
 		Trie* cur = trie;
 		while(cur != NULL){
@@ -1317,12 +1317,15 @@ Trie* encodeInfo(Trie* trie,TTEntry* structEntry, IdChain* chain){
 			return ptr;
 		
 	}else{
-		sibling->child = encodeInfo(sibling->child,structEntry,chain->next);
+		sibling->child = helperEncodeInfo(sibling->child,structEntry,chain->next);
 		return trie;
 
 	}
 
+}
 
+Trie* encodeInfo(Trie* trie, TTEntry* structEntry){
+	return helperEncodeInfo(trie,structEntry,structEntry->val.structType.fieldNames);
 }
 
 int helperLookUpLabel(Trie* trie,TTEntry* structEntry,IdChain* chain){
@@ -1353,5 +1356,52 @@ int LookUpLabel(Trie* trie, TTEntry* structEntry){
 }
 
 
+
+
+
+Trie* encodeStmtStruct(Stmt* stmt,Trie* trie){
+	if (stmt == NULL){
+		return trie;
+	}
+
+	Trie* updatedTrie = trie;
+
+	switch (stmt->kind){
+		StmtKindBlock:
+			updatedTrie = encodeStmtStruct(stmt->val.block.stmt,updatedTrie);
+			break;
+		StmtKindIf:
+			updatedTrie = encodeStmtStruct(stmt->val.ifStmt.block,updatedTrie);
+			updatedTrie = encodeStmtStruct(stmt->val.ifStmt.elseBlock,updatedTrie);
+			break;
+		StmtKindElse:
+			updatedTrie = encodeStmtStruct(stmt->val.elseStmt.block,updatedTrie);
+			break;
+		StmtKindSwitch:
+			for(switchCaseClause* list = stmt->val.switchStmt.clauseList; list != NULL; list = list->next){
+				updatedTrie = encodeStmtStruct(list->statementList,updatedTrie);
+			}
+			break;
+		StmtKindInfLoop:
+			updatedTrie = encodeStmtStruct(stmt->val.infLoop.block,updatedTrie);
+			break;
+		StmtKindWhileLoop:
+			updatedTrie = encodeStmtStruct(stmt->val.whileLoop.block,updatedTrie);
+			break;
+		StmtKindThreePartLoop:
+			updatedTrie = encodeStmtStruct(stmt->val.forLoop.block,updatedTrie);
+			break;
+		StmtKindTypeDeclaration:
+			for(TypeDeclNode* cur = stmt->val.typeDeclaration; cur != NULL; cur = cur->nextDecl){
+				TypeHolderNode* actualType = cur->actualType;
+				if (actualType->kind == structType){
+					updatedTrie = encodeInfo(updatedTrie,stmt->val.typeDeclaration->typeEntry);
+				}
+			}
+			break;
+	}
+
+	return encodeStmtStruct(stmt->next,updatedTrie);
+}
 
 
