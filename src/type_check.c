@@ -6,6 +6,32 @@
 #include "globalEnum.h"
 #include "symbol_table.h"
 
+
+typedef struct Entry{
+	char* id;
+	TTEntry* type;
+}Entry;
+
+
+typedef enum{
+	EntryNode,
+	LabelNode
+}TrieType;
+
+typedef struct Trie{
+	TrieType genre;
+	union{
+		Entry* entry;
+		int label;
+	}variant;
+
+	struct Trie* sibling;
+	struct Trie* child;
+}Trie;
+
+Trie* encodeRoot(RootNode* root);
+extern Trie* trie;
+
 extern TTEntry *builtInTypes;
 int isExpListPrintable(ExpList* expList);
 int isValidAssignStmt(ExpList* left, ExpList* right);
@@ -698,6 +724,8 @@ void typeCheckProgram(RootNode* rootNode) {
 		
 		topIter = topIter -> nextTopDecl;
 	}
+
+	trie = encodeRoot(rootNode);
 }
 
 
@@ -1217,3 +1245,247 @@ void typeCheckVarDecl(VarDeclNode* decl) {
 
 
 
+
+
+int structVariantCounter = 0;
+
+
+
+Entry* makeEntry(char* id, TTEntry* type){
+	Entry* ptr = malloc(sizeof(Entry));
+
+	ptr->id = id;
+	ptr->type = type;
+
+	return ptr;
+}
+
+Trie* makeTrie(TrieType genre){
+	Trie* ptr = malloc(sizeof(Trie));
+
+	ptr->genre = genre;
+	return ptr;
+}
+
+
+Trie* findSibling(Trie* trie,TTEntry* structEntry, char* id){
+	if (trie == NULL){
+		return NULL;
+	}
+
+	if (trie->genre == LabelNode){
+		return findSibling(trie->sibling,structEntry,id);
+	}else{
+		if (strcmp(id,trie->variant.entry->id) == 0){
+			TTEntry* queriedType = getEntry(structEntry->val.structType.fields,id)->entry.s->type;
+			if (typeEquality(queriedType,trie->variant.entry->type)){
+				return trie;
+			}else{
+				return findSibling(trie->sibling,structEntry,id);
+			}
+		}else{
+			return findSibling(trie->sibling,structEntry,id);
+		}
+	}
+
+}
+
+Trie* makeLabelNode(){
+	Trie* ptr = makeTrie(LabelNode);
+	ptr->variant.label = structVariantCounter++;
+	return ptr;
+}
+
+Trie* helperEncodeInfo(Trie* trie,TTEntry* structEntry, IdChain* chain){
+	if (chain == NULL){
+		Trie* cur = trie;
+		while(cur != NULL){
+			if (cur->genre == LabelNode){
+				return trie;//Already in the trie
+			}
+			cur = cur->sibling;
+		}
+		Trie* temp = makeLabelNode();
+		temp->sibling = trie;
+
+		return temp;
+		
+	}
+
+	Trie* sibling = findSibling(trie,structEntry,chain->identifier);
+	if (sibling == NULL){ 
+		
+			Trie* ptr = makeTrie(EntryNode);
+			ptr->variant.entry->type = getEntry(structEntry->val.structType.fields,chain->identifier)->entry.s->type;
+			ptr->variant.entry->id = chain->identifier;
+
+			ptr->sibling = trie;
+			return ptr;
+		
+	}else{
+		sibling->child = helperEncodeInfo(sibling->child,structEntry,chain->next);
+		return trie;
+
+	}
+
+}
+
+Trie* encodeInfo(Trie* trie, TTEntry* structEntry){
+	return helperEncodeInfo(trie,structEntry,structEntry->val.structType.fieldNames);
+}
+
+int helperLookUpLabel(Trie* trie,TTEntry* structEntry,IdChain* chain){
+	if (chain == NULL){
+		Trie* cur = trie;
+		while(cur != NULL){
+			if (cur->genre == LabelNode){
+				return cur->variant.label;
+			}
+
+			cur = cur->sibling;
+		}
+
+		return -1; //NOT FOUND
+	}
+
+
+	Trie* sibling = findSibling(trie,structEntry,chain->identifier);
+	if (sibling == NULL){
+		return -1;//NOT FOUND
+	}else{
+		return helperLookUpLabel(sibling->child,structEntry,chain->next);
+	}
+}
+
+int LookUpLabel(Trie* trie, TTEntry* structEntry){
+	return helperLookUpLabel(trie,structEntry,structEntry->val.structType.fieldNames);
+}
+
+
+Trie* encodeDeclNode(Trie* trie,TypeDeclNode* node){
+	Trie* updatedTrie = trie;
+	for(TypeDeclNode* cur = node; cur != NULL; cur = cur->nextDecl){
+			TypeHolderNode* actualType = cur->actualType;
+			if (actualType->kind == structType){
+				updatedTrie = encodeInfo(updatedTrie,node->typeEntry);
+			}
+	}
+
+	return updatedTrie;
+}
+
+Trie* encodeVarDecl(Trie* trie, VarDeclNode* node){
+	if (node == NULL){
+		return trie;
+	}
+
+	Trie* updatedTrie = trie;
+
+	for(VarDeclNode* cur = node; cur != NULL; node = node->nextDecl){
+		TTEntry* type = cur->whoAmI->type;
+		if (type->underlyingType == structType){
+			updatedTrie = encodeInfo(updatedTrie,type);
+		}
+	}
+
+	return updatedTrie;
+	
+}
+
+Trie* encodeStmtStruct(Stmt* stmt,Trie* trie){
+	if (stmt == NULL){
+		return trie;
+	}
+
+	Trie* updatedTrie = trie;
+
+	switch (stmt->kind){
+		StmtKindBlock:
+			updatedTrie = encodeStmtStruct(stmt->val.block.stmt,updatedTrie);
+			break;
+		StmtKindIf:
+			updatedTrie = encodeStmtStruct(stmt->val.ifStmt.block,updatedTrie);
+			updatedTrie = encodeStmtStruct(stmt->val.ifStmt.elseBlock,updatedTrie);
+			break;
+		StmtKindElse:
+			updatedTrie = encodeStmtStruct(stmt->val.elseStmt.block,updatedTrie);
+			break;
+		StmtKindSwitch:
+			for(switchCaseClause* list = stmt->val.switchStmt.clauseList; list != NULL; list = list->next){
+				updatedTrie = encodeStmtStruct(list->statementList,updatedTrie);
+			}
+			break;
+		StmtKindInfLoop:
+			updatedTrie = encodeStmtStruct(stmt->val.infLoop.block,updatedTrie);
+			break;
+		StmtKindWhileLoop:
+			updatedTrie = encodeStmtStruct(stmt->val.whileLoop.block,updatedTrie);
+			break;
+		StmtKindThreePartLoop:
+			updatedTrie = encodeStmtStruct(stmt->val.forLoop.block,updatedTrie);
+			break;
+		StmtKindTypeDeclaration:
+			updatedTrie = encodeDeclNode(updatedTrie,stmt->val.typeDeclaration);
+			break;
+		StmtKindVarDeclaration:;
+			updatedTrie = encodeVarDecl(updatedTrie,stmt->val.varDeclaration);
+			break;
+	}
+
+	return encodeStmtStruct(stmt->next,updatedTrie);
+}
+
+
+
+Trie* encodeFunctionStruct(Trie* trie,FuncDeclNode* function){
+	if (function == NULL){
+		return trie;
+	}
+
+	Trie* updatedTrie = trie;
+
+	updatedTrie = encodeVarDecl(updatedTrie,function->argsDecls);
+
+	TTEntry* returnType = function->symbolEntry->type->val.functionType.ret;
+	if (returnType != NULL && returnType->underlyingType == structType){
+		//Non void type and is a struct
+		updatedTrie = encodeInfo(updatedTrie,returnType);
+	} 
+
+	updatedTrie = encodeStmtStruct(function->blockStart,updatedTrie);
+	return updatedTrie;
+
+}
+
+
+Trie* encodeTopDeclNode(Trie* trie,TopDeclarationNode* node){
+	if (node == NULL){
+		return trie;
+	}
+
+	Trie* updatedTrie = trie;
+	switch(node->declType){
+		case funcDeclType:
+			updatedTrie =  encodeFunctionStruct(updatedTrie,node->actualRealDeclaration.funcDecl);
+			break;
+		case typeDeclType:
+			updatedTrie = encodeDeclNode(updatedTrie,node->actualRealDeclaration.typeDecl);
+			break;
+		case variDeclType:
+			updatedTrie = encodeVarDecl(updatedTrie,node->actualRealDeclaration.varDecl);
+			break;
+
+	}
+
+	return encodeTopDeclNode(updatedTrie,node->nextTopDecl);
+}
+
+
+Trie* encodeRoot(RootNode* root){
+	if (root == NULL){
+		return NULL;
+	}
+
+	return encodeTopDeclNode(NULL,root->startDecls);
+
+}

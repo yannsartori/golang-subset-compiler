@@ -428,6 +428,7 @@ void symbolCheckProgram(RootNode* root) {
 					exit(1);
 				}
 				t = makeNamedTTEntry(masterContx, typeDeclIter);
+				
 				if (t -> underlyingType == badType) {
 					fprintf(stderr, "Error: (line %d) %s\n", typeDeclIter -> lineno, t -> id);
 					exit(1);
@@ -438,6 +439,7 @@ void symbolCheckProgram(RootNode* root) {
 						exit(1);
 					}
 				}
+				typeDeclIter -> typeEntry = t;
 				typeDeclIter = typeDeclIter -> nextDecl;
 			}
 		} else if (iter -> declType == variDeclType) {
