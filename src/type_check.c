@@ -733,10 +733,8 @@ void typeCheckProgram(RootNode* rootNode) {
 		topIter = topIter -> nextTopDecl;
 	}
 
-	trie = encodeRoot(rootNode);
-	List* list = TrieToList(trie);
-	printf("%d\n%d",list->size,structVariantCounter);
-	puts("Didn't die today");
+
+	
 }
 
 
