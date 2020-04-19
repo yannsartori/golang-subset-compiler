@@ -104,11 +104,11 @@ char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
     }
     else return enterInTable(e->entry.t->id, e->entry.t);
 }
-char *idGenJustType(TTEntry *t) //used for structs
+char *idGenJustType(TTEntry *t) //used for structs(TODO)
 {
     return enterInTable(t->id, t);
 }
-char* idGenJustVar(STEntrey* s) 
+char* idGenJustVar(STEntry* s) 
 {
 	return enterInTable(s -> id, s);
 }
