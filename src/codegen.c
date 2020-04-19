@@ -811,23 +811,30 @@ void printCodeGen(ExpList* list,int indentLevel,FILE* fp){
     switch (type->val.nonCompositeType.type){
         case baseInt:
             fprintf(fp,"printf(\"%%d\",");
+            expCodeGen(exp,fp);
+            fprintf(fp,");\\n");
             break;
         case baseFloat64:
             fprintf(fp,"printf(\"%%lf\",");
+            expCodeGen(exp,fp);
+            fprintf(fp,");\\n");
             break;
         case baseRune:
             fprintf(fp,"printf(\"%%d\",(int)");
+            expCodeGen(exp,fp);
+            fprintf(fp,");\\n");
             break;
         case baseString:
             fprintf(fp,"printf(\"%%s\",");
+            expCodeGen(exp,fp);
+            fprintf(fp,");\\n");
             break;
         case baseBool: //QUITE UNCERTAIN DEPENDS ON REPRESENTATION OF BOOL
-            fprintf(fp,"printf(\"%%d\",");
+            fprintf(fp,"printf(\"%%d\",(0==");
+            expCodeGen(exp,fp);
+            fprintf(fp,")?\"false\":\"true\");\n");
             break;
     }
-
-    //expCodeGen(exp,fp);
-    fprintf(fp,");\\n");
 
     printCodeGen(list->next,indentLevel,fp);
 }
@@ -846,23 +853,31 @@ void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
     switch (type->val.nonCompositeType.type){
         case baseInt:
             fprintf(fp,"printf(\"%%d \",");
+            expCodeGen(exp,fp);
+            fprintf(fp,");\n");
             break;
         case baseFloat64:
             fprintf(fp,"printf(\"%%lf \",");
+            expCodeGen(exp,fp);
+            fprintf(fp,");\n");
             break;
         case baseRune:
             fprintf(fp,"printf(\"%%d \",(int)");
+            expCodeGen(exp,fp);
+            fprintf(fp,");\n");
             break;
         case baseString:
             fprintf(fp,"printf(\"%%s \",");
+            expCodeGen(exp,fp);
+            fprintf(fp,");\n");
             break;
         case baseBool: //QUITE UNCERTAIN DEPENDS ON REPRESENTATION OF BOOL
-            fprintf(fp,"printf(\"%%d \",");
+            fprintf(fp,"printf(\"%%d \",(0==");
+            expCodeGen(exp,fp);
+            fprintf(fp,")?\"false\":\"true\");\n");
             break;
     }
 
-    expCodeGen(exp,fp);
-    fprintf(fp,");\n");
 
     printlnCodeGen(list->next,indentLevel,fp);
 }
@@ -1152,18 +1167,28 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 				case expKindAddition:
 					type = lhs->contextEntry->entry.s->type;
                     if(type->val.nonCompositeType.type == baseString){
-                        char* temp = tmpVarGen();
-                        //TODO left to right eval
+                        char* temp1 = tmpVarGen();
+                        char* temp2 = tmpVarGen();
+                        
+                        //eval right, save location in memory
+                        //char* temp1 = evaluated(rhs);
                         indent(indentLevel,fp);
-                        fprintf(fp,"char** %s = &(",temp);
-                        expCodeGen(lhs,fp);
-                        fprintf(fp,");\n");
-
-                        indent(indentLevel,fp);
-                        fprintf(fp,"*%s = concat(*%s,",temp,temp);
+                        fprintf(fp,"char* %s = ",temp1);
                         expCodeGen(rhs,fp);
-                        fprintf(fp,");\n");
+                        fprintf(fp,";\n");
 
+                        //eval left, store location in moemory
+                        //char* temp2 = evaluated(lhs);
+                        indent(indentLevel,fp);
+                        fprintf(fp,"char* %s = ",temp2);
+                        expCodeGen(lhs,fp);
+                        fprintf(fp,";\n");
+
+                        //assign concatnation of left and right to the left
+                        //temp2 = concat(temp2,temp1);
+                        indent(indentLevel,fp);
+                        fprintf(fp,"%s = concat(%s,%s);\n",temp1,temp1,temp2);
+                        
 
                     }else{
                         indent(indentLevel,fp);
@@ -1468,6 +1493,7 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
         char* name = idGenJustType(cur->type);
         indent(indentLevel,fp);
         fprintf(fp,"typedef struct %s %s;\n",name,name);
+        free(name);
     }
 
     for(int i = 0; i < globalList->size; i++){
@@ -1475,7 +1501,7 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
         char* name = idGenJustType(cur->type);
 
         indent(indentLevel,fp);
-        fprintf(fp,"struct %s{",idGenJustType(cur->type));
+        fprintf(fp,"struct %s{",name);
 
         Trie* entry = cur->child;
 
@@ -1494,6 +1520,8 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
 
         indent(indentLevel,fp);
         fprintf(fp,"};\n\n");
+
+        free(name);
 
         
     }
