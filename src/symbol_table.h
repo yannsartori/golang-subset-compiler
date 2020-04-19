@@ -66,6 +66,11 @@ typedef struct Trie{
 	struct Trie* child;
 }Trie;
 
+typedef struct List{
+	Trie** structChain;
+	int size;
+}List;
+
 Trie* encodeRoot(RootNode* root);
 
 #endif

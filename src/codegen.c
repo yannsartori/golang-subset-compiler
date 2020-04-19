@@ -20,7 +20,7 @@ UniqueId * idTable[TABLE_SIZE];
 int initCount = 0;
 int tempVarCount = 0;
 int labelCount = 0;
-Trie* trie;
+extern Trie* trie;
 
 char *tmpVarGen()
 
@@ -105,11 +105,12 @@ char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
     }
     else return enterInTable(e->entry.t->id, e->entry.t);
 }
-char *idGenJustType(TTEntry *t) //used for structs
+char *idGenJustType(TTEntry *t) //used for structs(TODO)
 {
     return enterInTable(t->id, t);
 }
-char* idGenJustVar(STEntry* s)
+
+char* idGenJustVar(STEntry* s) 
 {
 	char* retVal;
 	if ( s -> isConstant == 2 && strcmp(s -> id, "main") == 0 )

@@ -9,7 +9,14 @@
 
 
 
-extern Trie* trie;
+
+
+
+int structVariantCounter = 0;
+
+List* TrieToList(Trie* trie);
+Trie* encodeRoot(RootNode* root);
+Trie* trie;
 
 extern TTEntry *builtInTypes;
 int isExpListPrintable(ExpList* expList);
@@ -704,7 +711,8 @@ void typeCheckProgram(RootNode* rootNode) {
 		topIter = topIter -> nextTopDecl;
 	}
 
-	trie = encodeRoot(rootNode);
+
+	
 }
 
 
@@ -1226,7 +1234,7 @@ void typeCheckVarDecl(VarDeclNode* decl) {
 
 
 
-int structVariantCounter = 0;
+
 
 
 
@@ -1310,7 +1318,31 @@ Trie* helperEncodeInfo(Trie* trie,TTEntry* structEntry, IdChain* chain){
 }
 
 Trie* encodeInfo(Trie* trie, TTEntry* structEntry){
-	return helperEncodeInfo(trie,structEntry,structEntry->val.structType.fieldNames);
+	Trie* updatedTrie = trie;
+	if (structEntry == NULL){
+		return trie;
+	}
+
+	//Explore structure of composite types
+	switch(structEntry->underlyingType){
+		case arrayType:
+			updatedTrie = encodeInfo(updatedTrie,structEntry->val.arrayType.type);
+			break;
+		case structType:
+			for(IdChain* chain =  structEntry->val.structType.fieldNames; chain != NULL; chain = chain->next){
+				updatedTrie = encodeInfo(updatedTrie,getEntry(structEntry->val.structType.fields,chain->identifier)->entry.s->type);
+			}
+			break;
+		case sliceType:
+			updatedTrie = encodeInfo(updatedTrie,structEntry->val.sliceType.type);
+			break;
+	}
+
+	if (structEntry->underlyingType == structType){
+		updatedTrie = helperEncodeInfo(updatedTrie,structEntry,structEntry->val.structType.fieldNames);
+	}
+	return updatedTrie;
+
 }
 
 int helperLookUpLabel(Trie* trie,TTEntry* structEntry,IdChain* chain){
@@ -1345,9 +1377,9 @@ Trie* encodeDeclNode(Trie* trie,TypeDeclNode* node){
 	Trie* updatedTrie = trie;
 	for(TypeDeclNode* cur = node; cur != NULL; cur = cur->nextDecl){
 			TypeHolderNode* actualType = cur->actualType;
-			if (actualType->kind == structType){
-				updatedTrie = encodeInfo(updatedTrie,node->typeEntry);
-			}
+			
+			updatedTrie = encodeInfo(updatedTrie,cur->typeEntry);
+			
 	}
 
 	return updatedTrie;
@@ -1362,9 +1394,9 @@ Trie* encodeVarDecl(Trie* trie, VarDeclNode* node){
 
 	for(VarDeclNode* cur = node; cur != NULL; node = node->nextDecl){
 		TTEntry* type = cur->whoAmI->type;
-		if (type->underlyingType == structType){
-			updatedTrie = encodeInfo(updatedTrie,type);
-		}
+		
+		updatedTrie = encodeInfo(updatedTrie,type);
+		
 	}
 
 	return updatedTrie;
@@ -1426,7 +1458,7 @@ Trie* encodeFunctionStruct(Trie* trie,FuncDeclNode* function){
 	updatedTrie = encodeVarDecl(updatedTrie,function->argsDecls);
 
 	TTEntry* returnType = function->symbolEntry->type->val.functionType.ret;
-	if (returnType != NULL && returnType->underlyingType == structType){
+	if (returnType != NULL){
 		//Non void type and is a struct
 		updatedTrie = encodeInfo(updatedTrie,returnType);
 	} 
@@ -1466,5 +1498,65 @@ Trie* encodeRoot(RootNode* root){
 	}
 
 	return encodeTopDeclNode(NULL,root->startDecls);
+
+}
+
+
+
+List* makeList (int n){
+	List* ptr = malloc(sizeof(List));
+	ptr->size = n;
+	ptr->structChain = malloc(sizeof(Trie*)*n);
+	return ptr;
+}
+
+List* ListCons(Trie* x, List* xs){
+	for(int i = 0; i < xs->size ;i++){
+		void* ptr = malloc(sizeof(Trie));
+		memcpy(ptr,x,sizeof(Trie));
+		((Trie*)ptr)->child = xs->structChain[i];
+		((Trie*)ptr)->sibling = NULL;
+		xs->structChain[i] = (Trie*)ptr;
+
+	}
+	return xs;
+}
+
+List* append(List* xs,List* ys){
+	List* ptr = makeList((xs->size) + ys->size);
+	int i;
+	for(i = 0; i < xs->size; i++){
+		ptr->structChain[i] = xs->structChain[i];
+	}
+
+	for(; i < xs->size+ys->size;i++){
+		ptr->structChain[i] = ys->structChain[i-xs->size];
+	}
+
+	free(xs);
+	free(ys);
+	return ptr;
+}
+
+
+
+List* TrieToList(Trie* trie){
+
+	if (trie == NULL){
+		List* temp = makeList(1);
+		temp->structChain[0] = NULL;
+		return temp;
+	}
+
+	List* acc = makeList(0);
+
+	for(Trie* cur = trie; cur != NULL; cur = cur->sibling){
+		List* childList = TrieToList(cur->child);
+		childList = ListCons(cur,childList);
+		acc = append(acc,childList);
+	}
+
+	return acc;
+
 
 }
