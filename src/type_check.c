@@ -7,29 +7,8 @@
 #include "symbol_table.h"
 
 
-typedef struct Entry{
-	char* id;
-	TTEntry* type;
-}Entry;
 
 
-typedef enum{
-	EntryNode,
-	LabelNode
-}TrieType;
-
-typedef struct Trie{
-	TrieType genre;
-	union{
-		Entry* entry;
-		int label;
-	}variant;
-
-	struct Trie* sibling;
-	struct Trie* child;
-}Trie;
-
-Trie* encodeRoot(RootNode* root);
 extern Trie* trie;
 
 extern TTEntry *builtInTypes;

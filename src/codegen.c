@@ -20,6 +20,7 @@ UniqueId * idTable[TABLE_SIZE];
 int initCount = 0;
 int tempVarCount = 0;
 int labelCount = 0;
+Trie* trie;
 
 char *tmpVarGen()
 
@@ -108,9 +109,26 @@ char *idGenJustType(TTEntry *t) //used for structs
 {
     return enterInTable(t->id, t);
 }
-char* idGenJustVar(STEntrey* s) 
+char* idGenJustVar(STEntry* s)
 {
-	return enterInTable(s -> id, s);
+	char* retVal;
+	if ( s -> isConstant == 2 && strcmp(s -> id, "main") == 0 )
+	{
+		return strcpy(retVal, "__golite_main");
+	}
+	//generates init names in declaration order
+	//so in the generated main, while (i := 0) < initCount, generate __golite_init_i(), then generate __golite_main
+	else if ( s -> isConstant == 2 && strcmp(s -> id, "init") == 0 )
+	{
+		retVal = (char *) malloc(sizeof(char) * 20);
+		sprintf(retVal, "__golite_init_%d", initCount++); 
+		return retVal;
+	}
+	else if ( strcmp(s -> id, "_") == 0 ) 
+	{
+		return tmpVarGen(); 
+	}
+	else return enterInTable(s->id, s);
 }
 char *structMemb(char *memb)
 {
@@ -709,7 +727,7 @@ void expCodeGen(Exp *exp, FILE *f)
                             break;
                         case structType:
                             fprintf(f, "%s_equality(", idGenJustType(type));
-                         ,   expCodeGen(exp->val.binary.left, f);
+                            expCodeGen(exp->val.binary.left, f);
                             fprintf(f, ", ");
                             expCodeGen(exp->val.binary.right, f);
                             fprintf(f, ")");
@@ -1249,6 +1267,36 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 
 
 
+void generateOurTypes(TTEntry *t, FILE *f)
+{
+	if (t == NULL)
+	{
+		fprintf(f, "void");
+	} else if ( t->underlyingType == arrayType )
+	{
+		fprintf(f, "__golite_poly_entry *");
+	} else if ( t->underlyingType == sliceType )
+	{
+		fprintf(f, "__golite_slice *");
+	} else if ( t->underlyingType == structType )
+	{
+		fprintf(f, "%s *", idGenJustType(t));
+	} else if ( t->underlyingType == identifierType )
+	{
+		switch ( t->val.nonCompositeType.type )
+		{
+			case baseBool:
+			case baseInt: fprintf(f, "int"); return;
+			case baseFloat64: fprintf(f, "double"); return;
+			case baseRune: fprintf(f, "char"); return;
+			case baseString: fprintf(f, "char *"); return;
+		}
+	} else {
+		fprintf(stderr, "There is a buggggg fix it (generate our types)");
+		exit(1);
+	}
+}
+
 
 
 
@@ -1258,11 +1306,41 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
  */
 
 void funcCodeGen(FuncDeclNode* func, FILE* fp) {
-	char* retTypeName, funcName;
-	fprintf(fp, "%s %s(", retTypeName, funcName);
-	for (int i = 0; i<10; i++) {
-		funcArgsCodeGen();
+	
+	
+	generateOurTypes(func -> symbolEntry -> type -> val.functionType.ret, fp);
+	
+	fprintf(fp, " ");
+	
+	char* funcName;
+	
+	funcName = idGenJustVar(func -> symbolEntry);
+	
+	fprintf(fp, funcName);
+	
+	fprintf(fp, "(\n");
+	
+	STEntry* argsIter = func -> symbolEntry -> type -> val.functionType.args;
+	char* argNameHolder;
+	
+	if (argsIter != NULL) {
+		generateOurTypes(argsIter -> type, fp);
+		fprintf(fp, " ");
+		argNameHolder = idGenJustVar(argsIter);
+		fprintf(fp, argNameHolder);
+		argsIter = argsIter -> next;
 	}
+	
+	
+	while (argsIter != NULL) {
+		fprintf(fp, ", ");
+		generateOurTypes(argsIter -> type, fp);
+		fprintf(fp, " ");
+		argNameHolder = idGenJustVar(argsIter);
+		fprintf(fp, argNameHolder);
+		argsIter = argsIter -> next;
+	}
+	
 	fprintf(fp, ")\n"); /* ask neil abouat brackets */
 	stmtCodeGen(func -> blockStart, 0, fp);
 	
@@ -1274,33 +1352,20 @@ void funcCodeGen(FuncDeclNode* func, FILE* fp) {
 
 void varDeclCodeGen(VarDeclNode* decl, FILE* fp) {
 	
+	generateOurTypes(decl -> whoAmI -> type, fp);
 	
-	char * varName;
+	fprintf(fp, " ");
 	
-	if (strcmp(decl -> identifier, "_") == 0) {
-		varName = tmpVarGen();
-	} else {
-		varName = idGenJustVar(decl -> whoAmI);
-	}
+	char * varName = idGenJustVar(decl -> whoAmI);
+	
+	fprintf(fp, varName);
+	
+	fprintf(fp, " = ");
 	
 	if (decl -> whoAmI -> type -> underlyingType == identifierType) {
-		if (decl -> whoAmI -> type -> val.nonCompositeType.type == baseInt) {
-			fprintf(fp, "int %s = ", varName);
-		} else if (decl -> whoAmI -> type -> val.nonCompositeType.type == baseFloat64) {
-			fprintf(fp, "double %s = ", varName);
-		} else if (decl -> whoAmI -> type -> val.nonCompositeType.type == baseRune) {
-			fprintf(fp, "char %s = ", varName);
-		} else if (decl -> whoAmI -> type -> val.nonCompositeType.type == baseString) {
-			fprintf(fp, "char* %s = ", varName);
-		} else if (decl -> whoAmI -> type -> val.nonCompositeType.type == baseBool) {
-			fprintf(fp, "bool %s = ", varName);
-		} else {
-			fprintf(stderr, "fuck (this is really impossible), bad type during var decl");
-			exit(1);
-		}
 		
 		if (decl -> value == NULL) {
-			if (decl -> whoAmI -> type -> val.nonCompositeType == baseString) {
+			if (decl -> whoAmI -> type -> val.nonCompositeType.type == baseString) {
 				fprintf(fp, "\"\";\n");
 			} else {
 				fprintf(fp, "0;\n");
@@ -1310,28 +1375,20 @@ void varDeclCodeGen(VarDeclNode* decl, FILE* fp) {
 			fprintf(fp, ";\n");
 		}
 	} else if (decl -> whoAmI -> type -> underlyingType == arrayType) {
-		fprintf(fp, "__golite_poly_entry* %s = malloc(%d * sizeof(__golite_poly_entry));\n", varName, decl -> whoAmI -> type -> val.arrayType.size);
-		genInitAndZero(varName, decl -> whoAmI -> type, 0, fp);
+		fprintf(fp, "malloc(%d * sizeof(__golite_poly_entry));\n", decl -> whoAmI -> type -> val.arrayType.size);
+		/*genInitAndZero(varName, decl -> whoAmI -> type, 0, fp);*/
 	} else if (decl -> whoAmI -> type -> underlyingType == sliceType) {
-		fprintf(fp, "__golite_slice* %s = malloc(%d * sizeof(__golite_poly_entry));\n", varName, decl -> whoAmI -> type -> val.arrayType.size);
+		fprintf(fp, "malloc(sizeof(__golite_slice));\n");
 		fprintf(fp, "%s -> size = 0;\n", varName);
 		fprintf(fp, "%s -> capacity = 0;\n", varName);
 	} else if (decl -> whoAmI -> type -> underlyingType == structType) {
 		char* structName = idGenJustType(decl -> whoAmI -> type);
-		fprintf(fp, "%s* %s = malloc(sizeof(%s))", structName, varName, structName);
-		genInitAndZero(varName, decl -> whoAmI -> type, 0, fp);
+		fprintf(fp, "malloc(sizeof(%s))", structName);
+		/*genInitAndZero(varName, decl -> whoAmI -> type, 0, fp);*/
 	} else {
 		fprintf(stderr, "fuck (this is impossible), bad type during var decl");
 		exit(1);
 	}
-	
-	
-	
-	
-	
-	
-	
-	
 	
 	
 }
@@ -1339,16 +1396,18 @@ void varDeclCodeGen(VarDeclNode* decl, FILE* fp) {
 /*
  * Not done but honestly I'm not rattled. Unless we're going to make up comparisons based on types. 
  */
-
+/*
 void typeDeclCodeGen(TypeDeclNode* decl, FILE* fp) {
-	
+	return;
+	/*
 	char* oldtype, newtype;
 	fprintf(fp, "typedef %s %s;\n\n", oldtype, newtype);
-}
+	
+}*/
 
 
 
-void totalCodeGen(Rootnode* root) {
+void totalCodeGen(RootNode* root) {
 	/*
 	 * Open a file
 	 */
@@ -1358,10 +1417,11 @@ void totalCodeGen(Rootnode* root) {
 	/*
 	 * print headers, maybe. Idk
 	 */
-	
+	/*
+	trie  = encodeRoot(root);
 	
 	printHeaders(root);
-	
+	*/
 	
 	TopDeclarationNode* mainIter = root -> startDecls;
 	
@@ -1372,7 +1432,11 @@ void totalCodeGen(Rootnode* root) {
 		} else if (mainIter -> declType == variDeclType){
 			varDeclCodeGen(mainIter -> actualRealDeclaration.varDecl, output);
 		} else if (mainIter -> declType == typeDeclType){
+			/*
+			 * Do nothing
+			 * 
 			typeDeclCodeGen(mainIter -> actualRealDeclaration.typeDecl, output);
+			*/
 		}
 		mainIter = mainIter -> nextTopDecl;
 	}

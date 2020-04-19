@@ -41,4 +41,31 @@ struct TTEntry { //base types have id = type and basetype = basetype to simplify
 	TTEntry *next;
 };
 PolymorphicEntry *getEntry(Context *c, char *id);
+
+
+typedef struct Entry{
+	char* id;
+	TTEntry* type;
+}Entry;
+
+
+
+typedef enum{
+	EntryNode,
+	LabelNode
+}TrieType;
+
+typedef struct Trie{
+	TrieType genre;
+	union{
+		Entry* entry;
+		int label;
+	}variant;
+
+	struct Trie* sibling;
+	struct Trie* child;
+}Trie;
+
+Trie* encodeRoot(RootNode* root);
+
 #endif
