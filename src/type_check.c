@@ -711,6 +711,10 @@ void typeCheckProgram(RootNode* rootNode) {
 		topIter = topIter -> nextTopDecl;
 	}
 
+	Trie* trie = encodeRoot(rootNode);
+	List* list = TrieToList(trie);
+	printf("%d\n",list->size);
+
 
 	
 }
@@ -1251,6 +1255,9 @@ Trie* makeTrie(TrieType genre){
 	Trie* ptr = malloc(sizeof(Trie));
 
 	ptr->genre = genre;
+	if (genre == EntryNode){
+		ptr->variant.entry = malloc(sizeof(Entry));
+	}
 	return ptr;
 }
 
@@ -1307,6 +1314,7 @@ Trie* helperEncodeInfo(Trie* trie,TTEntry* structEntry, IdChain* chain){
 			ptr->variant.entry->id = chain->identifier;
 
 			ptr->sibling = trie;
+			ptr->child = helperEncodeInfo(NULL,structEntry,chain->next);
 			return ptr;
 		
 	}else{
@@ -1341,6 +1349,8 @@ Trie* encodeInfo(Trie* trie, TTEntry* structEntry){
 	if (structEntry->underlyingType == structType){
 		updatedTrie = helperEncodeInfo(updatedTrie,structEntry,structEntry->val.structType.fieldNames);
 	}
+
+	updatedTrie = encodeInfo(updatedTrie,structEntry->next);
 	return updatedTrie;
 
 }
@@ -1392,7 +1402,7 @@ Trie* encodeVarDecl(Trie* trie, VarDeclNode* node){
 
 	Trie* updatedTrie = trie;
 
-	for(VarDeclNode* cur = node; cur != NULL; node = node->nextDecl){
+	for(VarDeclNode* cur = node; cur != NULL; cur = cur->nextDecl){
 		TTEntry* type = cur->whoAmI->type;
 		
 		updatedTrie = encodeInfo(updatedTrie,type);
@@ -1411,34 +1421,34 @@ Trie* encodeStmtStruct(Stmt* stmt,Trie* trie){
 	Trie* updatedTrie = trie;
 
 	switch (stmt->kind){
-		StmtKindBlock:
+		case StmtKindBlock:
 			updatedTrie = encodeStmtStruct(stmt->val.block.stmt,updatedTrie);
 			break;
-		StmtKindIf:
+		case StmtKindIf:
 			updatedTrie = encodeStmtStruct(stmt->val.ifStmt.block,updatedTrie);
 			updatedTrie = encodeStmtStruct(stmt->val.ifStmt.elseBlock,updatedTrie);
 			break;
-		StmtKindElse:
+		case StmtKindElse:
 			updatedTrie = encodeStmtStruct(stmt->val.elseStmt.block,updatedTrie);
 			break;
-		StmtKindSwitch:
+		case StmtKindSwitch:
 			for(switchCaseClause* list = stmt->val.switchStmt.clauseList; list != NULL; list = list->next){
 				updatedTrie = encodeStmtStruct(list->statementList,updatedTrie);
 			}
 			break;
-		StmtKindInfLoop:
+		case StmtKindInfLoop:
 			updatedTrie = encodeStmtStruct(stmt->val.infLoop.block,updatedTrie);
 			break;
-		StmtKindWhileLoop:
+		case StmtKindWhileLoop:
 			updatedTrie = encodeStmtStruct(stmt->val.whileLoop.block,updatedTrie);
 			break;
-		StmtKindThreePartLoop:
+		case StmtKindThreePartLoop:
 			updatedTrie = encodeStmtStruct(stmt->val.forLoop.block,updatedTrie);
 			break;
-		StmtKindTypeDeclaration:
+		case StmtKindTypeDeclaration:
 			updatedTrie = encodeDeclNode(updatedTrie,stmt->val.typeDeclaration);
 			break;
-		StmtKindVarDeclaration:;
+		case StmtKindVarDeclaration:;
 			updatedTrie = encodeVarDecl(updatedTrie,stmt->val.varDeclaration);
 			break;
 	}
@@ -1455,15 +1465,19 @@ Trie* encodeFunctionStruct(Trie* trie,FuncDeclNode* function){
 
 	Trie* updatedTrie = trie;
 
-	updatedTrie = encodeVarDecl(updatedTrie,function->argsDecls);
+	VarDeclNode* args = function->argsDecls;
 
-	TTEntry* returnType = function->symbolEntry->type->val.functionType.ret;
-	if (returnType != NULL){
-		//Non void type and is a struct
-		updatedTrie = encodeInfo(updatedTrie,returnType);
-	} 
+	for(VarDeclNode* cur = args; cur != NULL; cur = cur->nextDecl){
+		updatedTrie = encodeInfo(updatedTrie,cur->functionArgTypeEntry);
+	}
 
+	TTEntry* returnType  = function->symbolEntry->type->val.functionType.ret;
+
+
+	
+	updatedTrie = encodeInfo(updatedTrie,returnType);
 	updatedTrie = encodeStmtStruct(function->blockStart,updatedTrie);
+
 	return updatedTrie;
 
 }

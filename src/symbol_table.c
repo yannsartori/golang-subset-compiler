@@ -499,6 +499,7 @@ void symbolCheckProgram(RootNode* root) {
 					argEntryIter -> id = argsIter -> identifier;
 					argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
 					argEntryIter -> isConstant = 0;
+					argsIter->functionArgTypeEntry = argEntryIter->type; // Neil added this 
 					if (argEntryIter -> type -> underlyingType == badType) {
 						fprintf(stderr, "Error: (line %d) invalid type used to declare function argument %s: %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> type -> id);
 						exit(1);
