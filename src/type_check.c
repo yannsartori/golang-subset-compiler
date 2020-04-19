@@ -692,6 +692,10 @@ void typeCheckStatement(Stmt* stmt){
 
 }
 
+void printTrie(Trie* trie);
+Trie* reverse(Trie* trie);
+Trie* trie;
+List* globalList;
 
 void typeCheckProgram(RootNode* rootNode) {
 	TopDeclarationNode* topIter = rootNode -> startDecls;
@@ -711,14 +715,58 @@ void typeCheckProgram(RootNode* rootNode) {
 		topIter = topIter -> nextTopDecl;
 	}
 
-	Trie* trie = encodeRoot(rootNode);
+	trie = encodeRoot(rootNode);
 	List* list = TrieToList(trie);
-	printf("%d\n",list->size);
-
+	for(int i = 0; i < list->size; i++){
+		list->structChain[i] = reverse(list->structChain[i]);
+	}
+	globalList = list;
 
 	
 }
 
+//Its O(n^2) but it should be fine
+Trie* reverse(Trie* trie){
+	if (trie == NULL){
+		return NULL;
+	}
+	Trie* reversedTail = reverse(trie->child);
+	if (reversedTail == NULL){
+		return trie;
+	}else{
+		Trie* cur = reversedTail;
+		trie->child = NULL;
+		while(cur->child != NULL){
+			cur = cur->child;
+		}
+		cur->child = trie;
+		return reversedTail;
+
+	}
+
+
+
+}
+
+
+void printTrie(Trie* trie){
+	if (trie == NULL){
+		printf("NULL\n");
+		return;
+	}
+
+	switch(trie->genre){
+		case EntryNode:
+			printf("%s->",trie->variant.entry->id);
+			break;
+		case LabelNode:
+			printf("variant %d->",trie->variant.label);
+			break;
+	}
+
+	printTrie(trie->child);
+
+}
 
 
 
@@ -1301,6 +1349,7 @@ Trie* helperEncodeInfo(Trie* trie,TTEntry* structEntry, IdChain* chain){
 		}
 		Trie* temp = makeLabelNode();
 		temp->sibling = trie;
+		temp->type = structEntry;
 
 		return temp;
 		
@@ -1378,7 +1427,7 @@ int helperLookUpLabel(Trie* trie,TTEntry* structEntry,IdChain* chain){
 	}
 }
 
-int LookUpLabel(Trie* trie, TTEntry* structEntry){
+int LookUpLabel(TTEntry* structEntry){
 	return helperLookUpLabel(trie,structEntry,structEntry->val.structType.fieldNames);
 }
 

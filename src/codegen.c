@@ -5,6 +5,8 @@
 #include "globalEnum.h"
 #include "ast.h"
 #include "symbol_table.h"
+#include "type_check.h"
+
 int hashCode(char * id); //symbol_table.c
 TTEntry *getExpressionType(Exp *e); //type_check.c
 void expCodeGen(Exp *exp, FILE *f);
@@ -20,7 +22,9 @@ UniqueId * idTable[TABLE_SIZE];
 int initCount = 0;
 int tempVarCount = 0;
 int labelCount = 0;
-extern Trie* trie;
+
+
+
 
 char *tmpVarGen()
 
@@ -107,7 +111,9 @@ char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
 }
 char *idGenJustType(TTEntry *t) //used for structs(TODO)
 {
-    return enterInTable(t->id, t);
+    char* id = malloc(sizeof(char)*50);
+    sprintf(id,"__struct_variant__%d__",LookUpLabel(t));
+    return id;
 }
 
 char* idGenJustVar(STEntry* s) 
@@ -1147,6 +1153,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 					type = lhs->contextEntry->entry.s->type;
                     if(type->val.nonCompositeType.type == baseString){
                         char* temp = tmpVarGen();
+                        //TODO left to right eval
                         indent(indentLevel,fp);
                         fprintf(fp,"char** %s = &(",temp);
                         expCodeGen(lhs,fp);
@@ -1455,7 +1462,39 @@ void totalCodeGen(RootNode* root) {
 
 
 
+void codegenStructDeclaration(int indentLevel,FILE* fp){
+    for(int i = 0; i < globalList->size; i++){
+        Trie* cur = globalList->structChain[i];
+        char* name = idGenJustType(cur->type);
+        indent(indentLevel,fp);
+        fprintf(fp,"typedef struct %s %s;\n",name,name);
+    }
+
+    for(int i = 0; i < globalList->size; i++){
+        Trie* cur = globalList->structChain[i];
+        char* name = idGenJustType(cur->type);
+
+        indent(indentLevel,fp);
+        fprintf(fp,"struct %s{",idGenJustType(cur->type));
+
+        Trie* entry = cur->child;
+
+        while(entry != NULL){
+            if (strcmp("_",entry->variant.entry->id) == 0){
+                continue;//skip blank identifier
+            }
 
 
+            indent(indentLevel+1,fp);
 
 
+            cur = cur->child;
+        }
+
+
+        indent(indentLevel,fp);
+        fprintf(fp,"};\n\n");
+
+        
+    }
+}
