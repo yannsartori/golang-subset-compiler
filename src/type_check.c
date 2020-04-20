@@ -982,7 +982,7 @@ int isPrintable(Exp* exp){
 	TTEntry* type = typeCheckExpression(exp);
 
 	if (type == NULL){
-		puts("Oh no");
+		puts("Error: (line %d) print, println expects base types, [received void]\n");
 		exit(1);
 	}
 
@@ -1071,7 +1071,11 @@ int isExpressionAssignable(Exp* exp){
 	switch (exp->kind){
 		case expKindIdentifier : 
 			return isExpressionAddressable(exp) || isExpressionConst(exp);
-		default: 
+		default: ;
+			TTEntry* expType = exp->contextEntry->entry.t;
+			if (expType == NULL){ //NULL type things are not assignable
+				return 0;
+			}
 			return 1;
 	}
 }
@@ -1082,7 +1086,7 @@ int isValidAssignPair(Exp* left,Exp* right){
 		if (!isExpressionAssignable(right)){
 			fprintf(stderr,"Error: (line %d) ",right->lineno);
 			prettyExp(right);
-			printf(" cannot be assigned to ");
+			printf(" [type %s] cannot be assigned to ",typeToString(rightType));
 			prettyExp(left);
 			printf("\n");
 
@@ -1103,7 +1107,7 @@ int isValidAssignPair(Exp* left,Exp* right){
 		if (!isExpressionAssignable(right)){
 			fprintf(stderr,"Error: (line %d) ",right->lineno);
 			prettyExp(right);
-			printf(" cannot be assigned to ");
+			printf(" [type %s] cannot be assigned to ",typeToString(rightType));
 			prettyExp(left);
 			printf("\n");
 
