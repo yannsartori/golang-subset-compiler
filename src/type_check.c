@@ -396,8 +396,11 @@ TTEntry *typeCheckExpression(Exp *e)
 							exit(1);
 						}
 						TTEntry *toCast = typeCheckExpression(e->val.funcCall.arguments->cur);
-						//TODO check if we can type cast arrays and stuff. Not specified in documentation, but
-						if ( toCast->val.nonCompositeType.type == baseType->val.nonCompositeType.type  || (isNumericType(toCast) && isNumericType(baseType)) || (isIntegerType(toCast) && baseType->val.nonCompositeType.type == baseString) )
+						if ( baseType->underlyingType == identifierType && 
+							(toCast->val.nonCompositeType.type == baseType->val.nonCompositeType.type  
+							  || (isNumericType(toCast) && isNumericType(baseType)) 
+							  || (isIntegerType(toCast) && baseType->val.nonCompositeType.type == baseString) 
+							))
 						{
 							e->contextEntry = makeTypeEntry(baseType);
 							return baseType;
