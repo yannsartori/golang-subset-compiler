@@ -50,7 +50,7 @@ int main(int argc, char * argv[])
 		
 		printf("OK\n");
 
-	} else if ( !strcmp(argv[1], "typecheck") )
+	} else if ( !strcmp(argv[1], "codegen") )
 	{
 		yyparse();
 		symbolCheckProgram(rootNode);

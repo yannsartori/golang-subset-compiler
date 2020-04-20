@@ -1016,10 +1016,10 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
     switch (stmt->kind){
         case StmtKindBlock:
             indent(indentLevel,fp);
-            printf("{\n");
+            fprintf(fp, "{\n");
             stmtCodeGen(stmt->val.block.stmt,indentLevel+1,fp);
             indent(indentLevel,fp);
-            printf("}\n");
+            fprintf(fp, "}\n");
             break;
         case StmtKindExpression:
             indent(indentLevel,fp);
@@ -1337,9 +1337,6 @@ void generateOurTypes(TTEntry *t, FILE *f)
 
 
 
-/*
- * Definitely not done but this one honestly seems like the easiest
- */
 
 void funcCodeGen(FuncDeclNode* func, FILE* fp) {
 	
@@ -1388,7 +1385,7 @@ void appendToChain(char* thing, IdChain* curChain) {
 		return;
 	}
 	IdChain* iter = curChain;
-	while (iter - != NULL) {
+	while (iter -> next != NULL) {
 		iter = iter -> next;
 	}
 	iter -> next = makeIdChain(thing, NULL);
@@ -1408,52 +1405,51 @@ IdChain* copyChain(IdChain* curChain) {
 		retIter -> next = makeIdChain(iter -> identifier, NULL);
 		retIter = retIter -> next;
 	}
-	iter -> next = makeIdChain(thing, NULL);
 	return retable;
 }
 
 
 void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* fp){
-	indent(indentLevel);
+	indent(indentLevel, fp);
 	IdChain* iter;
-	for (iter = curName; iter != NULL; iter = iter -> next;) {
+	for (iter = curName; iter != NULL; iter = iter -> next) {
 		fprintf(fp, iter -> identifier);
 	}
-	fprintf(fp, "=");
+	fprintf(fp, " = ");
 	if (curType -> underlyingType == identifierType) {
 		
 		if (curType -> val.nonCompositeType.type == baseString) {
-			fprintf("\"\";\n");
+			fprintf(fp, "\"\";\n");
 		} else {
-			fprintf("0;\n");
+			fprintf(fp, "0;\n");
 		}
 	} else if (curType -> underlyingType == sliceType) {
 		fprintf(fp, "malloc(sizeof(__golite_slice));\n");
-		indent(indentLevel);
-		for (iter = curName; iter != NULL; iter = iter -> next;) {
+		indent(indentLevel, fp);
+		for (iter = curName; iter != NULL; iter = iter -> next) {
 			fprintf(fp, iter -> identifier);
 		}
-		fprintf(fp, "-> size = 0;\n");
-		indent(indentLevel);
-		for (iter = curName; iter != NULL; iter = iter -> next;) {
+		fprintf(fp, " -> size = 0;\n");
+		indent(indentLevel, fp);
+		for (iter = curName; iter != NULL; iter = iter -> next) {
 			fprintf(fp, iter -> identifier);
 		}
 		fprintf(fp, " -> capacity = 0;\n");
 	} else if (curType -> underlyingType == arrayType) {
 		fprintf(fp, "malloc(%d * sizeof(__golite_poly_entry));\n", curType -> val.arrayType.size);
-		indent(indentLevel);
-		fprintf(fp, "for(int golite_iter_%d; golite_iter_%d < %d; golite_iter_%d++) {\n", indentLevel, indentLevel, curType -> val.arrayType.size, indentLevel);
+		indent(indentLevel, fp);
+		fprintf(fp, "for(int golite_iter_%d = 0; golite_iter_%d < %d; golite_iter_%d++) {\n", indentLevel, indentLevel, curType -> val.arrayType.size, indentLevel);
 		IdChain* nextName = copyChain(curName);
 		char arrayPositions[40];
 		sprintf(arrayPositions, "[golite_iter_%d].", indentLevel);
-		if (curType -> val.arrayType.type -> underlyingType = identifierType) {
-			if (curType -> val.arrayType.type -> val.nonCompositeType.type = baseInt || curType -> val.arrayType.type -> val.nonCompositeType.type = baseBool) {
+		if (curType -> val.arrayType.type -> underlyingType == identifierType) {
+			if (curType -> val.arrayType.type -> val.nonCompositeType.type == baseInt || curType -> val.arrayType.type -> val.nonCompositeType.type == baseBool) {
 				strcat(arrayPositions, "intVal");
-			} else if (curType -> val.arrayType.type -> val.nonCompositeType.type = baseRune) {
+			} else if (curType -> val.arrayType.type -> val.nonCompositeType.type == baseRune) {
 				strcat(arrayPositions, "runeVal");
-			} else if (curType -> val.arrayType.type -> val.nonCompositeType.type = baseString) {
+			} else if (curType -> val.arrayType.type -> val.nonCompositeType.type == baseString) {
 				strcat(arrayPositions, "stringVal");
-			} else if (curType -> val.arrayType.type -> val.nonCompositeType.type = baseFloat64) {
+			} else if (curType -> val.arrayType.type -> val.nonCompositeType.type == baseFloat64) {
 				strcat(arrayPositions, "floatVal");
 			}
 		} else {
@@ -1461,7 +1457,7 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 		}
 		appendToChain(arrayPositions, nextName);
 		genInitAndZero(nextName, curType -> val.arrayType.type, indentLevel+1, fp);
-		indent(indentLevel);
+		indent(indentLevel, fp);
 		fprintf(fp, "}\n");
 	} else if (curType -> underlyingType == structType) {
 		fprintf(fp, "malloc(sizeof(%s));\n", idGenJustType(curType));
@@ -1471,7 +1467,7 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 			s = getEntry(curType -> val.structType.fields, iter->identifier)->entry.s;
 			if (strcmp(s -> id, "_") != 0) {
 				char fieldNameAddition [900];
-				sprintf(fieldNameAddition, " -> %s", structMemb(s -> id))
+				sprintf(fieldNameAddition, " -> %s", structMemb(s -> id));
 				nextName = copyChain(curName);
 				appendToChain(fieldNameAddition, nextName);
 				genInitAndZero(nextName, s -> type, indentLevel, fp);
@@ -1481,9 +1477,8 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 }
 
 
-/*
- * Definitely not done
- */
+
+
 
 void varDeclCodeGen(VarDeclNode* decl, FILE* fp) {
 	
@@ -1506,6 +1501,7 @@ void varDeclCodeGen(VarDeclNode* decl, FILE* fp) {
 		
 		if (decl -> whoAmI -> type -> underlyingType == identifierType) {
 			expCodeGen(decl -> value, fp);
+			fprintf(fp, ";\n");
 		} else if (decl -> whoAmI -> type -> underlyingType == arrayType) {
 			
 			char typeChain[900];
@@ -1533,9 +1529,7 @@ void varDeclCodeGen(VarDeclNode* decl, FILE* fp) {
 }
 
 /*
- * Not done but honestly I'm not rattled. Unless we're going to make up comparisons based on types. 
- */
-/*
+
 void typeDeclCodeGen(TypeDeclNode* decl, FILE* fp) {
 	return;
 	/*
@@ -1552,6 +1546,7 @@ void totalCodeGen(RootNode* root) {
 	 */
 	
 	FILE* output = fopen("go.out.c", "w");
+	
 	
 	/*
 	 * print headers, maybe. Idk
@@ -1583,10 +1578,14 @@ void totalCodeGen(RootNode* root) {
 	
 	/*
 	 * 
-	 * print all the declarations. This WILL be harder than you think.
-	 * 
+	 * print out main function which also calls inits
 	 * 
 	 */
+	
+	
+	
+	fclose(output);
+	
 	
 }
 
