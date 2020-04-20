@@ -19,6 +19,7 @@ Trie* encodeRoot(RootNode* root);
 Trie* trie;
 
 extern TTEntry *builtInTypes;
+
 int isExpListPrintable(ExpList* expList);
 int isValidAssignStmt(ExpList* left, ExpList* right);
 int isExpressionAddressable(Exp* exp);
