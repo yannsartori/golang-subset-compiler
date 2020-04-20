@@ -615,7 +615,7 @@ void typeCheckStatement(Stmt* stmt){
 		case StmtKindWhileLoop:
 			type = typeCheckExpression(stmt->val.whileLoop.conditon);
 			if (!isBool(type)){
-				fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]\n",stmt->lineno,typeToString(type));
+				fprintf(stderr,"Error: (line %d) conditon expected bool [received %s]\n",stmt->lineno,typeToString(type));
 				exit(1);
 			}
 			typeCheckStatement(stmt->val.whileLoop.block);
@@ -625,7 +625,7 @@ void typeCheckStatement(Stmt* stmt){
 			if (stmt->val.forLoop.condition != NULL){
 				type = typeCheckExpression(stmt->val.forLoop.condition);
 				if (!isBool(type)){
-					fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]\n",stmt->lineno,typeToString(type));
+					fprintf(stderr,"Error: (line %d) conditon expected bool [received %s]\n",stmt->lineno,typeToString(type));
 					exit(1);
 				}
 			}
@@ -1209,8 +1209,8 @@ void typecheckSwitchStatements(Stmt* stmt){
 
 	}else{
 		type = typeCheckExpression(stmt->val.switchStmt.expression);
-		if (!type->comparable){
-			fprintf(stderr,"Error: (line %d) switch case expression must be of a comparable type\n",stmt->lineno);
+		if (type == NULL || !type->comparable){
+			fprintf(stderr,"Error: (line %d) switch case expression must be of a comparable type [received %s]\n",stmt->lineno,typeToString(type));
 			exit(1);
 		}
 	}
