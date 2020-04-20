@@ -64,6 +64,8 @@ typedef struct Trie{
 
 	struct Trie* sibling;
 	struct Trie* child;
+
+	TTEntry* type;
 }Trie;
 
 typedef struct List{
