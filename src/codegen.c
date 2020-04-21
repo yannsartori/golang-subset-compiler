@@ -1614,7 +1614,7 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
         indent(indentLevel,fp);
         fprintf(fp,"struct %s{",name);
 
-        Trie* entry = cur->child;
+        Trie* entry = cur->child;//Skipping first element as the first node is a label
 
         while(entry != NULL){
             if (strcmp("_",entry->variant.entry->id) == 0){
@@ -1623,9 +1623,14 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
 
 
             indent(indentLevel+1,fp);
+            generateOurTypes(entry->variant.entry->type,fp);
+            char* temp = structMemb(entry->variant.entry->id);
+            fprintf(fp," = %s;",temp);
+            free(temp);
 
 
-            cur = cur->child;
+
+            entry = entry->child;
         }
 
 
