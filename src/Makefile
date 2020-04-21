@@ -1,4 +1,4 @@
-CC = gcc
+CC = gcc -g
 
 all: parser.tab.o lex.yy.o ast.h ast.o pretty_printer.o main.o symbol_table.o symbol_table.h  type_check.o codegen.o
 	$(CC) -Wall -g lex.yy.o parser.tab.o ast.o pretty_printer.o main.o symbol_table.o type_check.o codegen.o -o golitec -lfl

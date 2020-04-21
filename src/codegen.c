@@ -1059,7 +1059,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             expCodeGen(stmt->val.ifStmt.expression,fp);
             fprintf(fp,")\n");
 
-            stmtCodeGen(stmt->val.ifStmt.block,indentLevel,fp);
+            stmtCodeGen(stmt->val.ifStmt.block,indentLevel+1,fp);
             localContinueReplace(stmt->val.forLoop.block,NULL);//TODO
 
             indent(indentLevel,fp);
@@ -1303,9 +1303,11 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
         
     }
 
-    stmtCodeGen(stmt->next,indentLevel,fp);
+    
     }
+    stmtCodeGen(stmt->next,indentLevel,fp);
 }
+
 
 
 
@@ -1384,7 +1386,7 @@ void funcCodeGen(FuncDeclNode* func, FILE* fp) {
 	}
 	
 	fprintf(fp, ")\n"); /* ask neil abouat brackets */
-	stmtCodeGen(func -> blockStart, 0, fp);
+	stmtCodeGen(func -> blockStart,0,fp);
 	
 }
 
