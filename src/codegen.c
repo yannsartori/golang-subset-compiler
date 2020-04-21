@@ -6,6 +6,7 @@
 #include "ast.h"
 #include "symbol_table.h"
 #include "type_check.h"
+void codegenStructDeclaration(int indentLevel,FILE* fp);
 
 int hashCode(char * id); //symbol_table.c
 TTEntry *getExpressionType(Exp *e); //type_check.c
@@ -116,7 +117,9 @@ char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
 }
 char *idGenJustType(TTEntry *t) //used for structs(TODO)
 {
+
     char* id = malloc(sizeof(char)*50);
+            
     sprintf(id,"__struct_variant__%d__",LookUpLabel(t));
     return id;
 }
@@ -1364,7 +1367,7 @@ void funcCodeGen(FuncDeclNode* func, FILE* fp) {
 
 	fprintf(fp,"%s", funcName);
 	
-	fprintf(fp, "(\n");
+	fprintf(fp, "(");
 
 	STEntry* argsIter = func -> symbolEntry -> type -> val.functionType.args;
 	char* argNameHolder;
@@ -1564,6 +1567,8 @@ void totalCodeGen(RootNode* root) {
 	
 	printHeaders(root);
 	*/
+
+    codegenStructDeclaration(0,output);
 	
 	TopDeclarationNode* mainIter = root -> startDecls;
 	
@@ -1617,8 +1622,18 @@ void totalCodeGen(RootNode* root) {
 
 
 void codegenStructDeclaration(int indentLevel,FILE* fp){
+    if (globalList->structChain[0] == NULL){
+        return; //small quirk but no structs leave a list of length 1
+    }
+
+    for(int i = 0; i < globalList->size; i++){
+        printf("%d",globalList->structChain[i]->variant.label);
+    }
+    
     for(int i = 0; i < globalList->size; i++){
         Trie* cur = globalList->structChain[i];
+
+
         char* name = idGenJustType(cur->type);
         indent(indentLevel,fp);
         fprintf(fp,"typedef struct %s %s;\n",name,name);
@@ -1629,21 +1644,23 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
         Trie* cur = globalList->structChain[i];
         char* name = idGenJustType(cur->type);
 
+        fprintf(fp,"\n");
         indent(indentLevel,fp);
-        fprintf(fp,"struct %s{",name);
+        fprintf(fp,"struct %s{\n",name);
 
         Trie* entry = cur->child;//Skipping first element as the first node is a label
 
         while(entry != NULL){
             if (strcmp("_",entry->variant.entry->id) == 0){
-                continue;//skip blank identifier
+                entry = entry->child;//skip blank identifier
+                continue;
             }
 
 
             indent(indentLevel+1,fp);
             generateOurTypes(entry->variant.entry->type,fp);
             char* temp = structMemb(entry->variant.entry->id);
-            fprintf(fp," = %s;",temp);
+            fprintf(fp," %s;\n",temp);
             free(temp);
 
 

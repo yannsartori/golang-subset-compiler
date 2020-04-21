@@ -322,6 +322,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 						exit(1);
 					}
 				}
+				stmt->val.typeDeclaration->stmtTypeEntry = t;
 				typeDeclIter = typeDeclIter -> nextDecl;
 			}
 			
@@ -668,7 +669,6 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 				innerType = makeSubTTEntry(contx, sMembs -> typeThing, head, inSlice);
 			}
 			if (innerType -> underlyingType == badType) {
-				printf("hello\n");
 				t -> id = innerType -> id;
 				t -> underlyingType = badType;
 				return t;

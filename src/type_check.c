@@ -1472,6 +1472,7 @@ Trie* encodeStmtStruct(Stmt* stmt,Trie* trie){
 	if (stmt == NULL){
 		return trie;
 	}
+	
 
 	Trie* updatedTrie = trie;
 
@@ -1501,7 +1502,10 @@ Trie* encodeStmtStruct(Stmt* stmt,Trie* trie){
 			updatedTrie = encodeStmtStruct(stmt->val.forLoop.block,updatedTrie);
 			break;
 		case StmtKindTypeDeclaration:
-			updatedTrie = encodeDeclNode(updatedTrie,stmt->val.typeDeclaration);
+
+			for(TypeDeclNode* cur = stmt->val.typeDeclaration; cur != NULL; cur = cur->nextDecl){
+				updatedTrie = encodeInfo(updatedTrie,cur->stmtTypeEntry);
+			}
 			break;
 		case StmtKindVarDeclaration:;
 			updatedTrie = encodeVarDecl(updatedTrie,stmt->val.varDeclaration);
