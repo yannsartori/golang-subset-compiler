@@ -1248,6 +1248,7 @@ void typeCheckVarDecl(VarDeclNode* decl) {
 	}
 	
 	if (decl -> value == NULL){
+		typeCheckVarDecl(decl -> multiDecl);
 		return;
 	}
 	TTEntry* expType = typeCheckExpression(decl -> value);
@@ -1256,16 +1257,21 @@ void typeCheckVarDecl(VarDeclNode* decl) {
 		exit(1);
 	}
 	if (decl -> typeThing -> kind == inferType) {
+		/*if (strcmp(decl -> identifier, "_") == 0) {
+			
+		} else*/
 		if (decl -> iDoDeclare == 1) {
 			decl -> whoAmI -> type = expType;
 		} else {
 			if (!typeEquality(decl -> whoAmI -> type, expType)) {
 				
+				printf("no, me\n");
 				fprintf(stderr,"Error: (line %d) %s cannot be assigned to %s\n", decl -> lineno, typeToString(expType), typeToString(decl -> whoAmI -> type));
 				exit(1);
 			}
 		}
 	} else {
+		printf("me\n");
 		if (!typeEquality(expType, decl -> whoAmI -> type)) {
 			fprintf(stderr,"Error: (line %d) %s cannot be assigned to %s\n", decl -> lineno, typeToString(expType), typeToString(decl -> whoAmI -> type));
 			exit(1);

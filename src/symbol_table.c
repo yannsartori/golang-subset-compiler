@@ -762,6 +762,8 @@ void symbolCheckVarDecl(VarDeclNode* declNode, Context* contx, int placement) { 
 				shortDeclMustDecl ++;
 				varDeclIter -> iDoDeclare = 1;
 			}
+		} else {
+			varDeclIter -> iDoDeclare = 1;
 		}
 		
 		varDeclIter = varDeclIter -> nextDecl;

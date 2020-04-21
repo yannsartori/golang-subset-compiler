@@ -1480,21 +1480,15 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 
 
 
-void varDeclCodeGen(VarDeclNode* decl, FILE* fp) {
-	
-	generateOurTypes(decl -> whoAmI -> type, fp);
-	
-	fprintf(fp, " ");
-	
+void varDeclCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
+	indent(indentLevel, fp);
 	char * varName = idGenJustVar(decl -> whoAmI);
 	
 	fprintf(fp, varName);
 	
-	
-	
 	if (decl -> value == NULL) {
 		fprintf(fp, ";\n");
-		genInitAndZero(makeIdChain(varName, NULL), decl -> whoAmI -> type, 0, fp);
+		genInitAndZero(makeIdChain(varName, NULL), decl -> whoAmI -> type, indentLevel, fp);
 	} else {
 	
 		fprintf(fp, " = ");
@@ -1564,7 +1558,10 @@ void totalCodeGen(RootNode* root) {
 		if (mainIter -> declType == funcDeclType) {
 			funcCodeGen(mainIter -> actualRealDeclaration.funcDecl, output);
 		} else if (mainIter -> declType == variDeclType){
-			varDeclCodeGen(mainIter -> actualRealDeclaration.varDecl, output);
+			generateOurTypes(mainIter -> actualRealDeclaration.varDecl -> whoAmI -> type, output);
+			fprintf(output, " ");
+			char * varName = idGenJustVar(mainIter -> actualRealDeclaration.varDecl -> whoAmI);
+			fprintf(output, "%s;\n", varName);
 		} else if (mainIter -> declType == typeDeclType){
 			/*
 			 * Do nothing
@@ -1582,6 +1579,15 @@ void totalCodeGen(RootNode* root) {
 	 * 
 	 */
 	
+	
+	fprintf(output, "int main() {\n");
+	mainIter = root -> startDecls;
+	while (mainIter != NULL) {
+		if (mainIter -> declType == variDeclType) {
+			varDeclCodeGen(mainIter -> actualRealDeclaration.varDecl, 1, output)
+		}
+		mainIter = mainIter -> nextTopDecl;
+	}
 	
 	
 	fclose(output);
