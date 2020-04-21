@@ -12,6 +12,11 @@ TTEntry *getExpressionType(Exp *e); //type_check.c
 void expCodeGen(Exp *exp, FILE *f);
 void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp);
 
+void halt(){
+    puts("Here");
+    exit(1);
+}
+
 typedef struct UniqueId UniqueId;
 struct UniqueId {
     void * pointerAddress;
@@ -118,10 +123,14 @@ char *idGenJustType(TTEntry *t) //used for structs(TODO)
 
 char* idGenJustVar(STEntry* s) 
 {
+
 	char* retVal;
 	if ( s -> isConstant == 2 && strcmp(s -> id, "main") == 0 )
 	{
-		return strcpy(retVal, "__golite_main");
+        retVal = (char *) malloc(sizeof(char) * 20);     
+		strcpy(retVal, "__golite_main");
+        return retVal;
+
 	}
 	//generates init names in declaration order
 	//so in the generated main, while (i := 0) < initCount, generate __golite_init_i(), then generate __golite_main
@@ -1346,13 +1355,13 @@ void funcCodeGen(FuncDeclNode* func, FILE* fp) {
 	fprintf(fp, " ");
 	
 	char* funcName;
-	
+
 	funcName = idGenJustVar(func -> symbolEntry);
-	
-	fprintf(fp, funcName);
+
+	fprintf(fp,"%s", funcName);
 	
 	fprintf(fp, "(\n");
-	
+
 	STEntry* argsIter = func -> symbolEntry -> type -> val.functionType.args;
 	char* argNameHolder;
 	
@@ -1360,7 +1369,7 @@ void funcCodeGen(FuncDeclNode* func, FILE* fp) {
 		generateOurTypes(argsIter -> type, fp);
 		fprintf(fp, " ");
 		argNameHolder = idGenJustVar(argsIter);
-		fprintf(fp, argNameHolder);
+		fprintf(fp,"%s", argNameHolder);
 		argsIter = argsIter -> next;
 	}
 	
@@ -1370,7 +1379,7 @@ void funcCodeGen(FuncDeclNode* func, FILE* fp) {
 		generateOurTypes(argsIter -> type, fp);
 		fprintf(fp, " ");
 		argNameHolder = idGenJustVar(argsIter);
-		fprintf(fp, argNameHolder);
+		fprintf(fp, "%s",argNameHolder);
 		argsIter = argsIter -> next;
 	}
 	
@@ -1413,7 +1422,7 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 	indent(indentLevel, fp);
 	IdChain* iter;
 	for (iter = curName; iter != NULL; iter = iter -> next) {
-		fprintf(fp, iter -> identifier);
+		fprintf(fp, "%s",iter -> identifier);
 	}
 	fprintf(fp, " = ");
 	if (curType -> underlyingType == identifierType) {
@@ -1427,12 +1436,12 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 		fprintf(fp, "malloc(sizeof(__golite_slice));\n");
 		indent(indentLevel, fp);
 		for (iter = curName; iter != NULL; iter = iter -> next) {
-			fprintf(fp, iter -> identifier);
+			fprintf(fp,"%s", iter -> identifier);
 		}
 		fprintf(fp, " -> size = 0;\n");
 		indent(indentLevel, fp);
 		for (iter = curName; iter != NULL; iter = iter -> next) {
-			fprintf(fp, iter -> identifier);
+			fprintf(fp, "%s",iter -> identifier);
 		}
 		fprintf(fp, " -> capacity = 0;\n");
 	} else if (curType -> underlyingType == arrayType) {
@@ -1484,7 +1493,7 @@ void varDeclCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 	indent(indentLevel, fp);
 	char * varName = idGenJustVar(decl -> whoAmI);
 	
-	fprintf(fp, varName);
+	fprintf(fp,"%s", varName);
 	
 	if (decl -> value == NULL) {
 		fprintf(fp, ";\n");
@@ -1542,17 +1551,17 @@ void totalCodeGen(RootNode* root) {
 	FILE* output = fopen("go.out.c", "w");
 	
 	
-	/*
+	
+	trie  = encodeRoot(root);
+    /*
 	 * print headers, maybe. Idk
 	 */
 	/*
-	trie  = encodeRoot(root);
 	
 	printHeaders(root);
 	*/
 	
 	TopDeclarationNode* mainIter = root -> startDecls;
-	
 	
 	while (mainIter != NULL) {
 		if (mainIter -> declType == funcDeclType) {
@@ -1571,8 +1580,9 @@ void totalCodeGen(RootNode* root) {
 		}
 		mainIter = mainIter -> nextTopDecl;
 	}
+        
 	
-	
+	 
 	/*
 	 * 
 	 * print out main function which also calls inits
@@ -1584,10 +1594,14 @@ void totalCodeGen(RootNode* root) {
 	mainIter = root -> startDecls;
 	while (mainIter != NULL) {
 		if (mainIter -> declType == variDeclType) {
-			varDeclCodeGen(mainIter -> actualRealDeclaration.varDecl, 1, output)
+			varDeclCodeGen(mainIter -> actualRealDeclaration.varDecl, 1, output);
 		}
 		mainIter = mainIter -> nextTopDecl;
 	}
+
+    fprintf(output,"}\n");
+
+
 	
 	
 	fclose(output);
