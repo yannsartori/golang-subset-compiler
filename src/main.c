@@ -7,6 +7,7 @@
 void symbolCheckProgram(RootNode* root);
 void printSymbolProgram(RootNode* rootNode);
 void typeCheckProgram(RootNode* rootNode);
+void setupTrie(RootNode* rootNode);
 void totalCodeGen(RootNode* root);
 
 void yyparse();
@@ -55,6 +56,7 @@ int main(int argc, char * argv[])
 		yyparse();
 		symbolCheckProgram(rootNode);
 		typeCheckProgram(rootNode);
+		setupTrie(rootNode);
 		totalCodeGen(rootNode);
 
 	} else 

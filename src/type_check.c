@@ -707,7 +707,9 @@ void typeCheckProgram(RootNode* rootNode) {
 		
 		topIter = topIter -> nextTopDecl;
 	}
+}
 
+void setupTrie (RootNode* rootNode) {
 	trie = encodeRoot(rootNode);
 	List* list = TrieToList(trie);
 	for(int i = 0; i < list->size; i++){
