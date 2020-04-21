@@ -707,6 +707,7 @@ void typeCheckProgram(RootNode* rootNode) {
 		
 		topIter = topIter -> nextTopDecl;
 	}
+
 }
 
 void setupTrie (RootNode* rootNode) {
@@ -716,7 +717,6 @@ void setupTrie (RootNode* rootNode) {
 		list->structChain[i] = reverse(list->structChain[i]);
 	}
 	globalList = list;
-
 	
 }
 
@@ -1441,8 +1441,9 @@ Trie* encodeDeclNode(Trie* trie,TypeDeclNode* node){
 	Trie* updatedTrie = trie;
 	for(TypeDeclNode* cur = node; cur != NULL; cur = cur->nextDecl){
 			TypeHolderNode* actualType = cur->actualType;
-			
+		
 			updatedTrie = encodeInfo(updatedTrie,cur->typeEntry);
+			
 			
 	}
 
