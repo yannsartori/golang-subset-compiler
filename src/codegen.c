@@ -1199,7 +1199,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 
 
             indent(indentLevel+2,fp);
-            fprintf(fp,"%s:\n",label);
+            fprintf(fp,"%s:;\n",label);
 
             stmtCodeGen(stmt->val.forLoop.inc,indentLevel+2,fp);
 
