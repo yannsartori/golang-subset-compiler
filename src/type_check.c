@@ -976,6 +976,7 @@ int isPrintable(Exp* exp){
 
 	TTEntry* type = typeCheckExpression(exp);
 
+
 	if (type == NULL){
 		puts("Error: (line %d) print, println expects base types, [received void]\n");
 		exit(1);
