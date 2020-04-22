@@ -1596,7 +1596,10 @@ void totalCodeGen(RootNode* root) {
 	
 	FILE* output = fopen("go.out.c", "w");
 	
-	
+	fprintf(output, "#include <stdio.h>\n");
+	fprintf(output, "#include <string.h>\n");
+	fprintf(output, "#include <stdlib.h>\n");
+	fprintf(output, "#include <stdbool.h>\n");
 	
 	trie  = encodeRoot(root);
     /*
@@ -1607,7 +1610,7 @@ void totalCodeGen(RootNode* root) {
 	printHeaders(root);
 	*/
 
-    codegenStructDeclaration(0,output);
+	codegenStructDeclaration(0,output);
 	
 	TopDeclarationNode* mainIter = root -> startDecls;
 	
@@ -1648,7 +1651,7 @@ void totalCodeGen(RootNode* root) {
 		fprintf(output, "\t__golite_init_%d();\n");
 	}
 	
-	fprintf(output, "__golite_main();\n");
+	fprintf(output, "\t__golite_main();\n");
 	
 	/*
 	 * 
