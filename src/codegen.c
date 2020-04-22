@@ -1204,14 +1204,14 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
                         //eval left, store location in moemory
                         //char* temp2 = evaluated(lhs);
                         indent(indentLevel,fp);
-                        fprintf(fp,"char* %s = ",temp2);
+                        fprintf(fp,"char** %s = &",temp2);
                         expCodeGen(lhs,fp);
                         fprintf(fp,";\n");
 
                         //assign concatnation of left and right to the left
                         //temp2 = concat(temp2,temp1);
                         indent(indentLevel,fp);
-                        fprintf(fp,"%s = concat(%s,%s);\n",temp1,temp1,temp2);
+                        fprintf(fp,"*%s = concat(*%s,%s);\n",temp2,temp2,temp1);
                         
 
                     }else{
@@ -1298,12 +1298,12 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             case StmtKindInc:
                 indent(indentLevel,fp);
                 expCodeGen(stmt->val.incStmt.exp,fp);
-                fprintf(fp,";\n");
+                fprintf(fp,"++;\n");
                 break;
             case StmtKindDec:
                 indent(indentLevel,fp);
                 expCodeGen(stmt->val.decStmt.exp,fp);
-                fprintf(fp,";\n");
+                fprintf(fp,"--;\n");
                 break;
 
 		case StmtKindTypeDeclaration:
@@ -1648,7 +1648,7 @@ void totalCodeGen(RootNode* root) {
 	}
 	
 	for (int i=0; i<initCount; i++) {
-		fprintf(output, "\t__golite_init_%d();\n");
+		fprintf(output, "\t__golite_init_%d();\n",i);
 	}
 	
 	fprintf(output, "\t__golite_main();\n");
