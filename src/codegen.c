@@ -6,8 +6,9 @@
 #include "ast.h"
 #include "symbol_table.h"
 #include "type_check.h"
-void codegenStructDeclaration(int indentLevel,FILE* fp);
 
+void generateOurTypes(TTEntry *t, FILE *f);
+void codegenStructDeclaration(int indentLevel,FILE* fp);
 int hashCode(char * id); //symbol_table.c
 TTEntry *getExpressionType(Exp *e); //type_check.c
 void expCodeGen(Exp *exp, FILE *f);
@@ -908,7 +909,10 @@ void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
     //Generate all temp assignments then assign them after temp assignments complete
     char* temp = tmpVarGen();
     indent(indentLevel,fp);
-    fprintf(fp,"void* %s = %s;\n",temp,idGen(right->cur->contextEntry));
+    generateOurTypes(right->cur->contextEntry->entry.t,fp);
+    fprintf(fp," %s = ",temp);
+    expCodeGen(right->cur,fp);
+    fprintf(fp,";\n");
 
     assignStmtCodeGen(left->next,right->next,indentLevel,fp);
 
