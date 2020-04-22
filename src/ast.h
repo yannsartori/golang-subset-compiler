@@ -185,6 +185,7 @@ struct TypeDeclNode {
 	TypeHolderNode* actualType;
 	int lineno;
 	TTEntry* typeEntry;
+	TTEntry* stmtTypeEntry;
 };
 
 struct FuncDeclNode {
