@@ -178,6 +178,24 @@ void symbolCheckExpression(Exp *e, Context *c)
 }
 
 int expressionIsAFunctionCall(Exp* exp, Context* context);
+void checkReps(VarDeclNode* declNode) {
+	
+	if (declNode == NULL) {
+		return;
+	}
+	
+	VarDeclNode* iter = declNode -> nextDecl;
+	
+	while (iter != NULL ){
+		if (strcmp(declNode -> identifier, iter -> identifier) == 0) {
+			fprintf(stderr, "Error (line %d): identifier (%s) appeared twice in a short declaration\n", declNode -> lineno, declNode -> identifier);
+			exit(1);
+		}
+	}
+	
+	checkReps(declNode -> nextDecl);
+	
+}
 
 void symbolCheckStatement(Stmt* stmt, Context* context){
 	if (stmt == NULL){
@@ -331,6 +349,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 			symbolCheckVarDecl(stmt -> val.varDeclaration, context, 1);
 			break;
 		case StmtKindShortDeclaration : 
+			checkReps(stmt -> val.varDeclaration);
 			symbolCheckVarDecl(stmt -> val.varDeclaration, context, 2);
 			break;
 

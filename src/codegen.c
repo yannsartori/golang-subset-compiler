@@ -909,7 +909,7 @@ void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
     //Generate all temp assignments then assign them after temp assignments complete
     char* temp = tmpVarGen();
     indent(indentLevel,fp);
-    generateOurTypes(right->cur->contextEntry->entry.t,fp);
+    generateOurTypes(right->cur->contextEntry->entry.s -> type,fp);
     fprintf(fp," %s = ",temp);
     expCodeGen(right->cur,fp);
     fprintf(fp,";\n");
@@ -1024,6 +1024,9 @@ void localContinueReplace(Stmt* stmt,char* label){//Replaces or loop continues b
 
 		localContinueReplace(stmt->next,label);
 }
+
+void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp);
+void varJustDeclNoVal(VarDeclNode* varDecl, int indentLevel, FILE* fp);
 
 void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
     if (stmt == NULL){
@@ -1300,15 +1303,17 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
                 fprintf(fp,";\n");
                 break;
 
-            case StmtKindTypeDeclaration:
-		     /* this one actually is just break*/
-                break;
-            case StmtKindVarDeclaration:
-		     /* I think I can just copy the other one */
-                break;
-            case StmtKindShortDeclaration: 
-		     /* this might be awful */
-                break;
+		case StmtKindTypeDeclaration:
+			/* this one actually is just break*/
+			break;
+		case StmtKindVarDeclaration:
+			/* I think I can just copy the other one */
+			varJustDeclNoVal(stmt -> val.varDeclaration, indentLevel, fp);
+			varDeclAssignCodeGen(stmt -> val.varDeclaration, indentLevel, fp);
+			break;
+		case StmtKindShortDeclaration: 
+			/* this might be awful */
+			break;
         
     }
 
@@ -1348,7 +1353,8 @@ void generateOurTypes(TTEntry *t, FILE *f)
 			case baseString: fprintf(f, "char *"); return;
 		}
 	} else {
-		fprintf(stderr, "There is a buggggg fix it (generate our types)");
+		
+		fprintf(stderr, "There is a buggggg fix it (generate our types)\n");
 		exit(1);
 	}
 }
@@ -1500,7 +1506,13 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 
 
 
-void varDeclCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
+void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
+	
+	if(decl == NULL) {
+		return;
+	}
+	
+	
 	indent(indentLevel, fp);
 	char * varName = idGenJustVar(decl -> whoAmI);
 	
@@ -1540,7 +1552,27 @@ void varDeclCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 		}
 	}
 	
+	varDeclAssignCodeGen(decl -> nextDecl, indentLevel, fp);
+	varDeclAssignCodeGen(decl -> multiDecl, indentLevel, fp);
 }
+
+
+void varJustDeclNoVal(VarDeclNode* varDecl, int indentLevel, FILE* fp) {
+	
+	if (varDecl == NULL) {
+		return;
+	}
+	
+	indent(indentLevel, fp);
+	generateOurTypes(varDecl -> whoAmI -> type, fp);
+	fprintf(fp, " ");
+	char * varName = idGenJustVar(varDecl -> whoAmI);
+	fprintf(fp, "%s;\n", varName);
+	
+	varJustDeclNoVal(varDecl -> nextDecl, indentLevel, fp);
+	varJustDeclNoVal(varDecl -> multiDecl, indentLevel, fp);
+}
+
 
 /*
 
@@ -1580,10 +1612,7 @@ void totalCodeGen(RootNode* root) {
 		if (mainIter -> declType == funcDeclType) {
 			funcCodeGen(mainIter -> actualRealDeclaration.funcDecl, output);
 		} else if (mainIter -> declType == variDeclType){
-			generateOurTypes(mainIter -> actualRealDeclaration.varDecl -> whoAmI -> type, output);
-			fprintf(output, " ");
-			char * varName = idGenJustVar(mainIter -> actualRealDeclaration.varDecl -> whoAmI);
-			fprintf(output, "%s;\n", varName);
+			varJustDeclNoVal(mainIter -> actualRealDeclaration.varDecl, 0, output);
 		} else if (mainIter -> declType == typeDeclType){
 			/*
 			 * Do nothing
@@ -1607,12 +1636,28 @@ void totalCodeGen(RootNode* root) {
 	mainIter = root -> startDecls;
 	while (mainIter != NULL) {
 		if (mainIter -> declType == variDeclType) {
-			varDeclCodeGen(mainIter -> actualRealDeclaration.varDecl, 1, output);
+			varDeclAssignCodeGen(mainIter -> actualRealDeclaration.varDecl, 1, output);
 		}
 		mainIter = mainIter -> nextTopDecl;
 	}
+	
+	for (int i=0; i<initCount; i++) {
+		fprintf(output, "\t__golite_init_%d();\n")
+	}
+	
+	fprintf(output, "__golite_main();\n");
+	
+	/*
+	 * 
+	 * Run the inits
+	 * 
+	 * Then run the golite main
+	 * 
+	 */
+	
+	
 
-    fprintf(output,"}\n");
+	fprintf(output,"}\n");
 
 
 	
