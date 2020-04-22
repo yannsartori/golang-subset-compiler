@@ -727,6 +727,7 @@ void expCodeGen(Exp *exp, FILE *f)
             break;
         case expKindEQ:
             type = getExpressionType(exp->val.binary.left);
+        
             switch ( type->underlyingType )
             {
                 case identifierType:
@@ -782,7 +783,7 @@ void expCodeGen(Exp *exp, FILE *f)
             orderedBinaryGen(exp, ">", f);
             break;
         case expKindMod:
-            standardBinaryGen(exp, "%%", f);
+            standardBinaryGen(exp, "%", f);//%% -> % didn't work before
             break;
         case expKindBitAnd:
             standardBinaryGen(exp, "&", f);
@@ -932,16 +933,53 @@ void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
 
 
 void expListToBool( ExpList* list, char* exp1,FILE* fp){
-    //explistToBool should never be called with an empty list 
-    Exp* temp = makeExpIdentifier(exp1);
-    temp->contextEntry->isSymbol = 1;
-    temp->contextEntry->entry = list->cur->contextEntry->entry;
-    //Creating a dummy equality node to simplify codegen
-    Exp* equal = makeExpBinary(temp,list->cur,expKindEQ);
-    expCodeGen(equal,fp);
-
-    free(temp);
-    free(equal);
+    //explistToBool should never be called with an empty list
+    
+    
+    Exp* exp = list->cur;
+    TTEntry* type = getExpressionType(exp);
+        
+            switch ( type->underlyingType )
+            {
+                case identifierType:
+                    switch ( type->val.nonCompositeType.type )
+                    {
+                        case baseInt:
+                        case baseBool:
+                        case baseFloat64:
+                        case baseRune:
+                            expCodeGen(exp,fp);
+                            fprintf(fp, " == " );
+                            fprintf(fp,"%s",exp1);
+                            break;
+                        case baseString:
+                            fprintf(fp, "strcmp(");
+                            expCodeGen(exp, fp);
+                            fprintf(fp, ", ");
+                            fprintf(fp,"%s",exp1);
+                            fprintf(fp, ") == 0");
+                            break;
+                    }
+                    break;
+                case structType:
+                    fprintf(fp, "%s_equality(", idGenJustType(type));
+                    expCodeGen(exp, fp);
+                    fprintf(fp, ", ");
+                    fprintf(fp,"%s",exp1);
+                    fprintf(fp, ")");
+                    break;
+                case arrayType:
+                    fprintf(fp, "arrEquality(");
+                    expCodeGen(exp, fp);
+                    fprintf(fp, ", ");
+                    fprintf(fp,"%s",exp1);
+                    char * typeChain = (char *) malloc(sizeof(char) * 999);
+                    strcpy(typeChain, "");
+                    generateTypeChain(type->val.arrayType.type, typeChain);
+                    fprintf(fp, "%s, %d)", typeChain, type->val.arrayType.size);
+                    free(typeChain);
+                    break;
+            }
 
     if (list->next == NULL){
         return;
@@ -966,6 +1004,7 @@ void switchToIfCodeGen(char* exp,switchCaseClause* list,int indentLevel, FILE* f
 
         return;
     }else{
+        
         indent(indentLevel,fp);
         fprintf(fp,"if(");
         expListToBool(list->expressionList,exp,fp);
@@ -976,12 +1015,14 @@ void switchToIfCodeGen(char* exp,switchCaseClause* list,int indentLevel, FILE* f
         indent(indentLevel,fp);
         fprintf(fp,"}\n");
 
-        fprintf(fp,"else{");
+        indent(indentLevel,fp);
+        fprintf(fp,"else{\n");
 
         switchToIfCodeGen(exp,list->next,indentLevel+1,fp);
 
         indent(indentLevel,fp);
         fprintf(fp,"}\n");
+         
 
     }
 }
@@ -1075,10 +1116,11 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             fprintf(fp,")\n");
 
             stmtCodeGen(stmt->val.ifStmt.block,indentLevel+1,fp);
-            localContinueReplace(stmt->val.forLoop.block,NULL);//TODO
+            stmtCodeGen(stmt->val.ifStmt.elseBlock,indentLevel+1,fp);
 
             indent(indentLevel,fp);
             fprintf(fp,"}\n");
+            
 
             break;
 
@@ -1104,17 +1146,19 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
         case StmtKindSwitch: 
             //Enclosing the switch stmt in a while loop to handle break stmts was Alex's idea
             indent(indentLevel,fp);
-            fprintf(fp,"while{\n");
+            fprintf(fp,"while(1){\n");
 
             stmtCodeGen(stmt->val.switchStmt.statement,indentLevel,fp);//initial declaration
 
             char* temp = tmpVarGen();
             indent(indentLevel+1,fp);
-            fprintf(fp,"void* %s = ",temp);
+            generateOurTypes(getExpressionType(stmt->val.switchStmt.expression),fp);
+            fprintf(fp," %s = ",temp);
             expCodeGen(stmt->val.switchStmt.expression,fp);
             fprintf(fp,";\n");
+            
 
-
+            
             switchToIfCodeGen(temp,stmt->val.switchStmt.clauseList,indentLevel+1,fp);
             
 
@@ -1168,7 +1212,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 
         case StmtKindGoto:
             indent(indentLevel,fp);
-            fprintf(fp,"goto %s;",stmt->val.gotoStmt.label);
+            fprintf(fp,"goto %s;\n",stmt->val.gotoStmt.label);
             break;
 
 
