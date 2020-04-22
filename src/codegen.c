@@ -517,7 +517,7 @@ void expCodeGen(Exp *exp, FILE *f)
 			    fprintf(f, ")");
             } else //type cast
             {
-                if ( exp->val.funcCall.base->contextEntry->entry.t->val.nonCompositeType.type == baseString )
+                if ( getExpressionType(exp->val.funcCall.base)->val.nonCompositeType.type == baseString )
                 {
                     fprintf(f, "stringCast("); //helper function in templateCode.h
                     expListCodeGen(exp->val.funcCall.arguments, f);
@@ -532,32 +532,32 @@ void expCodeGen(Exp *exp, FILE *f)
             if ( exp->val.access.base->contextEntry->entry.t->underlyingType == sliceType )
             {
                 fprintf(f, "(");
-                generateCast(exp->val.access.base->contextEntry->entry.t->val.sliceType.type, f);
+                generateCast(getExpressionType(exp->val.access.base)->val.sliceType.type, f);
                 fprintf(f, "(sliceGet(");
 			    expCodeGen(exp->val.access.base, f);
                 fprintf(f, ", ");
 			    expCodeGen(exp->val.access.accessor, f);
 			    fprintf(f, ", %d))", exp->lineno);
-                generateUnionAccess(exp->val.access.base->contextEntry->entry.t->val.sliceType.type, f);
+                generateUnionAccess(getExpressionType(exp->val.access.base)->val.sliceType.type, f);
                 fprintf(f, ")");
                 return;
             }
             else {
                 fprintf(f, "(");
-                generateCast(exp->val.access.base->contextEntry->entry.t->val.arrayType.type, f);
+                generateCast(getExpressionType(exp->val.access.base)->val.arrayType.type, f);
                 fprintf(f, "(arrGet(");
 			    expCodeGen(exp->val.access.base, f);
                 fprintf(f, ", ");
 			    expCodeGen(exp->val.access.accessor, f);
-                fprintf(f, ", %d, %d))", exp->val.access.base->contextEntry->entry.t->val.arrayType.size, exp->lineno);
-                generateUnionAccess(exp->val.access.base->contextEntry->entry.t->val.arrayType.type, f);
+                fprintf(f, ", %d, %d))", getExpressionType(exp->val.access.base)->val.arrayType.size, exp->lineno);
+                generateUnionAccess(getExpressionType(exp->val.access.base)->val.arrayType.type, f);
                 fprintf(f, ")");
                 return;
             }
 			return;
 		case expKindFieldSelect:
             fprintf(f, "(");
-            generateCast(exp->val.access.base->contextEntry->entry.t, f);
+            generateCast(getExpressionType(exp->val.access.base), f);
 			expCodeGen(exp->val.access.base, f);
             fprintf(f, ")->");
             char * retVal = structMemb(exp->val.access.accessor->val.id);
