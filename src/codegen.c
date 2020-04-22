@@ -517,7 +517,7 @@ void expCodeGen(Exp *exp, FILE *f)
 			    fprintf(f, ")");
             } else //type cast
             {
-                if ( exp->val.funcCall.base->contextEntry->entry.t->val.nonCompositeType.type == baseString )
+                if ( getExpressionType(exp->val.funcCall.base)->val.nonCompositeType.type == baseString )
                 {
                     fprintf(f, "stringCast("); //helper function in templateCode.h
                     expListCodeGen(exp->val.funcCall.arguments, f);
@@ -532,32 +532,32 @@ void expCodeGen(Exp *exp, FILE *f)
             if ( exp->val.access.base->contextEntry->entry.t->underlyingType == sliceType )
             {
                 fprintf(f, "(");
-                generateCast(exp->val.access.base->contextEntry->entry.t->val.sliceType.type, f);
+                generateCast(getExpressionType(exp->val.access.base)->val.sliceType.type, f);
                 fprintf(f, "(sliceGet(");
 			    expCodeGen(exp->val.access.base, f);
                 fprintf(f, ", ");
 			    expCodeGen(exp->val.access.accessor, f);
 			    fprintf(f, ", %d))", exp->lineno);
-                generateUnionAccess(exp->val.access.base->contextEntry->entry.t->val.sliceType.type, f);
+                generateUnionAccess(getExpressionType(exp->val.access.base)->val.sliceType.type, f);
                 fprintf(f, ")");
                 return;
             }
             else {
                 fprintf(f, "(");
-                generateCast(exp->val.access.base->contextEntry->entry.t->val.arrayType.type, f);
+                generateCast(getExpressionType(exp->val.access.base)->val.arrayType.type, f);
                 fprintf(f, "(arrGet(");
 			    expCodeGen(exp->val.access.base, f);
                 fprintf(f, ", ");
 			    expCodeGen(exp->val.access.accessor, f);
-                fprintf(f, ", %d, %d))", exp->val.access.base->contextEntry->entry.t->val.arrayType.size, exp->lineno);
-                generateUnionAccess(exp->val.access.base->contextEntry->entry.t->val.arrayType.type, f);
+                fprintf(f, ", %d, %d))", getExpressionType(exp->val.access.base)->val.arrayType.size, exp->lineno);
+                generateUnionAccess(getExpressionType(exp->val.access.base)->val.arrayType.type, f);
                 fprintf(f, ")");
                 return;
             }
 			return;
 		case expKindFieldSelect:
             fprintf(f, "(");
-            generateCast(exp->val.access.base->contextEntry->entry.t, f);
+            generateCast(getExpressionType(exp->val.access.base), f);
 			expCodeGen(exp->val.access.base, f);
             fprintf(f, ")->");
             char * retVal = structMemb(exp->val.access.accessor->val.id);
@@ -820,32 +820,34 @@ void printCodeGen(ExpList* list,int indentLevel,FILE* fp){
     }
 
     Exp* exp = list->cur;
-    TTEntry* type = exp->contextEntry->entry.s->type;
+    TTEntry* type = getExpressionType(exp);
     //Implicit assumption that we have a type that resolves to a printable base type
     indent(indentLevel,fp);
+
+
     switch (type->val.nonCompositeType.type){
         case baseInt:
             fprintf(fp,"printf(\"%%d\",");
             expCodeGen(exp,fp);
-            fprintf(fp,");\\n");
+            fprintf(fp,");\n");
             break;
         case baseFloat64:
             fprintf(fp,"printf(\"%%lf\",");
             expCodeGen(exp,fp);
-            fprintf(fp,");\\n");
+            fprintf(fp,");\n");
             break;
         case baseRune:
             fprintf(fp,"printf(\"%%d\",(int)");
             expCodeGen(exp,fp);
-            fprintf(fp,");\\n");
+            fprintf(fp,");\n");
             break;
         case baseString:
             fprintf(fp,"printf(\"%%s\",");
             expCodeGen(exp,fp);
-            fprintf(fp,");\\n");
+            fprintf(fp,");\n");
             break;
         case baseBool: //QUITE UNCERTAIN DEPENDS ON REPRESENTATION OF BOOL
-            fprintf(fp,"printf(\"%%d\",(0==");
+            fprintf(fp,"printf(\"%%s\",(0==");
             expCodeGen(exp,fp);
             fprintf(fp,")?\"false\":\"true\");\n");
             break;
@@ -857,12 +859,13 @@ void printCodeGen(ExpList* list,int indentLevel,FILE* fp){
 
 void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
     if (list == NULL){
-        fprintf(fp,"printf(\"\\n\")\n");
+        indent(indentLevel,fp);
+        fprintf(fp,"printf(\"\\n\");\n");
         return;
     }
 
     Exp* exp = list->cur;
-    TTEntry* type = exp->contextEntry->entry.s->type;
+    TTEntry* type = getExpressionType(exp);
     //Implicit assumption that we have a type that resolves to a printable base type
     indent(indentLevel,fp);
     switch (type->val.nonCompositeType.type){
@@ -887,7 +890,7 @@ void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
             fprintf(fp,");\n");
             break;
         case baseBool: //QUITE UNCERTAIN DEPENDS ON REPRESENTATION OF BOOL
-            fprintf(fp,"printf(\"%%d \",(0==");
+            fprintf(fp,"printf(\"%%s \",(0==");
             expCodeGen(exp,fp);
             fprintf(fp,")?\"false\":\"true\");\n");
             break;
@@ -909,7 +912,7 @@ void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
     //Generate all temp assignments then assign them after temp assignments complete
     char* temp = tmpVarGen();
     indent(indentLevel,fp);
-    generateOurTypes(right->cur->contextEntry->entry.s -> type,fp);
+    generateOurTypes(getExpressionType(right->cur),fp);
     fprintf(fp," %s = ",temp);
     expCodeGen(right->cur,fp);
     fprintf(fp,";\n");
@@ -1675,9 +1678,6 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
         return; //small quirk but no structs leave a list of length 1
     }
 
-    for(int i = 0; i < globalList->size; i++){
-        printf("%d",globalList->structChain[i]->variant.label);
-    }
     
     for(int i = 0; i < globalList->size; i++){
         Trie* cur = globalList->structChain[i];

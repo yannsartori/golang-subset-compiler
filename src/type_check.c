@@ -271,11 +271,12 @@ void notMatchingTypes(TTEntry *t1, TTEntry *t2, ExpressionKind e, int lineno)
 	fprintf(stderr, "Error: (%d) Operation %s requires equal types for both arguments (got %s and %s)\n", lineno, expKindToString(e), typeToString(t1), typeToString(t2));
 	exit(1);
 }
-PolymorphicEntry *makeTypeEntry(TTEntry *t)
+PolymorphicEntry *makeTypeEntry(TTEntry *t) //This is weird maybe but I don't know.
 {
 	PolymorphicEntry *p = (PolymorphicEntry *) malloc(sizeof(PolymorphicEntry));
-	p->isSymbol = 0;
-	p->entry.t = t;
+	p->isSymbol = 1;
+	p->entry.s = (STEntry *) malloc(sizeof(STEntry));
+	p->entry.s->type = t;
 	return p; 
 }
 TTEntry *typeCheckExpression(Exp *e)
@@ -974,6 +975,7 @@ int isPrintable(Exp* exp){
 	}
 
 	TTEntry* type = typeCheckExpression(exp);
+
 
 	if (type == NULL){
 		puts("Error: (line %d) print, println expects base types, [received void]\n");
