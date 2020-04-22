@@ -1645,7 +1645,7 @@ void totalCodeGen(RootNode* root) {
 	}
 	
 	for (int i=0; i<initCount; i++) {
-		fprintf(output, "\t__golite_init_%d();\n")
+		fprintf(output, "\t__golite_init_%d();\n");
 	}
 	
 	fprintf(output, "__golite_main();\n");
