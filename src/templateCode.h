@@ -112,6 +112,16 @@ __golite_poly_entry sliceGet(__golite_slice *slice, int pos, int lineno)
     }
     return *(*(slice->arrPointer) + pos);
 }
+void arrSet(__golite_poly_entry * arr, int pos, int length, int lineno, __golite_poly_entry e)
+{
+    arrGet(arr, pos, length, lineno); //does outofbounds check
+    *(arr + pos) = e;
+}
+void sliceSet(__golite_slice *slice, int pos, int lineno, __golite_poly_entry e)
+{
+    sliceGet(slice, pos, lineno);
+    *(*slice->arrPointer + pos) = e;
+}
 int structEquality(void * struct1, void * struct2, char * structName);
 void * structCopy(void * struct1, char * structName);
 char *concat(char *__s1, char *__s2);

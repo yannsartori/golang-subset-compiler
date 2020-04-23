@@ -923,7 +923,31 @@ void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
 }
 
 
-
+int expCodeGenSet(Exp *exp, FILE *f)
+{
+    if ( exp->kind == expKindIndexing )
+    {
+        if ( exp->val.access.base->contextEntry->entry.t->underlyingType == sliceType )
+        {
+            fprintf(f, "sliceSet(");
+            expCodeGen(exp->val.access.base, f);
+            fprintf(f, ", ");
+            expCodeGen(exp->val.access.accessor, f);
+            fprintf(f, ", %d, ", exp->lineno);
+        } else {
+            fprintf(f, "arrSet(");
+            expCodeGen(exp->val.access.base, f);
+            fprintf(f, ", ");
+            expCodeGen(exp->val.access.accessor, f);
+            fprintf(f, ", %d, %d, ", getExpressionType(exp->val.access.base)->val.arrayType.size, exp->lineno);
+        }
+        return 1;
+    }
+    else {
+        expCodeGen(exp, f);
+        return 0;
+    }
+}
 void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
     if (left == NULL || right == NULL){
         return;
@@ -943,7 +967,38 @@ void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
 
     if (!isBlank(left->cur)){ 
         indent(indentLevel,fp);
-        fprintf(fp,"%s = %s;\n",idGen(left->cur->contextEntry),temp);
+        int isIndex = expCodeGenSet(left->cur, fp);
+        if ( isIndex )
+        {    
+            TTEntry *type = getExpressionType(right->cur);
+            if ( type->underlyingType == identifierType )
+            {
+                switch ( type->val.nonCompositeType.type )
+                {
+                    case baseBool:
+                    case baseInt:
+                        fprintf(fp, "createPolyInt(");
+                        break;
+                    case baseFloat64:
+                        fprintf(fp, "createPolyFloat(");
+                        break;
+                    case baseRune:
+                        fprintf(fp, "createPolyRune(");
+                        break;
+                    case baseString:
+                        fprintf(fp, "createPolyString(");
+                        break;
+                }
+            } else
+            {
+                fprintf(fp, "createPolyVoid(");
+            }
+            fprintf(fp, "%s));\n", temp);
+            //arr/sliceSet(variable, position, lineNo, polyCreate(itemToSet));
+        } else
+        {
+            fprintf(fp," = %s;\n", temp);
+        }
     }
 
 
@@ -1660,7 +1715,6 @@ void totalCodeGen(RootNode* root) {
 	 */
 	
 	FILE* output = fopen("go.out.c", "w");
-	
 	fprintf(output, "#include \"templateCode.h\"\n");
 	
 	trie  = encodeRoot(root);
