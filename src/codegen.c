@@ -466,12 +466,12 @@ void funcExpListCodeGen(ExpList *list, FILE *f)
             generateTypeChain(type->val.arrayType.type, typeChain);
             fprintf(f, "arrayCopy(");
             expCodeGen(list->cur, f);
-            fprintf(f, ", %s, %d)", typeChain, type->val.arrayType.size);
+            fprintf(f, ", \"%s\", %d)", typeChain, type->val.arrayType.size);
             free(typeChain);
         case structType:
             fprintf(f, "structCopy(");
             expCodeGen(list->cur, f); 
-            fprintf(f, ", %s)", idGenJustType(type));
+            fprintf(f, ", \"%s\")", idGenJustType(type));
     }
 	if ( list->next != NULL )
 	{
@@ -751,7 +751,7 @@ void expCodeGen(Exp *exp, FILE *f)
                 char * typeChain = (char *) malloc(sizeof(char) * 999);
                 strcpy(typeChain, "");
                 generateTypeChain(type->val.arrayType.type, typeChain);
-                fprintf(f, "%s, %d)", typeChain, type->val.arrayType.size);
+                fprintf(f, "\"%s\", %d)", typeChain, type->val.arrayType.size);
                 free(typeChain);
                 break;
         }
@@ -797,7 +797,7 @@ void expCodeGen(Exp *exp, FILE *f)
                 char * typeChain = (char *) malloc(sizeof(char) * 999);
                 strcpy(typeChain, "");
                 generateTypeChain(type->val.arrayType.type, typeChain);
-                fprintf(f, "%s, %d)", typeChain, type->val.arrayType.size);
+                fprintf(f, "\"%s\", %d)", typeChain, type->val.arrayType.size);
                 free(typeChain);
                 break;
         }
