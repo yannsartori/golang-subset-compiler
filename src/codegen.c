@@ -351,6 +351,7 @@ void generateStructEquality(TTEntry *sType, FILE *f)
             case arrayType:
                 if ( 0 ) break;
                 char * typeChain = (char *) malloc(sizeof(char) * 999);
+                strcpy(typeChain, "");
                 generateTypeChain(t->val.arrayType.type, typeChain);
                 fprintf(f, "arrEquality(x->%s, y->%s, %s, %d) && ", fieldName, fieldName, typeChain, t->val.arrayType.size);
                 free(typeChain);
@@ -420,6 +421,7 @@ void generateStructCopy(TTEntry *structType_, FILE *f)
             case arrayType:
                 if ( 0 ) break;
                 char * typeChain = (char *) malloc(sizeof(char) * 999);
+                strcpy(typeChain, "");
                 generateTypeChain(t->val.arrayType.type, typeChain);
                 fprintf(f, "\ty->%s = arrCopy(x->%s, %s, %d);\n", fieldName, fieldName, typeChain, t->val.arrayType.size);
                 free(typeChain);
@@ -468,6 +470,7 @@ void funcExpListCodeGen(ExpList *list, FILE *f)
             expCodeGen(list->cur, f);
             fprintf(f, ", \"%s\", %d)", typeChain, type->val.arrayType.size);
             free(typeChain);
+            break;
         case structType:
             fprintf(f, "structCopy(");
             expCodeGen(list->cur, f); 
@@ -546,7 +549,7 @@ void expCodeGen(Exp *exp, FILE *f)
     }
 	else if ( exp->kind == expKindIndexing )
     {
-        if ( exp->val.access.base->contextEntry->entry.t->underlyingType == sliceType )
+        if ( getExpressionType(exp->val.access.base)->underlyingType == sliceType )
         {
             fprintf(f, "(");
             generateCast(getExpressionType(exp->val.access.base)->val.sliceType.type, f);
@@ -695,7 +698,7 @@ void expCodeGen(Exp *exp, FILE *f)
             expCodeGen(exp->val.binary.left, f);
             fprintf(f, ", ");
             expCodeGen(exp->val.binary.right, f);
-            fprintf(f, ");");  
+            fprintf(f, ")");  
         }
         else {
             standardBinaryGen(exp, "+", f);
@@ -797,7 +800,7 @@ void expCodeGen(Exp *exp, FILE *f)
                 char * typeChain = (char *) malloc(sizeof(char) * 999);
                 strcpy(typeChain, "");
                 generateTypeChain(type->val.arrayType.type, typeChain);
-                fprintf(f, "\"%s\", %d)", typeChain, type->val.arrayType.size);
+                fprintf(f, ", \"%s\", %d)", typeChain, type->val.arrayType.size);
                 free(typeChain);
                 break;
         }
@@ -927,7 +930,7 @@ int expCodeGenSet(Exp *exp, FILE *f)
 {
     if ( exp->kind == expKindIndexing )
     {
-        if ( exp->val.access.base->contextEntry->entry.t->underlyingType == sliceType )
+        if ( getExpressionType(exp->val.access.base)->underlyingType == sliceType )
         {
             fprintf(f, "sliceSet(");
             expCodeGen(exp->val.access.base, f);
@@ -970,9 +973,9 @@ void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
     if (!isBlank(left->cur)){ 
         indent(indentLevel,fp);
         int isIndex = expCodeGenSet(left->cur, fp);
+        TTEntry *type = getExpressionType(right->cur);
         if ( isIndex )
         {    
-            TTEntry *type = getExpressionType(right->cur);
             if ( type->underlyingType == identifierType )
             {
                 switch ( type->val.nonCompositeType.type )
@@ -999,7 +1002,19 @@ void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
             //arr/sliceSet(variable, position, lineNo, polyCreate(itemToSet));
         } else
         {
-            fprintf(fp," = %s;\n", temp);
+            if ( type->underlyingType == arrayType )
+            {
+                char * typeChain = (char *) malloc(sizeof(char) * 999);
+                strcpy(typeChain, "");
+                generateTypeChain(type->val.arrayType.type, typeChain);
+                fprintf(fp," = arrCopy(%s, \"%s\", %d);\n", temp, typeChain, type->val.arrayType.size);
+                free(typeChain);
+            }
+            else if ( type->underlyingType == structType )
+            {
+                fprintf(fp, " = %s_copy(%s);", idGenJustType(type), temp);
+            }
+            else fprintf(fp," = %s;\n", temp);
         }
     }
 
@@ -1050,7 +1065,7 @@ void expListToBool( ExpList* list, char* exp1,FILE* fp){
                     fprintf(fp, "arrEquality(");
                     expCodeGen(exp, fp);
                     fprintf(fp, ", ");
-                    fprintf(fp,"%s",exp1);
+                    fprintf(fp,"%s, ",exp1);
                     char * typeChain = (char *) malloc(sizeof(char) * 999);
                     strcpy(typeChain, "");
                     generateTypeChain(type->val.arrayType.type, typeChain);
@@ -1311,7 +1326,7 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 
                 switch (stmt->val.opAssignment.kind) {
 				case expKindAddition:
-					type = lhs->contextEntry->entry.s->type;
+					type = getExpressionType(lhs);
                     if(type->val.nonCompositeType.type == baseString){
                         char* temp1 = tmpVarGen();
                         char* temp2 = tmpVarGen();
@@ -1654,7 +1669,8 @@ void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 			fprintf(fp, ";\n");
 		} else if (decl -> whoAmI -> type -> underlyingType == arrayType) {
 			
-			char typeChain[900];
+			char * typeChain = (char *) malloc(sizeof(char) * 999);
+            strcpy(typeChain, "");
 			generateTypeChain(decl -> whoAmI -> type -> val.arrayType.type, typeChain);
 			
 			fprintf(fp, "arrCopy(");

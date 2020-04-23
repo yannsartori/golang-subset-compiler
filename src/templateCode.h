@@ -175,7 +175,7 @@ __golite_poly_entry *arrCopy(__golite_poly_entry *arr, char *typeChain, int arrL
     }
     if ( comparisonMode == 0 )
     {
-        for ( int i = 0; i < arrLength; arr++ )
+        for ( int i = 0; i < arrLength; i++ )
         {
             newArr[i] = arr[i];
         }
@@ -183,7 +183,6 @@ __golite_poly_entry *arrCopy(__golite_poly_entry *arr, char *typeChain, int arrL
     {
         char * newType = malloc(sizeof(char) * (strlen(typeChain) - curPos + 1));
         strcpy(newType, typeChain + curPos);
-        free(typeChain);
         for ( int i = 0; i < arrLength; i++ )
         {
             newArr[i].polyVal = arrCopy((__golite_poly_entry *) arr[i].polyVal, newType, atoi(size)); 
@@ -191,7 +190,6 @@ __golite_poly_entry *arrCopy(__golite_poly_entry *arr, char *typeChain, int arrL
         free(newType);
     } else if ( comparisonMode == 2 )
     {
-        free(typeChain);
         for ( int i = 0; i < arrLength; i++ )
         {
             newArr[i].polyVal = structCopy(arr[i].polyVal, structName); //we can put the header rn.
@@ -240,7 +238,6 @@ int arrEquality(__golite_poly_entry *arr1, __golite_poly_entry *arr2, char *type
     switch( comparisonMode )
     {
         case 0:
-        free(typeChain);
         for ( int i = 0; i < arrLength; i++ )
         {
             if ( arr1[i].intVal != arr2[i].intVal ) return 0;
@@ -248,7 +245,6 @@ int arrEquality(__golite_poly_entry *arr1, __golite_poly_entry *arr2, char *type
         break;
 
         case 1:
-        free(typeChain);
         for ( int i = 0; i < arrLength; i++ )
         {
             if ( arr1[i].runeVal  != arr2[i].runeVal  ) return 0;
@@ -256,7 +252,6 @@ int arrEquality(__golite_poly_entry *arr1, __golite_poly_entry *arr2, char *type
         break;
         
         case 2:
-        free(typeChain);
         for ( int i = 0; i < arrLength; i++ )
         {
             if ( arr1[i].floatVal  != arr2[i].floatVal  ) return 0;
@@ -264,7 +259,6 @@ int arrEquality(__golite_poly_entry *arr1, __golite_poly_entry *arr2, char *type
         break;
         
         case 3:
-        free(typeChain);
         for ( int i = 0; i < arrLength; i++ )
         {
             if ( strcmp(arr1[i].stringVal, arr2[i].stringVal) != 0 ) return 0;
@@ -272,7 +266,6 @@ int arrEquality(__golite_poly_entry *arr1, __golite_poly_entry *arr2, char *type
         break;
         
         case 4:
-        free(typeChain);
         for ( int i = 0; i < arrLength; i++ )
         {
             if ( !structEquality(arr1[i].polyVal, arr2[i].polyVal, structName) ) return 0;
@@ -282,7 +275,6 @@ int arrEquality(__golite_poly_entry *arr1, __golite_poly_entry *arr2, char *type
         case 5:;
         char * newType = malloc(sizeof(char) * (strlen(typeChain) - curPos + 1));
         strcpy(newType, typeChain + curPos);
-        free(typeChain);
         for ( int i = 0; i < arrLength; i++ )
         {
             if ( !arrEquality((__golite_poly_entry *) (arr1[i].polyVal), (__golite_poly_entry *) (arr2[i].polyVal), newType, atoi(size)) ) {
