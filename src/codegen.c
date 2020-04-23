@@ -952,19 +952,21 @@ void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
     if (left == NULL || right == NULL){
         return;
     }
-
+	
     
     //Broken (replace void* by actual type)
     //Generate all temp assignments then assign them after temp assignments complete
     char* temp = tmpVarGen();
     indent(indentLevel,fp);
+	
     generateOurTypes(getExpressionType(right->cur),fp);
     fprintf(fp," %s = ",temp);
     expCodeGen(right->cur,fp);
     fprintf(fp,";\n");
 
+	
     assignStmtCodeGen(left->next,right->next,indentLevel,fp);
-
+	
     if (!isBlank(left->cur)){ 
         indent(indentLevel,fp);
         int isIndex = expCodeGenSet(left->cur, fp);
@@ -1431,11 +1433,10 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 			break;
 		case StmtKindVarDeclaration:
 			/* I think I can just copy the other one */
-			varJustDeclNoVal(stmt -> val.varDeclaration, indentLevel, fp);
-			varDeclAssignCodeGen(stmt -> val.varDeclaration, indentLevel, fp);
-			break;
 		case StmtKindShortDeclaration: 
 			/* this might be awful */
+			varJustDeclNoVal(stmt -> val.varDeclaration, indentLevel, fp);
+			varDeclAssignCodeGen(stmt -> val.varDeclaration, indentLevel, fp);
 			break;
         
     }
@@ -1495,9 +1496,8 @@ void funcCodeGen(FuncDeclNode* func, FILE* fp) {
 	fprintf(fp, " ");
 	
 	char* funcName;
-
 	funcName = idGenJustVar(func -> symbolEntry);
-
+	
 	fprintf(fp,"%s", funcName);
 	
 	fprintf(fp, "(");
@@ -1522,6 +1522,7 @@ void funcCodeGen(FuncDeclNode* func, FILE* fp) {
 		fprintf(fp, "%s",argNameHolder);
 		argsIter = argsIter -> next;
 	}
+	
 	
 	fprintf(fp, ")\n"); /* ask neil abouat brackets */
 	stmtCodeGen(func -> blockStart,0,fp);
@@ -1635,17 +1636,17 @@ void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 		return;
 	}
 	
-	
-	indent(indentLevel, fp);
 	char * varName = idGenJustVar(decl -> whoAmI);
 	
-	fprintf(fp,"%s", varName);
 	
 	if (decl -> value == NULL) {
-		fprintf(fp, ";\n");
 		genInitAndZero(makeIdChain(varName, NULL), decl -> whoAmI -> type, indentLevel, fp);
 	} else {
 	
+		indent(indentLevel, fp);
+		
+		
+		fprintf(fp,"%s", varName);
 		fprintf(fp, " = ");
 		
 		if (decl -> whoAmI -> type -> underlyingType == identifierType) {
@@ -1685,12 +1686,13 @@ void varJustDeclNoVal(VarDeclNode* varDecl, int indentLevel, FILE* fp) {
 	if (varDecl == NULL) {
 		return;
 	}
-	
-	indent(indentLevel, fp);
-	generateOurTypes(varDecl -> whoAmI -> type, fp);
-	fprintf(fp, " ");
-	char * varName = idGenJustVar(varDecl -> whoAmI);
-	fprintf(fp, "%s;\n", varName);
+	if (varDecl -> iDoDeclare = 1) {
+		indent(indentLevel, fp);
+		generateOurTypes(varDecl -> whoAmI -> type, fp);
+		fprintf(fp, " ");
+		char * varName = idGenJustVar(varDecl -> whoAmI);
+		fprintf(fp, "%s;\n", varName);
+	}
 	
 	varJustDeclNoVal(varDecl -> nextDecl, indentLevel, fp);
 	varJustDeclNoVal(varDecl -> multiDecl, indentLevel, fp);
@@ -1732,6 +1734,7 @@ void totalCodeGen(RootNode* root) {
 	
 	while (mainIter != NULL) {
 		if (mainIter -> declType == funcDeclType) {
+			
 			funcCodeGen(mainIter -> actualRealDeclaration.funcDecl, output);
 		} else if (mainIter -> declType == variDeclType){
 			varJustDeclNoVal(mainIter -> actualRealDeclaration.varDecl, 0, output);

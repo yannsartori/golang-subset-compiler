@@ -1271,7 +1271,6 @@ void typeCheckVarDecl(VarDeclNode* decl) {
 			}
 		}
 	} else {
-		printf("me\n");
 		if (!typeEquality(expType, decl -> whoAmI -> type)) {
 			fprintf(stderr,"Error: (line %d) %s cannot be assigned to %s\n", decl -> lineno, typeToString(expType), typeToString(decl -> whoAmI -> type));
 			exit(1);
