@@ -681,43 +681,44 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 		t -> val.structType.fieldNames = idMover;
 		int returnCode;
 		while (sMembs != NULL) {
-			if (head == NULL && identifier == NULL){
-				innerType = makeAnonymousTTEntry(contx, sMembs -> typeThing);
-			} else if (head == NULL) {
-				innerType = makeSubTTEntry(contx, sMembs -> typeThing, t, 0);
-			} else {
-				innerType = makeSubTTEntry(contx, sMembs -> typeThing, head, inSlice);
-			}
-			if (innerType -> underlyingType == badType) {
-				t -> id = innerType -> id;
-				t -> underlyingType = badType;
-				return t;
-			}
-			t -> comparable *= innerType -> comparable;   //this line scares me
-			
-			
-			memberEntry = malloc(sizeof(STEntry));
-			memberEntry -> id = sMembs -> identifier;
-			memberEntry -> type = innerType;
-			returnCode = addSymbolEntry(tentativeContext, memberEntry);
-			if (returnCode != 0) {
-				t -> id = "duplicate struct members";
-				t -> underlyingType = badType;
-				return t;
-			}
-			
-			idMover -> identifier = sMembs -> identifier;
-			sMembs = sMembs -> nextDecl;
-			
-			if (sMembs == NULL) {
-				idMover -> next = NULL;
-			} else {
+			if (strcmp(sMembs -> identifier, "_") != 0) {
+				if (head == NULL && identifier == NULL){
+					innerType = makeAnonymousTTEntry(contx, sMembs -> typeThing);
+				} else if (head == NULL) {
+					innerType = makeSubTTEntry(contx, sMembs -> typeThing, t, 0);
+				} else {
+					innerType = makeSubTTEntry(contx, sMembs -> typeThing, head, inSlice);
+				}
+				if (innerType -> underlyingType == badType) {
+					t -> id = innerType -> id;
+					t -> underlyingType = badType;
+					return t;
+				}
+				t -> comparable *= innerType -> comparable;   //this line scares me
 				
-				idMover -> next = malloc(sizeof(IdChain));
-				idMover = idMover -> next;
+				
+				memberEntry = malloc(sizeof(STEntry));
+				memberEntry -> id = sMembs -> identifier;
+				memberEntry -> type = innerType;
+				returnCode = addSymbolEntry(tentativeContext, memberEntry);
+				if (returnCode != 0) {
+					t -> id = "duplicate struct members";
+					t -> underlyingType = badType;
+					return t;
+				}
+				
+				idMover -> identifier = sMembs -> identifier;
+				sMembs = sMembs -> nextDecl;
+				
+				if (sMembs == NULL) {
+					idMover -> next = NULL;
+				} else {
+					
+					idMover -> next = malloc(sizeof(IdChain));
+					idMover = idMover -> next;
+				}
+				
 			}
-			
-			
 		}
 		t -> val.structType.fields = tentativeContext;
 		
