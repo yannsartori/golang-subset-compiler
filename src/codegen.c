@@ -430,7 +430,7 @@ void generateStructCopy(TTEntry *structType_, FILE *f)
     }
     fprintf(f, "\t return y;\n}"); 
 }
-
+/*
 void expListCodeGen(ExpList *list, FILE *f)
 {
 	if ( list == NULL || list->cur == NULL ) return;
@@ -442,7 +442,7 @@ void expListCodeGen(ExpList *list, FILE *f)
 	}
 
 }
-
+*/
 // These are pretty much duplicated because I wasn't sure if anyone 
 // else needs a "pure" expression list generation... If noone else 
 // needs it we can just remove it.
@@ -476,7 +476,7 @@ void funcExpListCodeGen(ExpList *list, FILE *f)
 	if ( list->next != NULL )
 	{
 		fprintf(f, ", ");
-		expListCodeGen(list->next, f);
+		funcExpListCodeGen(list->next, f);
 	}
 }
 char * expKindToString(ExpressionKind e);
@@ -535,11 +535,11 @@ void expCodeGen(Exp *exp, FILE *f)
             if ( getExpressionType(exp->val.funcCall.base)->val.nonCompositeType.type == baseString )
             {
                 fprintf(f, "stringCast("); //helper function in templateCode.h
-                expListCodeGen(exp->val.funcCall.arguments, f);
+                funcExpListCodeGen(exp->val.funcCall.arguments, f); //maybeExpList
                 fprintf(f, ")");
             } else //trust c's implicit cast. Since we only do this on non composite types we should be good
             {
-                expListCodeGen(exp->val.funcCall.arguments, f);
+                funcExpListCodeGen(exp->val.funcCall.arguments, f); //maybeExpList
             }
         }
         return;
