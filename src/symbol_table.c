@@ -191,6 +191,7 @@ void checkReps(VarDeclNode* declNode) {
 			fprintf(stderr, "Error (line %d): identifier (%s) appeared twice in a short declaration\n", declNode -> lineno, declNode -> identifier);
 			exit(1);
 		}
+		iter = iter -> nextDecl;
 	}
 	
 	checkReps(declNode -> nextDecl);
@@ -479,84 +480,84 @@ void symbolCheckProgram(RootNode* root) {
 					fprintf(stderr, "Error: (line %d) init must have no arguments and void return type\n", iter -> actualRealDeclaration.funcDecl -> lineno);
 					exit(1);
 				}
-				symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
-			} else  {
+			} 
 				
 				
-				if (strcmp(s -> id, "main") == 0) {
-					if (iter -> actualRealDeclaration.funcDecl -> returnType != NULL || iter -> actualRealDeclaration.funcDecl -> argsDecls != NULL) {
-						fprintf(stderr, "Error: (line %d) main must have no arguments and void return type\n", iter -> actualRealDeclaration.funcDecl -> lineno);
-						exit(1);
-					}
+			if (strcmp(s -> id, "main") == 0) {
+				if (iter -> actualRealDeclaration.funcDecl -> returnType != NULL || iter -> actualRealDeclaration.funcDecl -> argsDecls != NULL) {
+					fprintf(stderr, "Error: (line %d) main must have no arguments and void return type\n", iter -> actualRealDeclaration.funcDecl -> lineno);
+					exit(1);
 				}
-				
-				if (strcmp(s -> id, "_") != 0){
-					if (addSymbolEntry(masterContx, s) != 0) {
-						fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", iter -> actualRealDeclaration.funcDecl -> lineno, s -> id);
-						exit(1);
-					}
+			}
+			
+			if (strcmp(s -> id, "_") != 0 && strcmp(s -> id, "init")){
+				if (addSymbolEntry(masterContx, s) != 0) {
+					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", iter -> actualRealDeclaration.funcDecl -> lineno, s -> id);
+					exit(1);
 				}
-				
-				s -> type = malloc(sizeof(TTEntry));
-				s -> type -> id = NULL;
-				s -> type -> underlyingType = funcType;
-				s -> type -> comparable = 0;
-				
-				if (iter -> actualRealDeclaration.funcDecl -> returnType == NULL) {
-					s -> type -> val.functionType.ret = NULL;
-				} else {
-					s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
-					if (s -> type -> val.functionType.ret -> underlyingType == badType) {
-						fprintf(stderr, "Error: (line %d) problem with function return type: %s\n", iter -> actualRealDeclaration.funcDecl -> lineno, s -> type -> val.functionType.ret -> id);
-						exit(1);
-					}
+			}
+			
+			s -> type = malloc(sizeof(TTEntry));
+			s -> type -> id = NULL;
+			s -> type -> underlyingType = funcType;
+			s -> type -> comparable = 0;
+			
+			if (iter -> actualRealDeclaration.funcDecl -> returnType == NULL) {
+				s -> type -> val.functionType.ret = NULL;
+			} else {
+				s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
+				if (s -> type -> val.functionType.ret -> underlyingType == badType) {
+					fprintf(stderr, "Error: (line %d) problem with function return type: %s\n", iter -> actualRealDeclaration.funcDecl -> lineno, s -> type -> val.functionType.ret -> id);
+					exit(1);
 				}
+			}
+			
+			VarDeclNode* argsIter = iter -> actualRealDeclaration.funcDecl -> argsDecls;
+			if (argsIter != NULL){
+				int returnCode;
+				STEntry *argEntryIter = malloc(sizeof(STEntry));
+				argEntryIter -> id = argsIter -> identifier;
+				argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
+				argEntryIter -> isConstant = 0;
+				argsIter->functionArgTypeEntry = argEntryIter->type; // Neil added this 
+				if (argEntryIter -> type -> underlyingType == badType) {
+					fprintf(stderr, "Error: (line %d) invalid type used to declare function argument %s: %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> type -> id);
+					exit(1);
+				};
+				if (strcmp(argEntryIter -> id, "_") != 0) {
+					returnCode = addSymbolEntry(functionContext, argEntryIter);
+				}
+				s -> type -> val.functionType.args = argEntryIter;
 				
-				VarDeclNode* argsIter = iter -> actualRealDeclaration.funcDecl -> argsDecls;
-				if (argsIter != NULL){
-					int returnCode;
-					STEntry *argEntryIter = malloc(sizeof(STEntry));
+				argsIter = argsIter -> nextDecl;
+				
+				while (argsIter != NULL) {
+					argEntryIter -> next = malloc(sizeof(STEntry));
+					argEntryIter = argEntryIter -> next;
 					argEntryIter -> id = argsIter -> identifier;
 					argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
 					argEntryIter -> isConstant = 0;
-					argsIter->functionArgTypeEntry = argEntryIter->type; // Neil added this 
 					if (argEntryIter -> type -> underlyingType == badType) {
 						fprintf(stderr, "Error: (line %d) invalid type used to declare function argument %s: %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> type -> id);
 						exit(1);
-					};
+					}
 					if (strcmp(argEntryIter -> id, "_") != 0) {
 						returnCode = addSymbolEntry(functionContext, argEntryIter);
-					}
-					s -> type -> val.functionType.args = argEntryIter;
-					
-					argsIter = argsIter -> nextDecl;
-					
-					while (argsIter != NULL) {
-						argEntryIter -> next = malloc(sizeof(STEntry));
-						argEntryIter = argEntryIter -> next;
-						argEntryIter -> id = argsIter -> identifier;
-						argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
-						argEntryIter -> isConstant = 0;
-						if (argEntryIter -> type -> underlyingType == badType) {
-							fprintf(stderr, "Error: (line %d) invalid type used to declare function argument %s: %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> type -> id);
+						if (returnCode != 0) {
+							fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", argsIter -> lineno);
 							exit(1);
 						}
-						if (strcmp(argEntryIter -> id, "_") != 0) {
-							returnCode = addSymbolEntry(functionContext, argEntryIter);
-							if (returnCode != 0) {
-								fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", argsIter -> lineno);
-								exit(1);
-							}
-						}
-						
-						argsIter = argsIter -> nextDecl;
 					}
-					argEntryIter -> next = NULL;
+					
+					argsIter = argsIter -> nextDecl;
 				}
-				reusingFunctionContext = 1;
-				symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
-				reusingFunctionContext = 0;
+				argEntryIter -> next = NULL;
 			}
+			
+			reusingFunctionContext = 1;
+			symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
+			reusingFunctionContext = 0;
+			
 			
 		} else {
 			fprintf(stderr, "I don't know what the fuck just happened, but I don't really care: I'm a get the fuck up out of here. Fuck this shit, I'm out.\n");
