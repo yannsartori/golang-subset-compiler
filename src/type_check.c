@@ -295,7 +295,7 @@ TTEntry *typeCheckExpression(Exp *e)
 		case expKindRawStringLit:
 		case expKindInterpretedStringLit: e->contextEntry = makeTypeEntry(getBuiltInType("string")); return getExpressionType(e);
 		case expKindIdentifier:
-			if ( !e->contextEntry->isSymbol ) notExpressionError(type, e->lineno);
+			if ( !e->contextEntry->isSymbol ) notExpressionError(e->contextEntry->entry.t, e->lineno);
 			return getExpressionType(e);
 		default:
 			if ( isUnary(e) )

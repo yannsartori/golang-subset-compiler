@@ -188,7 +188,7 @@ void checkReps(VarDeclNode* declNode) {
 	
 	while (iter != NULL ){
 		if (strcmp(declNode -> identifier, iter -> identifier) == 0) {
-			fprintf(stderr, "Error (line %d): identifier (%s) appeared twice in a short declaration\n", declNode -> lineno, declNode -> identifier);
+			fprintf(stderr, "Error: (line %d) identifier (%s) appeared twice in a short declaration\n", declNode -> lineno, declNode -> identifier);
 			exit(1);
 		}
 		iter = iter -> nextDecl;
