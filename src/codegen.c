@@ -1164,6 +1164,7 @@ void localContinueReplace(Stmt* stmt,char* label){//Replaces or loop continues b
 
 void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp);
 void varJustDeclNoVal(VarDeclNode* varDecl, int indentLevel, FILE* fp);
+void specialIncDecStatementCodeGen(Stmt* stmt,int indentLevel, FILE* fp);
 
 void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
     if (stmt == NULL){
@@ -1437,11 +1438,20 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             }
                 break;
             case StmtKindInc:
+                if (stmt->val.incStmt.exp->kind == expKindIndexing){
+                    specialIncDecStatementCodeGen(stmt,indentLevel,fp);
+                    break;
+                }
+                
                 indent(indentLevel,fp);
                 expCodeGen(stmt->val.incStmt.exp,fp);
                 fprintf(fp,"++;\n");
                 break;
             case StmtKindDec:
+                if (stmt->val.decStmt.exp->kind == expKindIndexing){
+                    specialIncDecStatementCodeGen(stmt,indentLevel,fp);
+                    break;
+                }
                 indent(indentLevel,fp);
                 expCodeGen(stmt->val.decStmt.exp,fp);
                 fprintf(fp,"--;\n");
@@ -1465,9 +1475,64 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
     stmtCodeGen(stmt->next,indentLevel,fp);
 }
 
+void specialIncDecStatementCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
+     if (stmt == NULL){
+        return;
+    }
+
+    Exp* lhs;
+    lhs = stmt->val.incStmt.exp;
+
+    char* index = tmpVarGen();
+    indent(indentLevel,fp);
+    fprintf(fp,"int %s = ",index);
+    expCodeGen(lhs->val.access.accessor,fp);
+    fprintf(fp,";\n");
+    int arrLength = getExpressionType(lhs->val.access.base)->val.arrayType.size;
+
+    char* base = tmpVarGen();
+    indent(indentLevel,fp);
+    generateOurTypes(getExpressionType(lhs->val.access.base),fp);
+    indent(indentLevel,fp);
+    fprintf(fp,"%s = ",base);
+    expCodeGen(lhs->val.access.base,fp);
+    fprintf(fp,";\n");
+
+    int lineno = lhs->lineno;
+
+    indent(indentLevel,fp);
+    fprintf(fp,"arrSet(%s,%s,%d,%d,arrGet(%s,%s,%d,%d)",base,index,arrLength,lineno,base,index,arrLength,lineno);
+    switch(stmt->kind){ 
+        case StmtKindInc:   
+            fprintf(fp,"+1);\n");
+            break;
+        case StmtKindDec:
+            fprintf(fp,"-1);\n");
+            break;
+    }
+
+}
+/*
+
+void specialOpStatementCodeGen(Stmt* stmt, int indentLevel,FILE* fp){
+    if (stmt == NULL){
+        return;
+    }
+
+    Exp* lhs,rhs;
+    lhs = stmt->val.incStmt.exp;
+
+    char* index = tmpVarGen();
+    indent(indentLevel,fp);
+    fprintf(fp,"%s = ")
+
+    switch(stmt->kind){
+       
+
+    }
 
 
-
+}*/
 
 
 
