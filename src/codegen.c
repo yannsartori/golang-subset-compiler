@@ -96,7 +96,9 @@ char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
         id = e->entry.s->id;
         if ( e->entry.s->isConstant == 2 && strcmp(id, "main") == 0 )
         {
-           return strcpy(retVal, "__golite_main");
+           retVal = (char *) malloc(sizeof(char) * 20);
+           strcpy(retVal, "__golite_main");
+           return retVal;
         }
         //generates init names in declaration order
         //so in the generated main, while (i := 0) < initCount, generate __golite_init_i(), then generate __golite_main
@@ -108,7 +110,9 @@ char *idGen(PolymorphicEntry *e) //creates and/or returns the "correct" id
         }
         else if ( e->entry.s->isConstant == 1 ) //an unshadowed boolean
         {
-            return strcpy(retVal, id); //either "true" or "false". If we import stdbool this works
+            retVal = (char *) malloc(sizeof(char) * 10);
+            strcpy(retVal, id); //either "true" or "false". If we import stdbool this works
+            return retVal;
         }
         // this check can potentially be moved in the generation of declarations
         else if ( strcmp(id, "_") == 0 ) return tmpVarGen(); 
@@ -480,331 +484,348 @@ void expCodeGen(Exp *exp, FILE *f)
 {
     TTEntry *type;
     if ( exp == NULL ) return;
-	switch ( exp->kind )
+	if ( exp->kind == expKindIdentifier )
 	{
-		case expKindIdentifier:
-            if ( exp->contextEntry->entry.s->isConstant == 1 ) //is true or false, no shadowing...
-            {
-                fprintf(f, "%s", exp->val.id); //use stdbool!!!!
-            } else
-            {
-                char *retVal = idGen(exp->contextEntry);
-                fprintf(f, "%s",  retVal);
-                free(retVal);
-            }
-            return;
-		case expKindIntLit:
-			fprintf(f, "%d", exp->val.intLit);
-			return;
-		case expKindFloatLit:
-			fprintf(f, "%lf", exp->val.floatLit);
-			return;
-		case expKindRuneLit: //might need to take special care idk
-			fprintf(f, "%s", exp->val.runeLit);
-			return;
-		case expKindRawStringLit:
-            rawStringCodeGen(exp->val.stringLit, f);
-            return;
-		case expKindInterpretedStringLit:
-			fprintf(f, "%s", exp->val.stringLit);
-			return;
-		case expKindFuncCall:
-			if ( exp->val.funcCall.base->contextEntry->isSymbol ) //true function call not a type cast
-            {
-                fprintf(f, "%s", idGen(exp->val.funcCall.base->contextEntry));
-                fprintf(f, "(");
-			    funcExpListCodeGen(exp->val.funcCall.arguments, f);
-			    fprintf(f, ")");
-            } else //type cast
-            {
-                if ( getExpressionType(exp->val.funcCall.base)->val.nonCompositeType.type == baseString )
-                {
-                    fprintf(f, "stringCast("); //helper function in templateCode.h
-                    expListCodeGen(exp->val.funcCall.arguments, f);
-                    fprintf(f, ")");
-                } else //trust c's implicit cast. Since we only do this on non composite types we should be good
-                {
-                    expListCodeGen(exp->val.funcCall.arguments, f);
-                }
-            }
-			return;
-		case expKindIndexing:
-            if ( exp->val.access.base->contextEntry->entry.t->underlyingType == sliceType )
-            {
-                fprintf(f, "(");
-                generateCast(getExpressionType(exp->val.access.base)->val.sliceType.type, f);
-                fprintf(f, "(sliceGet(");
-			    expCodeGen(exp->val.access.base, f);
-                fprintf(f, ", ");
-			    expCodeGen(exp->val.access.accessor, f);
-			    fprintf(f, ", %d))", exp->lineno);
-                generateUnionAccess(getExpressionType(exp->val.access.base)->val.sliceType.type, f);
-                fprintf(f, ")");
-                return;
-            }
-            else {
-                fprintf(f, "(");
-                generateCast(getExpressionType(exp->val.access.base)->val.arrayType.type, f);
-                fprintf(f, "(arrGet(");
-			    expCodeGen(exp->val.access.base, f);
-                fprintf(f, ", ");
-			    expCodeGen(exp->val.access.accessor, f);
-                fprintf(f, ", %d, %d))", getExpressionType(exp->val.access.base)->val.arrayType.size, exp->lineno);
-                generateUnionAccess(getExpressionType(exp->val.access.base)->val.arrayType.type, f);
-                fprintf(f, ")");
-                return;
-            }
-			return;
-		case expKindFieldSelect:
-            fprintf(f, "(");
-            generateCast(getExpressionType(exp->val.access.base), f);
-			expCodeGen(exp->val.access.base, f);
-            fprintf(f, ")->");
-            char * retVal = structMemb(exp->val.access.accessor->val.id);
-			fprintf(f, "%s", retVal);
+        if ( exp->contextEntry->entry.s->isConstant == 1 ) //is true or false, no shadowing...
+        {
+            fprintf(f, "%s", exp->val.id); //use stdbool!!!!
+        } else
+        {
+            char *retVal = idGen(exp->contextEntry);
+            fprintf(f, "%s",  retVal);
             free(retVal);
-			return;
-		case expKindAppend:
-            fprintf(f, "append(");
-            expCodeGen(exp->val.append.list, f);
-            fprintf(f, ", ");
-            type = getExpressionType(exp->val.append.elem);
-            if ( type->underlyingType == identifierType )
+        }
+        return;
+    }
+	else if ( exp->kind == expKindIntLit )
+    {
+        fprintf(f, "%d", exp->val.intLit);
+        return;
+    }
+	else if ( exp->kind == expKindFloatLit )
+    {
+        fprintf(f, "%lf", exp->val.floatLit);
+        return;
+    }
+    else if ( exp->kind == expKindRuneLit )
+    {
+        fprintf(f, "%s", exp->val.runeLit);
+        return;
+    }
+	else if ( exp->kind == expKindRawStringLit )
+    {
+        rawStringCodeGen(exp->val.stringLit, f);
+        return;
+    }
+	else if ( exp->kind == expKindInterpretedStringLit )
+    {
+        fprintf(f, "%s", exp->val.stringLit);
+        return;
+    }
+	else if ( exp->kind == expKindFuncCall )
+    {
+        if ( exp->val.funcCall.base->contextEntry->isSymbol ) //true function call not a type cast
+        {
+            fprintf(f, "%s", idGen(exp->val.funcCall.base->contextEntry));
+            fprintf(f, "(");
+            funcExpListCodeGen(exp->val.funcCall.arguments, f);
+            fprintf(f, ")");
+        } else //type cast
+        {
+            if ( getExpressionType(exp->val.funcCall.base)->val.nonCompositeType.type == baseString )
             {
+                fprintf(f, "stringCast("); //helper function in templateCode.h
+                expListCodeGen(exp->val.funcCall.arguments, f);
+                fprintf(f, ")");
+            } else //trust c's implicit cast. Since we only do this on non composite types we should be good
+            {
+                expListCodeGen(exp->val.funcCall.arguments, f);
+            }
+        }
+        return;
+    }
+	else if ( exp->kind == expKindIndexing )
+    {
+        if ( exp->val.access.base->contextEntry->entry.t->underlyingType == sliceType )
+        {
+            fprintf(f, "(");
+            generateCast(getExpressionType(exp->val.access.base)->val.sliceType.type, f);
+            fprintf(f, "(sliceGet(");
+            expCodeGen(exp->val.access.base, f);
+            fprintf(f, ", ");
+            expCodeGen(exp->val.access.accessor, f);
+            fprintf(f, ", %d))", exp->lineno);
+            generateUnionAccess(getExpressionType(exp->val.access.base)->val.sliceType.type, f);
+            fprintf(f, ")");
+        }
+        else {
+            fprintf(f, "(");
+            generateCast(getExpressionType(exp->val.access.base)->val.arrayType.type, f);
+            fprintf(f, "(arrGet(");
+            expCodeGen(exp->val.access.base, f);
+            fprintf(f, ", ");
+            expCodeGen(exp->val.access.accessor, f);
+            fprintf(f, ", %d, %d))", getExpressionType(exp->val.access.base)->val.arrayType.size, exp->lineno);
+            generateUnionAccess(getExpressionType(exp->val.access.base)->val.arrayType.type, f);
+            fprintf(f, ")");
+        }
+        return;
+    }
+	else if ( exp->kind == expKindFieldSelect )
+    {
+        fprintf(f, "(");
+        generateCast(getExpressionType(exp->val.access.base), f);
+        expCodeGen(exp->val.access.base, f);
+        fprintf(f, ")->");
+        char * retVal = structMemb(exp->val.access.accessor->val.id);
+        fprintf(f, "%s", retVal);
+        free(retVal);
+        return;
+    }
+	else if ( exp->kind == expKindAppend )
+    {
+        fprintf(f, "append(");
+        expCodeGen(exp->val.append.list, f);
+        fprintf(f, ", ");
+        type = getExpressionType(exp->val.append.elem);
+        if ( type->underlyingType == identifierType )
+        {
+            switch ( type->val.nonCompositeType.type )
+            {
+                case baseBool:
+                case baseInt:
+                    fprintf(f, "createPolyInt(");
+                    break;
+                case baseFloat64:
+                    fprintf(f, "createPolyFloat(");
+                    break;
+                case baseRune:
+                    fprintf(f, "createPolyRune(");
+                    break;
+                case baseString:
+                    fprintf(f, "createPolyString(");
+                    break;
+            }
+        } else
+        {
+            fprintf(f, "createPolyVoid(");
+        }
+        expCodeGen(exp->val.append.elem, f);
+        fprintf(f, "))");
+        return;
+    }
+	else if ( exp->kind == expKindLength )
+    {
+        type = getExpressionType(exp->val.builtInBody);
+        switch ( type->underlyingType )
+        {
+            case arrayType:
+                fprintf(f, "%d", type->val.arrayType.size); //cheeky
+                break;
+            case sliceType:
+                fprintf(f, "(");
+                expCodeGen(exp->val.builtInBody, f);
+                fprintf(f, ")->size");
+                break;
+            case identifierType:
+                fprintf(f, "strlen(");
+                expCodeGen(exp->val.builtInBody, f);
+                fprintf(f, ")");
+                break;
+        }
+        return;
+    }
+	else if ( exp->kind == expKindCapacity )
+    {
+        type = getExpressionType(exp->val.builtInBody);
+        switch ( type->underlyingType )
+        {
+            case arrayType:
+                fprintf(f, "%d", type->val.arrayType.size);
+                break;
+            case sliceType:
+                fprintf(f, "(");
+                expCodeGen(exp->val.builtInBody, f);
+                fprintf(f, ")->capacity");
+                break;
+        }
+        return;
+    }
+	else if ( exp->kind == expKindLogicNot )
+    { 
+        fprintf(f, "!");
+        fprintf(f, "(");
+        expCodeGen(exp->val.unary, f);
+        fprintf(f, ")");
+        return;
+    }
+	else if ( exp->kind == expKindUnaryMinus )
+    {
+        fprintf(f, "-");
+        fprintf(f, "(");
+        expCodeGen(exp->val.unary, f);
+        fprintf(f, ")");
+        return;
+    }
+	else if ( exp->kind == expKindUnaryPlus )
+    {
+        fprintf(f, "+");
+        fprintf(f, "(");
+        expCodeGen(exp->val.unary, f);
+        fprintf(f, ")");
+        return;
+    }
+	else if ( exp->kind == expKindBitNotUnary )
+    {
+        fprintf(f, "~");
+        fprintf(f, "(");
+        expCodeGen(exp->val.unary, f);
+        fprintf(f, ")");
+		return;
+    }
+
+
+    fprintf(f, "(");
+    if ( exp->kind == expKindAddition )
+    {
+        type = getExpressionType(exp->val.binary.left);
+        if (type->val.nonCompositeType.type == baseString)
+        {
+            fprintf(f, "concat(");
+            expCodeGen(exp->val.binary.left, f);
+            fprintf(f, ", ");
+            expCodeGen(exp->val.binary.right, f);
+            fprintf(f, ");");  
+        }
+        else {
+            standardBinaryGen(exp, "+", f);
+        }
+    }
+    else if ( exp->kind == expKindSubtraction )
+        standardBinaryGen(exp, "-", f);
+    else if ( exp->kind == expKindMultiplication )
+        standardBinaryGen(exp, "*", f);
+    else if ( exp->kind == expKindDivision )
+        standardBinaryGen(exp, "/", f);
+    else if ( exp->kind == expKindLogicOr )
+        standardBinaryGen(exp, "||", f);
+    else if ( exp->kind == expKindLogicAnd )
+        standardBinaryGen(exp, "&&", f);
+    else if ( exp->kind == expKindNEQ )
+    {
+        type = getExpressionType(exp->val.binary.left);
+        switch ( type->underlyingType )
+        {
+            case identifierType:
                 switch ( type->val.nonCompositeType.type )
                 {
-                    case baseBool:
                     case baseInt:
-                        fprintf(f, "createPolyInt(");
-                        return;
+                    case baseBool:
                     case baseFloat64:
-                        fprintf(f, "createPolyFloat(");
-                        return;
                     case baseRune:
-                        fprintf(f, "createPolyRune(");
-                        return;
+                        expCodeGen(exp->val.binary.left, f);
+                        fprintf(f, " != " );
+                        expCodeGen(exp->val.binary.right, f);
+                        break;
                     case baseString:
-                        fprintf(f, "createPolyString(");
-                        return;
+                        fprintf(f, "strcmp(");
+                        expCodeGen(exp->val.binary.left, f);
+                        fprintf(f, ", ");
+                        expCodeGen(exp->val.binary.right, f);
+                        fprintf(f, ") != 0");
+                        break;
                 }
-            } else
-            {
-                fprintf(f, "createPolyVoid(");
-                return;
-            }
-            expCodeGen(exp->val.append.elem, f);
-            fprintf(f, "))");
-			return;
-		case expKindLength:
-            type = getExpressionType(exp->val.builtInBody);
-			switch ( type->underlyingType )
-            {
-                case arrayType:
-                    fprintf(f, "%d", type->val.arrayType.size); //cheeky
-                    return;
-                case sliceType:
-                    fprintf(f, "(");
-                    expCodeGen(exp->val.builtInBody, f);
-                    fprintf(f, ")->size");
-                    return;
-                case identifierType:
-                    fprintf(f, "strlen(");
-                    expCodeGen(exp->val.builtInBody, f);
-                    fprintf(f, ")");
-                    return;
-            }
-			return;
-		case expKindCapacity:
-			type = getExpressionType(exp->val.builtInBody);
-			switch ( type->underlyingType )
-            {
-                case arrayType:
-                    fprintf(f, "%d", type->val.arrayType.size);
-                    return;
-                case sliceType:
-                    fprintf(f, "(");
-                    expCodeGen(exp->val.builtInBody, f);
-                    fprintf(f, ")->capacity");
-                    return;
-            }
-		case expKindLogicNot: //switch statements <3
-		case expKindUnaryMinus:
-		case expKindUnaryPlus:
-		case expKindBitNotUnary:
-			switch (exp->kind) {
-				case expKindLogicNot:
-					fprintf(f, "!");
-					return;
-				case expKindUnaryMinus:
-					fprintf(f, "-");
-					return;
-				case expKindUnaryPlus:
-					fprintf(f, "+");
-					return;
-				case expKindBitNotUnary:
-					fprintf(f, "~");
-					return;
-			}
-			fprintf(f, "(");
-			expCodeGen(exp->val.unary, f);
-			fprintf(f, ")");
-			return;
-    }
-    fprintf(f, "(");
-    switch (exp->kind) {
-        case expKindAddition:
-            type = getExpressionType(exp->val.binary.left);
-            if (type->val.nonCompositeType.type == baseString)
-            {
-                fprintf(f, "concat(");
+                break;
+            case structType:
+                fprintf(f, "!%s_equality(", idGenJustType(type));
                 expCodeGen(exp->val.binary.left, f);
                 fprintf(f, ", ");
                 expCodeGen(exp->val.binary.right, f);
-                fprintf(f, ");");  
-            }
-            else {
-                standardBinaryGen(exp, "+", f);
-            }
-            break;
-        case expKindSubtraction:
-            standardBinaryGen(exp, "-", f);
-            break;
-        case expKindMultiplication:
-            standardBinaryGen(exp, "*", f);
-            break;
-        case expKindDivision:
-            standardBinaryGen(exp, "/", f);
-            break;
-        case expKindLogicOr:
-            standardBinaryGen(exp, "||", f);
-            break;
-        case expKindLogicAnd:
-            standardBinaryGen(exp, "&&", f);
-            break;
-        case expKindNEQ:
-            type = getExpressionType(exp->val.binary.left);
-            switch ( type->underlyingType )
-            {
-                case identifierType:
-                    switch ( type->val.nonCompositeType.type )
-                    {
-                        case baseInt:
-                        case baseBool:
-                        case baseFloat64:
-                        case baseRune:
-                            expCodeGen(exp->val.binary.left, f);
-                            fprintf(f, " != " );
-                            expCodeGen(exp->val.binary.right, f);
-                            break;
-                        case baseString:
-                            fprintf(f, "strcmp(");
-                            expCodeGen(exp->val.binary.left, f);
-                            fprintf(f, ", ");
-                            expCodeGen(exp->val.binary.right, f);
-                            fprintf(f, ") != 0");
-                            break;
-                    }
-                    break;
-                case structType:
-                    fprintf(f, "!%s_equality(", idGenJustType(type));
-                    expCodeGen(exp->val.binary.left, f);
-                    fprintf(f, ", ");
-                    expCodeGen(exp->val.binary.right, f);
-                    fprintf(f, ")");
-                    break;
-                case arrayType:
-                    fprintf(f, "!arrEquality(");
-                    expCodeGen(exp->val.binary.left, f);
-                    fprintf(f, ", ");
-                    expCodeGen(exp->val.binary.right, f);
-                    char * typeChain = (char *) malloc(sizeof(char) * 999);
-                    strcpy(typeChain, "");
-                    generateTypeChain(type->val.arrayType.type, typeChain);
-                    fprintf(f, "%s, %d)", typeChain, type->val.arrayType.size);
-                    free(typeChain);
-                    break;
-            }
-            break;
-        case expKindEQ:
-            type = getExpressionType(exp->val.binary.left);
-        
-            switch ( type->underlyingType )
-            {
-                case identifierType:
-                    switch ( type->val.nonCompositeType.type )
-                    {
-                        case baseInt:
-                        case baseBool:
-                        case baseFloat64:
-                        case baseRune:
-                            expCodeGen(exp->val.binary.left, f);
-                            fprintf(f, " == " );
-                            expCodeGen(exp->val.binary.right, f);
-                            break;
-                        case baseString:
-                            fprintf(f, "strcmp(");
-                            expCodeGen(exp->val.binary.left, f);
-                            fprintf(f, ", ");
-                            expCodeGen(exp->val.binary.right, f);
-                            fprintf(f, ") == 0");
-                            break;
-                    }
-                    break;
-                case structType:
-                    fprintf(f, "%s_equality(", idGenJustType(type));
-                    expCodeGen(exp->val.binary.left, f);
-                    fprintf(f, ", ");
-                    expCodeGen(exp->val.binary.right, f);
-                    fprintf(f, ")");
-                    break;
-                case arrayType:
-                    fprintf(f, "arrEquality(");
-                    expCodeGen(exp->val.binary.left, f);
-                    fprintf(f, ", ");
-                    expCodeGen(exp->val.binary.right, f);
-                    char * typeChain = (char *) malloc(sizeof(char) * 999);
-                    strcpy(typeChain, "");
-                    generateTypeChain(type->val.arrayType.type, typeChain);
-                    fprintf(f, "%s, %d)", typeChain, type->val.arrayType.size);
-                    free(typeChain);
-                    break;
-            }
-            break;
-        case expKindLEQ:
-            orderedBinaryGen(exp, "<=", f);
-            break;
-        case expKindGEQ:
-            orderedBinaryGen(exp, ">=", f);
-            break;
-        case expKindLess:
-            orderedBinaryGen(exp, "<", f);
-            break;
-        case expKindGreater:
-            orderedBinaryGen(exp, ">", f);
-            break;
-        case expKindMod:
-            standardBinaryGen(exp, "%", f);//%% -> % didn't work before
-            break;
-        case expKindBitAnd:
-            standardBinaryGen(exp, "&", f);
-            break;
-        case expKindBitOr:
-            standardBinaryGen(exp, "|", f);
-            break;
-        case expKindBitNotBinary: //lol
-            standardBinaryGen(exp, "^", f);
-            break;
-        case expKindBitShiftLeft:
-            standardBinaryGen(exp, "<<", f);
-            break;
-        case expKindBitShiftRight:
-            standardBinaryGen(exp, ">>", f);
-            break;
-        case expKindBitAndNot:
-            standardBinaryGen(exp, "&~", f);
-            break;
+                fprintf(f, ")");
+                break;
+            case arrayType:
+                fprintf(f, "!arrEquality(");
+                expCodeGen(exp->val.binary.left, f);
+                fprintf(f, ", ");
+                expCodeGen(exp->val.binary.right, f);
+                char * typeChain = (char *) malloc(sizeof(char) * 999);
+                strcpy(typeChain, "");
+                generateTypeChain(type->val.arrayType.type, typeChain);
+                fprintf(f, "%s, %d)", typeChain, type->val.arrayType.size);
+                free(typeChain);
+                break;
+        }
     }
+    else if ( exp->kind == expKindEQ )
+    {
+        type = getExpressionType(exp->val.binary.left);
+    
+        switch ( type->underlyingType )
+        {
+            case identifierType:
+                switch ( type->val.nonCompositeType.type )
+                {
+                    case baseInt:
+                    case baseBool:
+                    case baseFloat64:
+                    case baseRune:
+                        expCodeGen(exp->val.binary.left, f);
+                        fprintf(f, " == " );
+                        expCodeGen(exp->val.binary.right, f);
+                        break;
+                    case baseString:
+                        fprintf(f, "strcmp(");
+                        expCodeGen(exp->val.binary.left, f);
+                        fprintf(f, ", ");
+                        expCodeGen(exp->val.binary.right, f);
+                        fprintf(f, ") == 0");
+                        break;
+                }
+                break;
+            case structType:
+                fprintf(f, "%s_equality(", idGenJustType(type));
+                expCodeGen(exp->val.binary.left, f);
+                fprintf(f, ", ");
+                expCodeGen(exp->val.binary.right, f);
+                fprintf(f, ")");
+                break;
+            case arrayType:
+                fprintf(f, "arrEquality(");
+                expCodeGen(exp->val.binary.left, f);
+                fprintf(f, ", ");
+                expCodeGen(exp->val.binary.right, f);
+                char * typeChain = (char *) malloc(sizeof(char) * 999);
+                strcpy(typeChain, "");
+                generateTypeChain(type->val.arrayType.type, typeChain);
+                fprintf(f, "%s, %d)", typeChain, type->val.arrayType.size);
+                free(typeChain);
+                break;
+        }
+    }
+    else if ( exp->kind == expKindLEQ )
+        orderedBinaryGen(exp, "<=", f);
+    else if ( exp->kind == expKindGEQ )
+        orderedBinaryGen(exp, ">=", f);
+    else if ( exp->kind == expKindLess )
+        orderedBinaryGen(exp, "<", f);
+    else if ( exp->kind ==  expKindGreater )
+        orderedBinaryGen(exp, ">", f);
+    else if ( exp->kind == expKindMod )
+        standardBinaryGen(exp, "%", f);//%% -> % didn't work before
+    else if ( exp->kind == expKindBitAnd )
+        standardBinaryGen(exp, "&", f);
+    else if ( exp->kind == expKindBitOr )
+        standardBinaryGen(exp, "|", f);
+    else if ( exp->kind == expKindBitNotBinary ) //lol
+        standardBinaryGen(exp, "^", f);
+    else if ( exp->kind == expKindBitShiftLeft )
+        standardBinaryGen(exp, "<<", f);
+    else if ( exp->kind == expKindBitShiftRight )
+        standardBinaryGen(exp, ">>", f);
+    else if ( exp->kind == expKindBitAndNot )
+        standardBinaryGen(exp, "&~", f);
     fprintf(f, ")");
+    return;
 } 
 
 static void indent(int indentLevel,FILE* fp){
