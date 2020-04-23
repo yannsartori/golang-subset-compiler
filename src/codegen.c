@@ -1674,7 +1674,7 @@ void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 		} else if (decl -> whoAmI -> type -> underlyingType == arrayType) {
 			
 			char * typeChain = (char *) malloc(sizeof(char) * 999);
-            strcpy(typeChain, "");
+			strcpy(typeChain, "");
 			generateTypeChain(decl -> whoAmI -> type -> val.arrayType.type, typeChain);
 			
 			fprintf(fp, "arrCopy(");
@@ -1706,7 +1706,8 @@ void varJustDeclNoVal(VarDeclNode* varDecl, int indentLevel, FILE* fp) {
 	if (varDecl == NULL) {
 		return;
 	}
-	if (varDecl -> iDoDeclare = 1) {
+	if (varDecl -> iDoDeclare == 1) {
+		
 		indent(indentLevel, fp);
 		generateOurTypes(varDecl -> whoAmI -> type, fp);
 		fprintf(fp, " ");

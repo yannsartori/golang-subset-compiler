@@ -680,46 +680,57 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 		IdChain* idMover = malloc(sizeof(IdChain));
 		t -> val.structType.fieldNames = idMover;
 		int returnCode;
+		int countMembs = 0;
 		while (sMembs != NULL) {
+			
+			if (head == NULL && identifier == NULL){
+				innerType = makeAnonymousTTEntry(contx, sMembs -> typeThing);
+			} else if (head == NULL) {
+				innerType = makeSubTTEntry(contx, sMembs -> typeThing, t, 0);
+			} else {
+				innerType = makeSubTTEntry(contx, sMembs -> typeThing, head, inSlice);
+			}
+			if (innerType -> underlyingType == badType) {
+				t -> id = innerType -> id;
+				t -> underlyingType = badType;
+				return t;
+			}
+			t -> comparable *= innerType -> comparable;   //this line scares me
+			
+			
+			memberEntry = malloc(sizeof(STEntry));
+			memberEntry -> id = sMembs -> identifier;
+			memberEntry -> type = innerType;
+			
 			if (strcmp(sMembs -> identifier, "_") != 0) {
-				if (head == NULL && identifier == NULL){
-					innerType = makeAnonymousTTEntry(contx, sMembs -> typeThing);
-				} else if (head == NULL) {
-					innerType = makeSubTTEntry(contx, sMembs -> typeThing, t, 0);
-				} else {
-					innerType = makeSubTTEntry(contx, sMembs -> typeThing, head, inSlice);
-				}
-				if (innerType -> underlyingType == badType) {
-					t -> id = innerType -> id;
-					t -> underlyingType = badType;
-					return t;
-				}
-				t -> comparable *= innerType -> comparable;   //this line scares me
-				
-				
-				memberEntry = malloc(sizeof(STEntry));
-				memberEntry -> id = sMembs -> identifier;
-				memberEntry -> type = innerType;
 				returnCode = addSymbolEntry(tentativeContext, memberEntry);
 				if (returnCode != 0) {
 					t -> id = "duplicate struct members";
 					t -> underlyingType = badType;
 					return t;
 				}
-				
+				countMembs++;
 				idMover -> identifier = sMembs -> identifier;
-				sMembs = sMembs -> nextDecl;
-				
-				if (sMembs == NULL) {
-					idMover -> next = NULL;
-				} else {
-					
-					idMover -> next = malloc(sizeof(IdChain));
-					idMover = idMover -> next;
-				}
-				
+				idMover -> next = malloc(sizeof(IdChain));
+				idMover = idMover -> next;
 			}
+			
+			sMembs = sMembs -> nextDecl;
+				
 		}
+		
+		if(countMembs == 0) {
+			t -> val.structType.fieldNames = NULL;
+		} else {
+			idMover = t -> val.structType.fieldNames;
+			for (int i = 1; i<countMembs; i++) {
+				idMover = idMover -> next;
+			}
+			idMover -> next = NULL;
+		}
+		
+		
+		
 		t -> val.structType.fields = tentativeContext;
 		
 		IdChain* temp = t -> val.structType.fieldNames;
