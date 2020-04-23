@@ -857,14 +857,14 @@ void printCodeGen(ExpList* list,int indentLevel,FILE* fp){
             fprintf(fp,");\n");
             break;
         case baseFloat64:
-            fprintf(fp,"printf(\"%%lf\",");
+            fprintf(fp,"printf(\"%%10e\",");
             expCodeGen(exp,fp);
             fprintf(fp,");\n");
             break;
         case baseRune:
-            fprintf(fp,"printf(\"%%d\",(int)");
+            fprintf(fp,"printf(\"%%d\",(int)(");
             expCodeGen(exp,fp);
-            fprintf(fp,");\n");
+            fprintf(fp,"));\n");
             break;
         case baseString:
             fprintf(fp,"printf(\"%%s\",");
@@ -900,14 +900,14 @@ void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
             fprintf(fp,");\n");
             break;
         case baseFloat64:
-            fprintf(fp,"printf(\"%%lf \",");
+            fprintf(fp,"printf(\"%%10e \",");
             expCodeGen(exp,fp);
             fprintf(fp,");\n");
             break;
         case baseRune:
-            fprintf(fp,"printf(\"%%d \",(int)");
+            fprintf(fp,"printf(\"%%d \",(int)(");
             expCodeGen(exp,fp);
-            fprintf(fp,");\n");
+            fprintf(fp,"));\n");
             break;
         case baseString:
             fprintf(fp,"printf(\"%%s \",");
@@ -1283,7 +1283,11 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 
             indent(indentLevel+1,fp);
             fprintf(fp,"while(");
-            expCodeGen(stmt->val.forLoop.condition,fp);
+            if (stmt->val.forLoop.condition == NULL){
+                fprintf(fp,"1");
+            }else{
+                expCodeGen(stmt->val.forLoop.condition,fp);
+            }  
             fprintf(fp,"){\n");
 
             char* label = makeLabel();
