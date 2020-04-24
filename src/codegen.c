@@ -841,7 +841,7 @@ void printCodeGen(ExpList* list,int indentLevel,FILE* fp){
             expCodeGen(exp,fp);
             fprintf(fp,";\n");
             indent(indentLevel,fp);
-            fprintf(fp,"printf(\"%%s%%10e\",%s >= 0 ? \"+\" : \"-\",%s);\n",temp,temp);
+            fprintf(fp,"printf(\"%%s%%10e\",%s >= 0 ? \"+\" : \"\",%s);\n",temp,temp);
             break;
         case baseRune:
             fprintf(fp,"printf(\"%%d\",(int)(");
@@ -887,7 +887,7 @@ void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
             expCodeGen(exp,fp);
             fprintf(fp,";\n");
             indent(indentLevel,fp);
-            fprintf(fp,"printf(\"%%s%%10e \",%s >= 0 ? \"+\" : \"-\",%s);\n",temp,temp);
+            fprintf(fp,"printf(\"%%s%%10e \",%s >= 0 ? \"+\" : \"\",%s);\n",temp,temp);
             break;
         case baseRune:
             fprintf(fp,"printf(\"%%d \",(int)(");
