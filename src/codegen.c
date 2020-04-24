@@ -212,12 +212,7 @@ void rawStringCodeGen(char *s, FILE *f)
     fprintf(f, "\"");
 }
 
-//AY->Array, ST->Struct, SG->String, RE->rune, IR->Integer, FT->Float, 
-//I don't think there's a better way to do this...
-//Note: I intentionally don't add slices. This is because the ret val
-//of this function is only used in arrayEquality, which would reject
-//slices in equality in typechecking, and in arrCopy, but that doesn't
-//matter since the reference gets copied.
+//AY->Array, ST->Struct, SG->String, RE->rune, IR->Integer, FT->Float, SE-> Slice
 void generateTypeChain(TTEntry *t, char *typeChain)
 {
     switch (t->underlyingType)
@@ -251,6 +246,9 @@ void generateTypeChain(TTEntry *t, char *typeChain)
             strcat(typeChain, "ST");
             strcat(typeChain, idGenJustType(t));
             break;
+        case sliceType:
+            strcat(typeChain, "SE");
+            return;
     }
     return;
 }
@@ -466,7 +464,7 @@ void funcExpListCodeGen(ExpList *list, FILE *f)
             char * typeChain = (char *) malloc(sizeof(char) * 999);
             strcpy(typeChain, "");
             generateTypeChain(type->val.arrayType.type, typeChain);
-            fprintf(f, "arrayCopy(");
+            fprintf(f, "arrCopy(");
             expCodeGen(list->cur, f);
             fprintf(f, ", \"%s\", %d)", typeChain, type->val.arrayType.size);
             free(typeChain);
@@ -519,7 +517,7 @@ void expCodeGen(Exp *exp, FILE *f)
         fprintf(f, "%s", exp->val.stringLit);
         return;
     }
-	else if ( exp->kind == expKindFuncCall )
+	else if ( exp->kind == expKindFuncCall ) //x
     {
         if ( exp->val.funcCall.base->contextEntry->isSymbol ) //true function call not a type cast
         {
