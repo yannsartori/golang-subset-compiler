@@ -1038,11 +1038,13 @@ int isExpressionAddressable(Exp* exp){
 		case expKindFuncCall:
 			return 0;
 			break;
-		case expKindIndexing:
-			return isExpressionAddressable(exp->val.access.base);
+		case expKindIndexing:;
+			Exp* base = exp->val.access.base;
+		
+	/*	TTEntry* type = 
 		case expKindFieldSelect:
 			return isExpressionAddressable(exp->val.access.base);
-			break;
+			break;*/
 		default:
 			return 0;
 			break;
@@ -1063,7 +1065,15 @@ int isExpressionAssignable(Exp* exp){
 		return 0;
 	}
 
-	return (exp->contextEntry->entry.s->isConstant == 0) || (exp->contextEntry->entry.s->isConstant == 1);
+	switch (exp->kind){
+		case expKindIdentifier:
+
+			return (exp->contextEntry->entry.s->isConstant == 0) || (exp->contextEntry->entry.s->isConstant == 1);
+		default:
+			return 1;
+
+	}
+
 }
 
 int isValidAssignPair(Exp* left,Exp* right){

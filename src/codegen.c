@@ -1191,7 +1191,6 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             fprintf(fp,";\n");
             break;
         case StmtKindAssignment:
-            //This is broken (need to assign types properly for temp vars,using void* for now)
             assignStmtCodeGen(stmt->val.assignment.lhs,stmt->val.assignment.rhs,indentLevel,fp);
             break;
     
