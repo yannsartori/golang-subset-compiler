@@ -1777,7 +1777,7 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 		fprintf(fp, "for(int golite_iter_%d = 0; golite_iter_%d < %d; golite_iter_%d++) {\n", indentLevel, indentLevel, curType -> val.arrayType.size, indentLevel);
 		IdChain* nextName = copyChain(curName);
 		char arrayPositions[40];
-		sprintf(arrayPositions, "[golite_iter_%d].", indentLevel);
+		sprintf(arrayPositions, ")[golite_iter_%d].", indentLevel);
 		if (curType -> val.arrayType.type -> underlyingType == identifierType) {
 			if (curType -> val.arrayType.type -> val.nonCompositeType.type == baseInt || curType -> val.arrayType.type -> val.nonCompositeType.type == baseBool) {
 				strcat(arrayPositions, "intVal");
@@ -1792,7 +1792,7 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 			strcat(arrayPositions, "polyVal");
 		}
 		appendToChain(arrayPositions, nextName);
-		genInitAndZero(nextName, curType -> val.arrayType.type, indentLevel+1, fp);
+		genInitAndZero(makeIdChain("((__golite_poly_entry*)", nextName), curType -> val.arrayType.type, indentLevel+1, fp);
 		indent(indentLevel, fp);
 		fprintf(fp, "}\n");
 	} else if (curType -> underlyingType == structType) {
@@ -1803,34 +1803,28 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 			s = getEntry(curType -> val.structType.fields, iter->identifier)->entry.s;
 			if (strcmp(s -> id, "_") != 0) {
 				char fieldNameAddition [900];
-				sprintf(fieldNameAddition, " -> %s", structMemb(s -> id));
+				sprintf(fieldNameAddition, ") -> %s", structMemb(s -> id));
 				nextName = copyChain(curName);
+				char castHolder[50];
+				sprintf(castHolder, "((%s*)", idGenJustType(curType));
 				appendToChain(fieldNameAddition, nextName);
-				genInitAndZero(nextName, s -> type, indentLevel, fp);
+				genInitAndZero(makeIdChain(castHolder, nextName), s -> type, indentLevel, fp);
 			}
 		}
 	}
 }
 
 
-
-
-
 void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 	
-	if(decl == NULL) {
-		return;
-	}
+	if(decl == NULL) {return;}
 	
 	char * varName = idGenJustVar(decl -> whoAmI);
-	
 	
 	if (decl -> value == NULL) {
 		genInitAndZero(makeIdChain(varName, NULL), decl -> whoAmI -> type, indentLevel, fp);
 	} else {
-	
 		indent(indentLevel, fp);
-		
 		
 		fprintf(fp,"%s", varName);
 		fprintf(fp, " = ");
@@ -1839,7 +1833,7 @@ void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 			fprintf(fp, ";\n");
 		} else if (decl -> whoAmI -> type -> underlyingType == arrayType) {
 			char * typeChain = (char *) malloc(sizeof(char) * 999);
-            strcpy(typeChain, "");
+			strcpy(typeChain, "");
 			generateTypeChain(decl -> whoAmI -> type -> val.arrayType.type, typeChain);
 			
 			fprintf(fp, "arrCopy(");
@@ -1848,7 +1842,7 @@ void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 			
 		} else if (decl -> whoAmI -> type -> underlyingType == sliceType) {
 			expCodeGen(decl -> value, fp);
-            fprintf(fp,";\n"); //@Denali - Neil added this
+			fprintf(fp,";\n"); //@Denali - Neil added this
 		} else if (decl -> whoAmI -> type -> underlyingType == structType) {
 			
 			fprintf(fp, "%s_copy(", idGenJustType(decl -> whoAmI -> type));
@@ -1885,17 +1879,6 @@ void varJustDeclNoVal(VarDeclNode* varDecl, int indentLevel, FILE* fp) {
 }
 
 
-/*
-
-void typeDeclCodeGen(TypeDeclNode* decl, FILE* fp) {
-	return;
-	/*
-	char* oldtype, newtype;
-	fprintf(fp, "typedef %s %s;\n\n", oldtype, newtype);
-	
-}*/
-
-
 
 void totalCodeGen(RootNode* root) {
 	/*
@@ -1906,13 +1889,6 @@ void totalCodeGen(RootNode* root) {
 	fprintf(output, "#include \"templateCode.h\"\n");
 	
 	trie  = encodeRoot(root);
-    /*
-	 * print headers, maybe. Idk
-	 */
-	/*
-	
-	printHeaders(root);
-	*/
 
 	codegenStructDeclaration(0,output);
 	
@@ -1920,29 +1896,14 @@ void totalCodeGen(RootNode* root) {
 	
 	while (mainIter != NULL) {
 		if (mainIter -> declType == funcDeclType) {
-			
 			funcCodeGen(mainIter -> actualRealDeclaration.funcDecl, output);
 		} else if (mainIter -> declType == variDeclType){
 			varJustDeclNoVal(mainIter -> actualRealDeclaration.varDecl, 0, output);
 		} else if (mainIter -> declType == typeDeclType){
-			/*
-			 * Do nothing
-			 * 
-			typeDeclCodeGen(mainIter -> actualRealDeclaration.typeDecl, output);
-			*/
+			/* Do nothing */
 		}
 		mainIter = mainIter -> nextTopDecl;
 	}
-        
-	
-	 
-	/*
-	 * 
-	 * print out main function which also calls inits
-	 * 
-	 */
-	
-	
 	fprintf(output, "int main() {\n");
 	mainIter = root -> startDecls;
 	while (mainIter != NULL) {
@@ -1958,21 +1919,7 @@ void totalCodeGen(RootNode* root) {
 	
 	fprintf(output, "\t__golite_main();\n");
 	
-	/*
-	 * 
-	 * Run the inits
-	 * 
-	 * Then run the golite main
-	 * 
-	 */
-	
-	
-
 	fprintf(output,"}\n");
-
-
-	
-	
 	fclose(output);
 	
 	
