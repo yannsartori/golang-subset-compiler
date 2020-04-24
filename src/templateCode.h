@@ -29,6 +29,8 @@ struct __golite_slice {
     int capacity;
     __golite_poly_entry **arrPointer;
 };
+
+int structEqualityHelper(void* struct1,void* struct2, char* structName);
 /*Make sure this works!*/
 __golite_poly_entry createPolyInt(int x)
 {
@@ -289,3 +291,10 @@ int arrEquality(__golite_poly_entry *arr1, __golite_poly_entry *arr2, char *type
     return 1;
     
 }
+
+
+
+int structEquality(void * struct1, void * struct2, char * structName){
+    return structEqualityHelper(struct1,struct2,structName);
+}
+void * structCopy(void * struct1, char * structName);
