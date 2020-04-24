@@ -1,0 +1,1 @@
+./golitec < test.go

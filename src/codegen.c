@@ -1484,7 +1484,7 @@ void specialIncDecStatementCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
     indent(indentLevel,fp);
     generateOurTypes(getExpressionType(lhs->val.access.base),fp);
     indent(indentLevel,fp);
-    fprintf(fp,"%s = ",base);
+    fprintf(fp," %s = ",base);
     expCodeGen(lhs->val.access.base,fp);
     fprintf(fp,";\n");
 
@@ -1495,25 +1495,29 @@ void specialIncDecStatementCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
     char* dotAccess;
     TTEntry* type = getExpressionType(lhs);
 
+    char* variant;
     switch (type->val.nonCompositeType.type) {
         case baseInt:
             dotAccess = "intVal";
+            variant = "Int";
             break;
         case baseFloat64:
             dotAccess = "floatVal";
+            variant = "Float";
             break;
         case baseRune:
             dotAccess = "charVal";
+            variant = "Rune";
             break;
     }
 
-    fprintf(fp,"arrSet(%s,%s,%d,%d,arrGet(%s,%s,%d,%d).%s",base,index,arrLength,lineno,base,index,arrLength,lineno,dotAccess);
+    fprintf(fp,"arrSet(%s,%s,%d,%d,createPoly%s(arrGet(%s,%s,%d,%d).%s",base,index,arrLength,lineno,variant,base,index,arrLength,lineno,dotAccess);
     switch(stmt->kind){ 
         case StmtKindInc:   
-            fprintf(fp,"+1);\n");
+            fprintf(fp,"+1));\n");
             break;
         case StmtKindDec:
-            fprintf(fp,"-1);\n");
+            fprintf(fp,"-1));\n");
             break;
     }
 
@@ -1533,7 +1537,7 @@ void specialOpStatementCodeGen(Stmt* stmt, int indentLevel,FILE* fp){
     char* right = tmpVarGen();
     indent(indentLevel,fp);
     generateOurTypes(getExpressionType(rhs),fp);
-    fprintf(fp,"%s = ",right);
+    fprintf(fp," %s = ",right);
     expCodeGen(rhs,fp);
     fprintf(fp,";\n");
 
@@ -1547,7 +1551,7 @@ void specialOpStatementCodeGen(Stmt* stmt, int indentLevel,FILE* fp){
     char* base = tmpVarGen();
     indent(indentLevel,fp);
     generateOurTypes(getExpressionType(lhs->val.access.base),fp);
-    fprintf(fp,"%s = ",base);
+    fprintf(fp," %s = ",base);
     expCodeGen(lhs->val.access.base,fp);
     fprintf(fp,";\n");
 
@@ -1556,22 +1560,28 @@ void specialOpStatementCodeGen(Stmt* stmt, int indentLevel,FILE* fp){
 
 
     char* dotAccess;
+    char* variant;
 
     switch (getExpressionType(lhs)->val.nonCompositeType.type) {
         case baseInt:
             dotAccess = "intVal";
+            variant = "Int";
             break;
         case baseFloat64:
             dotAccess = "floatVal";
+            variant = "Float";
             break;
         case baseRune:
             dotAccess = "charVal";
+            variant = "Rune";
             break;
         case baseString:
             dotAccess = "stringVal";
+            variant = "String";
             break;
         default:
             dotAccess = "intVal";
+            variant = "Void";
             break;
     }
 
@@ -1582,44 +1592,44 @@ void specialOpStatementCodeGen(Stmt* stmt, int indentLevel,FILE* fp){
     sprintf(arrGet,"(arrGet(%s,%s,%d,%d).%s)",base,index,arrLength,lineno,dotAccess);
 
 
-
+    fprintf(fp,"createPoly%s(",variant);
     switch (stmt->val.opAssignment.kind) {
 				case expKindAddition:
                     if (getExpressionType(lhs)->val.nonCompositeType.type == baseString){
-                        fprintf(fp,"concat(%s,%s));\n",arrGet,right);
+                        fprintf(fp,"concat(%s,%s)));\n",arrGet,right);
                     }else{
-                        fprintf(fp,"%s+%s);\n",arrGet,right);
+                        fprintf(fp,"%s+%s));\n",arrGet,right);
                     }
 					break;
 				case expKindSubtraction:
-					fprintf(fp,"%s+%s);\n",arrGet,right);
+					fprintf(fp,"%s+%s));\n",arrGet,right);
 					break;
 				case expKindMultiplication:
-					fprintf(fp,"%s*%s);\n",arrGet,right);
+					fprintf(fp,"%s*%s));\n",arrGet,right);
 					break;
 				case expKindDivision:
-					fprintf(fp,"%s/%s);\n",arrGet,right);
+					fprintf(fp,"%s/%s));\n",arrGet,right);
 					break;
 				case expKindMod:
-					fprintf(fp,"%s%%%s);\n",arrGet,right);
+					fprintf(fp,"%s%%%s));\n",arrGet,right);
 					break;
 				case expKindBitAnd:
-					fprintf(fp,"%s&%s);\n",arrGet,right);
+					fprintf(fp,"%s&%s));\n",arrGet,right);
 					break;
 				case expKindBitOr:
-					fprintf(fp,"%s|%s);\n",arrGet,right);
+					fprintf(fp,"%s|%s));\n",arrGet,right);
 					break;
 				case expKindBitNotBinary:
-					fprintf(fp,"%s^%s);\n",arrGet,right);
+					fprintf(fp,"%s^%s));\n",arrGet,right);
 					break;
 				case expKindBitShiftLeft:
-					fprintf(fp,"%s<<%s);\n",arrGet,right);
+					fprintf(fp,"%s<<%s));\n",arrGet,right);
 					break;
 				case expKindBitShiftRight:
-					fprintf(fp,"%s>>%s);\n",arrGet,right);
+					fprintf(fp,"%s>>%s));\n",arrGet,right);
 					break;
 				case expKindBitAndNot:
-					fprintf(fp,"%s&(~%s));\n",arrGet,right);
+					fprintf(fp,"%s&(~%s)));\n",arrGet,right);
 					break;
 			}
 
