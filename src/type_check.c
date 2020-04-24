@@ -1018,62 +1018,52 @@ int isExpListPrintable(ExpList* expList){
 
 int isExpressionAddressable(Exp* exp){
 	if (exp == NULL){
-		puts("Oh no");
+		fprintf(stderr,"Error: null expression\n");
 		exit(1);
 	}
 
-	switch(exp->kind){
+	switch (exp->kind){
 		case expKindIdentifier:
 			if (isBlank(exp)){
 				return 1;
 			}
 
-			PolymorphicEntry* polyEntry  = exp->contextEntry;
-			if (polyEntry->isSymbol && (polyEntry->entry.s->isConstant == 0)  ){ //If a symbol and not a $ constant or a functions
+			if(exp->contextEntry->entry.s->isConstant == 0){
 				return 1;
 			}else{
-				return 0; //If its not a symbol, its a type
+				return 0;
 			}
+			break;
 
-
-		case expKindFieldSelect:
-			return 1;
+		case expKindFuncCall:
+			return 0;
+			break;
 		case expKindIndexing:
-			return 1;
+			return isExpressionAddressable(exp->val.access.base);
+		case expKindFieldSelect:
+			return isExpressionAddressable(exp->val.access.base);
+			break;
 		default:
 			return 0;
+			break;
 	}
-
 
 }
 
-int isExpressionConst(Exp* exp){
-	if (exp == NULL){
-		return 0;
-	}
-
-	PolymorphicEntry* polyEntry  = exp->contextEntry;
-	return polyEntry->isSymbol && (polyEntry->entry.s->isConstant == 1) ;
-	
-
-}
 
 int isExpressionAssignable(Exp* exp){
 	if (exp == NULL){
+		fprintf(stderr,"Error: null expression\n");
+		exit(1);
+	}
+
+
+	TTEntry* type = getExpressionType(exp);
+	if (type == NULL){
 		return 0;
 	}
 
-
-	switch (exp->kind){
-		case expKindIdentifier : 
-			return isExpressionAddressable(exp) || isExpressionConst(exp);
-		default: ;
-			TTEntry* expType = exp->contextEntry->entry.t;
-			if (expType == NULL){ //NULL type things are not assignable
-				return 0;
-			}
-			return 1;
-	}
+	return (exp->contextEntry->entry.s->isConstant == 0) || (exp->contextEntry->entry.s->isConstant == 1);
 }
 
 int isValidAssignPair(Exp* left,Exp* right){
