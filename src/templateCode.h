@@ -61,9 +61,12 @@ __golite_poly_entry createPolyVoid(void * x)
     p.polyVal = x;
     return p;
 }
-__golite_slice *append(__golite_slice *slice, __golite_poly_entry elem)
+__golite_poly_entry *arrCopy(__golite_poly_entry *arr, char *typeChain, int arrLength);
+
+__golite_slice *append(__golite_slice *slice, __golite_poly_entry elem, char *typeChain)
 {
     __golite_slice *newSlice = (__golite_slice *) malloc(sizeof(__golite_slice));
+
     if ( slice == NULL || slice->capacity == 0 )
     {
         newSlice->size = 1;
@@ -86,10 +89,7 @@ __golite_slice *append(__golite_slice *slice, __golite_poly_entry elem)
         newSlice->capacity = slice->capacity * 2;
         newSlice->arrPointer = (__golite_poly_entry **) malloc(sizeof(__golite_poly_entry *));
         *(newSlice->arrPointer) = (__golite_poly_entry *) malloc(sizeof(__golite_poly_entry) * newSlice->capacity);
-        for ( int i = 0; i < slice->capacity; i++ )
-        {
-            *(*(newSlice->arrPointer) + i) = *(*(slice->arrPointer) + i);
-        }
+        *(newSlice->arrPointer) = arrCopy(*(slice->arrPointer), typeChain, slice->size);
         *(*(newSlice->arrPointer) + slice->capacity) = elem;
     }
     return newSlice;
@@ -98,7 +98,7 @@ __golite_poly_entry arrGet(__golite_poly_entry * arr, int pos, int length, int l
 {
     if ( pos >= length || pos < 0 )
     {
-        fprintf(stderr, "Error: (runtime, %d) index out of range [%d] with length %d", lineno, pos, length);
+        fprintf(stderr, "Error: (runtime, %d) index out of range [%d] with length %d\n", lineno, pos, length);
         exit(1);
     }
     return *(arr + pos);
@@ -107,7 +107,7 @@ __golite_poly_entry sliceGet(__golite_slice *slice, int pos, int lineno)
 {
     if ( pos >= slice->size || pos < 0 )
     {
-        fprintf(stderr, "Error: (runtime, %d) index out of range [%d] with length %d", lineno, pos, slice->size);
+        fprintf(stderr, "Error: (runtime, %d) index out of range [%d] with length %d\n", lineno, pos, slice->size);
         exit(1);
     }
     return *(*(slice->arrPointer) + pos);

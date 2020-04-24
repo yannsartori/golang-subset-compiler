@@ -487,34 +487,34 @@ void expCodeGen(Exp *exp, FILE *f)
 {
     TTEntry *type;
     if ( exp == NULL ) return;
-	if ( exp->kind == expKindIdentifier )
+	if ( exp->kind == expKindIdentifier ) //x
 	{
         char *retVal = idGen(exp->contextEntry);
         fprintf(f, "%s",  retVal);
         free(retVal);
         return;
     }
-	else if ( exp->kind == expKindIntLit )
+	else if ( exp->kind == expKindIntLit ) //x
     {
         fprintf(f, "%d", exp->val.intLit);
         return;
     }
-	else if ( exp->kind == expKindFloatLit )
+	else if ( exp->kind == expKindFloatLit ) //x
     {
         fprintf(f, "%lf", exp->val.floatLit);
         return;
     }
-    else if ( exp->kind == expKindRuneLit ) //test
+    else if ( exp->kind == expKindRuneLit ) //test //x
     {
         fprintf(f, "%s", exp->val.runeLit);
         return;
     }
-	else if ( exp->kind == expKindRawStringLit )
+	else if ( exp->kind == expKindRawStringLit ) //x
     {
         rawStringCodeGen(exp->val.stringLit, f);
         return;
     }
-	else if ( exp->kind == expKindInterpretedStringLit )
+	else if ( exp->kind == expKindInterpretedStringLit ) //x
     {
         fprintf(f, "%s", exp->val.stringLit);
         return;
@@ -540,8 +540,8 @@ void expCodeGen(Exp *exp, FILE *f)
             }
         }
         return;
-    }
-	else if ( exp->kind == expKindIndexing )
+    } 
+	else if ( exp->kind == expKindIndexing ) //x
     {
         if ( getExpressionType(exp->val.access.base)->underlyingType == sliceType )
         {
@@ -568,7 +568,7 @@ void expCodeGen(Exp *exp, FILE *f)
         }
         return;
     }
-	else if ( exp->kind == expKindFieldSelect )
+	else if ( exp->kind == expKindFieldSelect ) //x
     {
         fprintf(f, "(");
         generateCast(getExpressionType(exp->val.access.base), f);
@@ -585,6 +585,9 @@ void expCodeGen(Exp *exp, FILE *f)
         expCodeGen(exp->val.append.list, f);
         fprintf(f, ", ");
         type = getExpressionType(exp->val.append.elem);
+        char * typeChain = (char *) malloc(sizeof(char) * 999);
+        strcpy(typeChain, "");
+        generateTypeChain(type, typeChain);
         if ( type->underlyingType == identifierType )
         {
             switch ( type->val.nonCompositeType.type )
@@ -608,10 +611,11 @@ void expCodeGen(Exp *exp, FILE *f)
             fprintf(f, "createPolyVoid(");
         }
         expCodeGen(exp->val.append.elem, f);
-        fprintf(f, "))");
+        fprintf(f, "), \"%s\")", typeChain);
+        free(typeChain);
         return;
     }
-	else if ( exp->kind == expKindLength )
+	else if ( exp->kind == expKindLength ) //x
     {
         type = getExpressionType(exp->val.builtInBody);
         switch ( type->underlyingType )
@@ -632,7 +636,7 @@ void expCodeGen(Exp *exp, FILE *f)
         }
         return;
     }
-	else if ( exp->kind == expKindCapacity )
+	else if ( exp->kind == expKindCapacity ) //x
     {
         type = getExpressionType(exp->val.builtInBody);
         switch ( type->underlyingType )
@@ -648,7 +652,7 @@ void expCodeGen(Exp *exp, FILE *f)
         }
         return;
     }
-	else if ( exp->kind == expKindLogicNot )
+	else if ( exp->kind == expKindLogicNot ) //x
     { 
         fprintf(f, "!");
         fprintf(f, "(");
@@ -656,7 +660,7 @@ void expCodeGen(Exp *exp, FILE *f)
         fprintf(f, ")");
         return;
     }
-	else if ( exp->kind == expKindUnaryMinus )
+	else if ( exp->kind == expKindUnaryMinus ) //x
     {
         fprintf(f, "-");
         fprintf(f, "(");
@@ -664,7 +668,7 @@ void expCodeGen(Exp *exp, FILE *f)
         fprintf(f, ")");
         return;
     }
-	else if ( exp->kind == expKindUnaryPlus )
+	else if ( exp->kind == expKindUnaryPlus ) //x
     {
         fprintf(f, "+");
         fprintf(f, "(");
@@ -672,7 +676,7 @@ void expCodeGen(Exp *exp, FILE *f)
         fprintf(f, ")");
         return;
     }
-	else if ( exp->kind == expKindBitNotUnary )
+	else if ( exp->kind == expKindBitNotUnary ) //x
     {
         fprintf(f, "~");
         fprintf(f, "(");
@@ -683,7 +687,7 @@ void expCodeGen(Exp *exp, FILE *f)
 
 
     fprintf(f, "(");
-    if ( exp->kind == expKindAddition )
+    if ( exp->kind == expKindAddition ) //x
     {
         type = getExpressionType(exp->val.binary.left);
         if (type->val.nonCompositeType.type == baseString)
@@ -698,15 +702,15 @@ void expCodeGen(Exp *exp, FILE *f)
             standardBinaryGen(exp, "+", f);
         }
     }
-    else if ( exp->kind == expKindSubtraction )
+    else if ( exp->kind == expKindSubtraction ) //x
         standardBinaryGen(exp, "-", f);
-    else if ( exp->kind == expKindMultiplication )
+    else if ( exp->kind == expKindMultiplication ) //x
         standardBinaryGen(exp, "*", f);
-    else if ( exp->kind == expKindDivision )
+    else if ( exp->kind == expKindDivision ) //x
         standardBinaryGen(exp, "/", f);
-    else if ( exp->kind == expKindLogicOr )
+    else if ( exp->kind == expKindLogicOr ) //x
         standardBinaryGen(exp, "||", f);
-    else if ( exp->kind == expKindLogicAnd )
+    else if ( exp->kind == expKindLogicAnd ) //x
         standardBinaryGen(exp, "&&", f);
     else if ( exp->kind == expKindNEQ )
     {
@@ -799,27 +803,27 @@ void expCodeGen(Exp *exp, FILE *f)
                 break;
         }
     }
-    else if ( exp->kind == expKindLEQ )
-        orderedBinaryGen(exp, "<=", f);
-    else if ( exp->kind == expKindGEQ )
+    else if ( exp->kind == expKindLEQ ) //x
+        orderedBinaryGen(exp, "<=", f); 
+    else if ( exp->kind == expKindGEQ ) //x
         orderedBinaryGen(exp, ">=", f);
-    else if ( exp->kind == expKindLess )
+    else if ( exp->kind == expKindLess ) //x
         orderedBinaryGen(exp, "<", f);
-    else if ( exp->kind ==  expKindGreater )
+    else if ( exp->kind ==  expKindGreater ) //x
         orderedBinaryGen(exp, ">", f);
-    else if ( exp->kind == expKindMod )
-        standardBinaryGen(exp, "%", f);//%% -> % didn't work before
-    else if ( exp->kind == expKindBitAnd )
+    else if ( exp->kind == expKindMod ) //x
+        standardBinaryGen(exp, "%", f); 
+    else if ( exp->kind == expKindBitAnd ) //x
         standardBinaryGen(exp, "&", f);
-    else if ( exp->kind == expKindBitOr )
+    else if ( exp->kind == expKindBitOr ) //x
         standardBinaryGen(exp, "|", f);
     else if ( exp->kind == expKindBitNotBinary ) //lol
         standardBinaryGen(exp, "^", f);
-    else if ( exp->kind == expKindBitShiftLeft )
+    else if ( exp->kind == expKindBitShiftLeft ) //x
         standardBinaryGen(exp, "<<", f);
-    else if ( exp->kind == expKindBitShiftRight )
+    else if ( exp->kind == expKindBitShiftRight ) //x
         standardBinaryGen(exp, ">>", f);
-    else if ( exp->kind == expKindBitAndNot )
+    else if ( exp->kind == expKindBitAndNot ) //x
         standardBinaryGen(exp, "&~", f);
     fprintf(f, ")");
     return;
@@ -850,10 +854,13 @@ void printCodeGen(ExpList* list,int indentLevel,FILE* fp){
             expCodeGen(exp,fp);
             fprintf(fp,");\n");
             break;
-        case baseFloat64:
-            fprintf(fp,"printf(\"%%10e\",");
+        case baseFloat64:;
+            char* temp = tmpVarGen();
+            fprintf(fp,"double %s = ",temp);
             expCodeGen(exp,fp);
-            fprintf(fp,");\n");
+            fprintf(fp,";\n");
+            indent(indentLevel,fp);
+            fprintf(fp,"printf(\"%%s%%10e\",%s >= 0 ? \"+\" : \"-\",%s);\n",temp,temp);
             break;
         case baseRune:
             fprintf(fp,"printf(\"%%d\",(int)(");
@@ -893,10 +900,13 @@ void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
             expCodeGen(exp,fp);
             fprintf(fp,");\n");
             break;
-        case baseFloat64:
-            fprintf(fp,"printf(\"%%10e \",");
+        case baseFloat64:;
+            char* temp = tmpVarGen();
+            fprintf(fp,"double %s = ",temp);
             expCodeGen(exp,fp);
-            fprintf(fp,");\n");
+            fprintf(fp,";\n");
+            indent(indentLevel,fp);
+            fprintf(fp,"printf(\"%%s%%10e \",%s >= 0 ? \"+\" : \"-\",%s);\n",temp,temp);
             break;
         case baseRune:
             fprintf(fp,"printf(\"%%d \",(int)(");
