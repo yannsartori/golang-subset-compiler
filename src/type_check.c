@@ -1202,6 +1202,7 @@ void typecheckSwitchStatements(Stmt* stmt){
 	TTEntry* type;
 	if (stmt->val.switchStmt.expression == NULL){ //Empty expression corresponds to boolean
 		// I'm trying to summon the boolean type entry
+		// thy boolean type entry, rise from the fires of Hell and join us mortals
 		Exp* exp = makeExpIntLit(0);
 		Exp* exp1 = makeExpBinary(exp,exp,expKindEQ);
 		stmt->val.switchStmt.expression = exp1;
