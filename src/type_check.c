@@ -1062,7 +1062,7 @@ int isExpressionAssignable(Exp* exp){
 	if (type == NULL){
 		return 0;
 	}
-
+	if ( !exp->contextEntry->isSymbol ) printf("%s\n", type->id);
 	return (exp->contextEntry->entry.s->isConstant == 0) || (exp->contextEntry->entry.s->isConstant == 1);
 }
 

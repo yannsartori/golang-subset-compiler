@@ -88,8 +88,9 @@ __golite_slice *append(__golite_slice *slice, __golite_poly_entry elem, char *ty
         newSlice->size = slice->size + 1;
         newSlice->capacity = slice->capacity * 2;
         newSlice->arrPointer = (__golite_poly_entry **) malloc(sizeof(__golite_poly_entry *));
-        *(newSlice->arrPointer) = (__golite_poly_entry *) malloc(sizeof(__golite_poly_entry) * newSlice->capacity);
+       // *(newSlice->arrPointer) = (__golite_poly_entry *) malloc(sizeof(__golite_poly_entry) * newSlice->capacity);
         *(newSlice->arrPointer) = arrCopy(*(slice->arrPointer), typeChain, slice->size);
+        *(newSlice->arrPointer) = realloc(*(newSlice->arrPointer), sizeof(__golite_poly_entry) * newSlice->capacity);
         *(*(newSlice->arrPointer) + slice->capacity) = elem;
     }
     return newSlice;
