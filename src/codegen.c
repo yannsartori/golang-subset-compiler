@@ -430,7 +430,7 @@ void generateStructCopy(TTEntry *structType_, FILE *f)
         free(fieldName);
         cur = cur->next;
     }
-    fprintf(f, "\t return y;\n}"); 
+    fprintf(f, "\t return y;\n}\n"); 
 }
 /*
 void expListCodeGen(ExpList *list, FILE *f)
@@ -1986,6 +1986,9 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
         indent(indentLevel,fp);
         fprintf(fp,"};\n\n");
 
+	 generateStructCopy(cur -> type, fp);
+	 generateStructEquality(cur -> type, fp);
+	 
         free(name);
 
         
