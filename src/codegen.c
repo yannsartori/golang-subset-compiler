@@ -489,15 +489,9 @@ void expCodeGen(Exp *exp, FILE *f)
     if ( exp == NULL ) return;
 	if ( exp->kind == expKindIdentifier )
 	{
-        if ( exp->contextEntry->entry.s->isConstant == 1 ) //is true or false, no shadowing...
-        {
-            fprintf(f, "%s", exp->val.id); //use stdbool!!!!
-        } else
-        {
-            char *retVal = idGen(exp->contextEntry);
-            fprintf(f, "%s",  retVal);
-            free(retVal);
-        }
+        char *retVal = idGen(exp->contextEntry);
+        fprintf(f, "%s",  retVal);
+        free(retVal);
         return;
     }
 	else if ( exp->kind == expKindIntLit )
@@ -510,7 +504,7 @@ void expCodeGen(Exp *exp, FILE *f)
         fprintf(f, "%lf", exp->val.floatLit);
         return;
     }
-    else if ( exp->kind == expKindRuneLit )
+    else if ( exp->kind == expKindRuneLit ) //test
     {
         fprintf(f, "%s", exp->val.runeLit);
         return;
