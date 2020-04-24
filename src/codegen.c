@@ -404,6 +404,7 @@ void generateStructCopy(TTEntry *structType_, FILE *f)
                         fprintf(f, "\ty->%s = x->%s;\n", fieldName, fieldName);
                         break;
                     case baseString:
+                        fprintf(f, "\ty->%s = (char *) malloc(sizeof(char)*strlen(x->%s));\n", fieldName, fieldName);
                         fprintf(f, "\tstrcpy(y->%s, x->%s);\n", fieldName, fieldName);
                         break;
                 }
