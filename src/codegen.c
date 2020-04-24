@@ -1165,6 +1165,7 @@ void localContinueReplace(Stmt* stmt,char* label){//Replaces or loop continues b
 void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp);
 void varJustDeclNoVal(VarDeclNode* varDecl, int indentLevel, FILE* fp);
 void specialIncDecStatementCodeGen(Stmt* stmt,int indentLevel, FILE* fp);
+void specialOpStatementCodeGen(Stmt* stmt, int indentLevel,FILE* fp);
 
 void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
     if (stmt == NULL){
@@ -1325,6 +1326,11 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 
         case StmtKindOpAssignment:
             {
+
+                if (stmt->val.incStmt.exp->kind == expKindIndexing){
+                    specialOpStatementCodeGen(stmt,indentLevel,fp);
+                    break;
+                }
                 Exp* lhs = stmt->val.opAssignment.lhs;
                 Exp* rhs = stmt->val.opAssignment.rhs;
                 TTEntry* type;
@@ -1501,7 +1507,23 @@ void specialIncDecStatementCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
     int lineno = lhs->lineno;
 
     indent(indentLevel,fp);
-    fprintf(fp,"arrSet(%s,%s,%d,%d,arrGet(%s,%s,%d,%d)",base,index,arrLength,lineno,base,index,arrLength,lineno);
+
+    char* dotAccess;
+    TTEntry* type = getExpressionType(lhs);
+
+    switch (type->val.nonCompositeType.type) {
+        case baseInt:
+            dotAccess = "intVal";
+            break;
+        case baseFloat64:
+            dotAccess = "floatVal";
+            break;
+        case baseRune:
+            dotAccess = "charVal";
+            break;
+    }
+
+    fprintf(fp,"arrSet(%s,%s,%d,%d,arrGet(%s,%s,%d,%d).%s",base,index,arrLength,lineno,base,index,arrLength,lineno,dotAccess);
     switch(stmt->kind){ 
         case StmtKindInc:   
             fprintf(fp,"+1);\n");
@@ -1512,27 +1534,113 @@ void specialIncDecStatementCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
     }
 
 }
-/*
+
 
 void specialOpStatementCodeGen(Stmt* stmt, int indentLevel,FILE* fp){
     if (stmt == NULL){
         return;
     }
 
-    Exp* lhs,rhs;
-    lhs = stmt->val.incStmt.exp;
+    
+    Exp* lhs = stmt->val.opAssignment.lhs;
+    Exp* rhs = stmt->val.opAssignment.rhs;
+
+
+    char* right = tmpVarGen();
+    indent(indentLevel,fp);
+    generateOurTypes(getExpressionType(rhs),fp);
+    fprintf(fp,"%s = ",right);
+    expCodeGen(rhs,fp);
+    fprintf(fp,";\n");
+
 
     char* index = tmpVarGen();
     indent(indentLevel,fp);
-    fprintf(fp,"%s = ")
+    fprintf(fp,"int %s = ",index);
+    expCodeGen(lhs->val.access.accessor,fp);
+    fprintf(fp,";\n");
 
-    switch(stmt->kind){
-       
+    char* base = tmpVarGen();
+    indent(indentLevel,fp);
+    generateOurTypes(getExpressionType(lhs->val.access.base),fp);
+    fprintf(fp,"%s = ",base);
+    expCodeGen(lhs->val.access.base,fp);
+    fprintf(fp,";\n");
 
+    int arrLength = getExpressionType(lhs->val.access.base)->val.arrayType.size;
+    int lineno = lhs->lineno;
+
+
+    char* dotAccess;
+
+    switch (getExpressionType(lhs)->val.nonCompositeType.type) {
+        case baseInt:
+            dotAccess = "intVal";
+            break;
+        case baseFloat64:
+            dotAccess = "floatVal";
+            break;
+        case baseRune:
+            dotAccess = "charVal";
+            break;
+        case baseString:
+            dotAccess = "stringVal";
+            break;
+        default:
+            dotAccess = "intVal";
+            break;
     }
 
+    indent(indentLevel,fp);
+    fprintf(fp,"arrSet(%s,%s,%d,%d,",base,index,arrLength,lineno);
 
-}*/
+    char arrGet[500];
+    sprintf(arrGet,"(arrGet(%s,%s,%d,%d).%s)",base,index,arrLength,lineno,dotAccess);
+
+
+
+    switch (stmt->val.opAssignment.kind) {
+				case expKindAddition:
+                    if (getExpressionType(lhs)->val.nonCompositeType.type == baseString){
+                        fprintf(fp,"concat(%s,%s));\n",arrGet,right);
+                    }else{
+                        fprintf(fp,"%s+%s);\n",arrGet,right);
+                    }
+					break;
+				case expKindSubtraction:
+					fprintf(fp,"%s+%s);\n",arrGet,right);
+					break;
+				case expKindMultiplication:
+					fprintf(fp,"%s*%s);\n",arrGet,right);
+					break;
+				case expKindDivision:
+					fprintf(fp,"%s/%s);\n",arrGet,right);
+					break;
+				case expKindMod:
+					fprintf(fp,"%s%%%s);\n",arrGet,right);
+					break;
+				case expKindBitAnd:
+					fprintf(fp,"%s&%s);\n",arrGet,right);
+					break;
+				case expKindBitOr:
+					fprintf(fp,"%s|%s);\n",arrGet,right);
+					break;
+				case expKindBitNotBinary:
+					fprintf(fp,"%s^%s);\n",arrGet,right);
+					break;
+				case expKindBitShiftLeft:
+					fprintf(fp,"%s<<%s);\n",arrGet,right);
+					break;
+				case expKindBitShiftRight:
+					fprintf(fp,"%s>>%s);\n",arrGet,right);
+					break;
+				case expKindBitAndNot:
+					fprintf(fp,"%s&(~%s));\n",arrGet,right);
+					break;
+			}
+
+
+}
 
 
 
@@ -1739,7 +1847,7 @@ void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 		} else if (decl -> whoAmI -> type -> underlyingType == arrayType) {
 			
 			char * typeChain = (char *) malloc(sizeof(char) * 999);
-			strcpy(typeChain, "");
+            strcpy(typeChain, "");
 			generateTypeChain(decl -> whoAmI -> type -> val.arrayType.type, typeChain);
 			
 			fprintf(fp, "arrCopy(");
@@ -1771,8 +1879,7 @@ void varJustDeclNoVal(VarDeclNode* varDecl, int indentLevel, FILE* fp) {
 	if (varDecl == NULL) {
 		return;
 	}
-	if (varDecl -> iDoDeclare == 1) {
-		
+	if (varDecl -> iDoDeclare = 1) {
 		indent(indentLevel, fp);
 		generateOurTypes(varDecl -> whoAmI -> type, fp);
 		fprintf(fp, " ");
