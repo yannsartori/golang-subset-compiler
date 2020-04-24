@@ -1840,12 +1840,10 @@ void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 		
 		fprintf(fp,"%s", varName);
 		fprintf(fp, " = ");
-		
 		if (decl -> whoAmI -> type -> underlyingType == identifierType) {
 			expCodeGen(decl -> value, fp);
 			fprintf(fp, ";\n");
 		} else if (decl -> whoAmI -> type -> underlyingType == arrayType) {
-			
 			char * typeChain = (char *) malloc(sizeof(char) * 999);
             strcpy(typeChain, "");
 			generateTypeChain(decl -> whoAmI -> type -> val.arrayType.type, typeChain);
@@ -1856,6 +1854,7 @@ void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 			
 		} else if (decl -> whoAmI -> type -> underlyingType == sliceType) {
 			expCodeGen(decl -> value, fp);
+            fprintf(fp,";\n"); //@Denali - Neil added this
 		} else if (decl -> whoAmI -> type -> underlyingType == structType) {
 			
 			fprintf(fp, "%s_copy(", idGenJustType(decl -> whoAmI -> type));
