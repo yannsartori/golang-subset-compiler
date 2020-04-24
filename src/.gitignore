@@ -5,3 +5,4 @@ test.go
 *.tab.c
 *.tab.h
 lex.yy.c
+go.out.c

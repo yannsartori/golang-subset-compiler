@@ -178,6 +178,25 @@ void symbolCheckExpression(Exp *e, Context *c)
 }
 
 int expressionIsAFunctionCall(Exp* exp, Context* context);
+void checkReps(VarDeclNode* declNode) {
+	
+	if (declNode == NULL) {
+		return;
+	}
+	
+	VarDeclNode* iter = declNode -> nextDecl;
+	
+	while (iter != NULL ){
+		if (strcmp(declNode -> identifier, iter -> identifier) == 0) {
+			fprintf(stderr, "Error: (line %d) identifier (%s) appeared twice in a short declaration\n", declNode -> lineno, declNode -> identifier);
+			exit(1);
+		}
+		iter = iter -> nextDecl;
+	}
+	
+	checkReps(declNode -> nextDecl);
+	
+}
 
 void symbolCheckStatement(Stmt* stmt, Context* context){
 	if (stmt == NULL){
@@ -322,6 +341,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 						exit(1);
 					}
 				}
+				stmt->val.typeDeclaration->stmtTypeEntry = t;
 				typeDeclIter = typeDeclIter -> nextDecl;
 			}
 			
@@ -330,6 +350,7 @@ void symbolCheckStatement(Stmt* stmt, Context* context){
 			symbolCheckVarDecl(stmt -> val.varDeclaration, context, 1);
 			break;
 		case StmtKindShortDeclaration : 
+			checkReps(stmt -> val.varDeclaration);
 			symbolCheckVarDecl(stmt -> val.varDeclaration, context, 2);
 			break;
 
@@ -459,83 +480,84 @@ void symbolCheckProgram(RootNode* root) {
 					fprintf(stderr, "Error: (line %d) init must have no arguments and void return type\n", iter -> actualRealDeclaration.funcDecl -> lineno);
 					exit(1);
 				}
-				symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
-			} else  {
+			} 
 				
 				
-				if (strcmp(s -> id, "main") == 0) {
-					if (iter -> actualRealDeclaration.funcDecl -> returnType != NULL || iter -> actualRealDeclaration.funcDecl -> argsDecls != NULL) {
-						fprintf(stderr, "Error: (line %d) main must have no arguments and void return type\n", iter -> actualRealDeclaration.funcDecl -> lineno);
-						exit(1);
-					}
+			if (strcmp(s -> id, "main") == 0) {
+				if (iter -> actualRealDeclaration.funcDecl -> returnType != NULL || iter -> actualRealDeclaration.funcDecl -> argsDecls != NULL) {
+					fprintf(stderr, "Error: (line %d) main must have no arguments and void return type\n", iter -> actualRealDeclaration.funcDecl -> lineno);
+					exit(1);
 				}
-				
-				if (strcmp(s -> id, "_") != 0){
-					if (addSymbolEntry(masterContx, s) != 0) {
-						fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", iter -> actualRealDeclaration.funcDecl -> lineno, s -> id);
-						exit(1);
-					}
+			}
+			
+			if (strcmp(s -> id, "_") != 0 && strcmp(s -> id, "init")){
+				if (addSymbolEntry(masterContx, s) != 0) {
+					fprintf(stderr, "Error: (line %d) identifier (%s) has already been declared in this scope\n", iter -> actualRealDeclaration.funcDecl -> lineno, s -> id);
+					exit(1);
 				}
-				
-				s -> type = malloc(sizeof(TTEntry));
-				s -> type -> id = NULL;
-				s -> type -> underlyingType = funcType;
-				s -> type -> comparable = 0;
-				
-				if (iter -> actualRealDeclaration.funcDecl -> returnType == NULL) {
-					s -> type -> val.functionType.ret = NULL;
-				} else {
-					s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
-					if (s -> type -> val.functionType.ret -> underlyingType == badType) {
-						fprintf(stderr, "Error: (line %d) problem with function return type: %s\n", iter -> actualRealDeclaration.funcDecl -> lineno, s -> type -> val.functionType.ret -> id);
-						exit(1);
-					}
+			}
+			
+			s -> type = malloc(sizeof(TTEntry));
+			s -> type -> id = NULL;
+			s -> type -> underlyingType = funcType;
+			s -> type -> comparable = 0;
+			
+			if (iter -> actualRealDeclaration.funcDecl -> returnType == NULL) {
+				s -> type -> val.functionType.ret = NULL;
+			} else {
+				s -> type -> val.functionType.ret = makeAnonymousTTEntry(masterContx, iter -> actualRealDeclaration.funcDecl -> returnType);
+				if (s -> type -> val.functionType.ret -> underlyingType == badType) {
+					fprintf(stderr, "Error: (line %d) problem with function return type: %s\n", iter -> actualRealDeclaration.funcDecl -> lineno, s -> type -> val.functionType.ret -> id);
+					exit(1);
 				}
+			}
+			
+			VarDeclNode* argsIter = iter -> actualRealDeclaration.funcDecl -> argsDecls;
+			if (argsIter != NULL){
+				int returnCode;
+				STEntry *argEntryIter = malloc(sizeof(STEntry));
+				argEntryIter -> id = argsIter -> identifier;
+				argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
+				argEntryIter -> isConstant = 0;
+				argsIter->functionArgTypeEntry = argEntryIter->type; // Neil added this 
+				if (argEntryIter -> type -> underlyingType == badType) {
+					fprintf(stderr, "Error: (line %d) invalid type used to declare function argument %s: %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> type -> id);
+					exit(1);
+				};
+				if (strcmp(argEntryIter -> id, "_") != 0) {
+					returnCode = addSymbolEntry(functionContext, argEntryIter);
+				}
+				s -> type -> val.functionType.args = argEntryIter;
 				
-				VarDeclNode* argsIter = iter -> actualRealDeclaration.funcDecl -> argsDecls;
-				if (argsIter != NULL){
-					int returnCode;
-					STEntry *argEntryIter = malloc(sizeof(STEntry));
+				argsIter = argsIter -> nextDecl;
+				
+				while (argsIter != NULL) {
+					argEntryIter -> next = malloc(sizeof(STEntry));
+					argEntryIter = argEntryIter -> next;
 					argEntryIter -> id = argsIter -> identifier;
 					argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
 					argEntryIter -> isConstant = 0;
 					if (argEntryIter -> type -> underlyingType == badType) {
 						fprintf(stderr, "Error: (line %d) invalid type used to declare function argument %s: %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> type -> id);
 						exit(1);
-					};
+					}
 					if (strcmp(argEntryIter -> id, "_") != 0) {
 						returnCode = addSymbolEntry(functionContext, argEntryIter);
-					}
-					s -> type -> val.functionType.args = argEntryIter;
-					
-					argsIter = argsIter -> nextDecl;
-					
-					while (argsIter != NULL) {
-						argEntryIter -> next = malloc(sizeof(STEntry));
-						argEntryIter = argEntryIter -> next;
-						argEntryIter -> id = argsIter -> identifier;
-						argEntryIter -> type = makeAnonymousTTEntry(masterContx, argsIter -> typeThing);
-						argEntryIter -> isConstant = 0;
-						if (argEntryIter -> type -> underlyingType == badType) {
-							fprintf(stderr, "Error: (line %d) invalid type used to declare function argument %s: %s\n", argsIter -> lineno, argsIter -> identifier, argEntryIter -> type -> id);
+						if (returnCode != 0) {
+							fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", argsIter -> lineno);
 							exit(1);
 						}
-						if (strcmp(argEntryIter -> id, "_") != 0) {
-							returnCode = addSymbolEntry(functionContext, argEntryIter);
-							if (returnCode != 0) {
-								fprintf(stderr, "Error: (line %d) function arguments must have unique names\n", argsIter -> lineno);
-								exit(1);
-							}
-						}
-						
-						argsIter = argsIter -> nextDecl;
 					}
-					argEntryIter -> next = NULL;
+					
+					argsIter = argsIter -> nextDecl;
 				}
-				reusingFunctionContext = 1;
-				symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
-				reusingFunctionContext = 0;
+				argEntryIter -> next = NULL;
 			}
+			
+			reusingFunctionContext = 1;
+			symbolCheckStatement(iter -> actualRealDeclaration.funcDecl -> blockStart, functionContext);
+			reusingFunctionContext = 0;
+			
 			
 		} else {
 			fprintf(stderr, "I don't know what the fuck just happened, but I don't really care: I'm a get the fuck up out of here. Fuck this shit, I'm out.\n");
@@ -658,7 +680,9 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 		IdChain* idMover = malloc(sizeof(IdChain));
 		t -> val.structType.fieldNames = idMover;
 		int returnCode;
+		int countMembs = 0;
 		while (sMembs != NULL) {
+			
 			if (head == NULL && identifier == NULL){
 				innerType = makeAnonymousTTEntry(contx, sMembs -> typeThing);
 			} else if (head == NULL) {
@@ -667,7 +691,6 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 				innerType = makeSubTTEntry(contx, sMembs -> typeThing, head, inSlice);
 			}
 			if (innerType -> underlyingType == badType) {
-				printf("hello\n");
 				t -> id = innerType -> id;
 				t -> underlyingType = badType;
 				return t;
@@ -678,26 +701,36 @@ TTEntry *makeGeneralTTEntry(Context* contx, TypeHolderNode *holder, char* identi
 			memberEntry = malloc(sizeof(STEntry));
 			memberEntry -> id = sMembs -> identifier;
 			memberEntry -> type = innerType;
-			returnCode = addSymbolEntry(tentativeContext, memberEntry);
-			if (returnCode != 0) {
-				t -> id = "duplicate struct members";
-				t -> underlyingType = badType;
-				return t;
-			}
 			
-			idMover -> identifier = sMembs -> identifier;
-			sMembs = sMembs -> nextDecl;
-			
-			if (sMembs == NULL) {
-				idMover -> next = NULL;
-			} else {
-				
+			if (strcmp(sMembs -> identifier, "_") != 0) {
+				returnCode = addSymbolEntry(tentativeContext, memberEntry);
+				if (returnCode != 0) {
+					t -> id = "duplicate struct members";
+					t -> underlyingType = badType;
+					return t;
+				}
+				countMembs++;
+				idMover -> identifier = sMembs -> identifier;
 				idMover -> next = malloc(sizeof(IdChain));
 				idMover = idMover -> next;
 			}
 			
-			
+			sMembs = sMembs -> nextDecl;
+				
 		}
+		
+		if(countMembs == 0) {
+			t -> val.structType.fieldNames = NULL;
+		} else {
+			idMover = t -> val.structType.fieldNames;
+			for (int i = 1; i<countMembs; i++) {
+				idMover = idMover -> next;
+			}
+			idMover -> next = NULL;
+		}
+		
+		
+		
 		t -> val.structType.fields = tentativeContext;
 		
 		IdChain* temp = t -> val.structType.fieldNames;
@@ -761,6 +794,8 @@ void symbolCheckVarDecl(VarDeclNode* declNode, Context* contx, int placement) { 
 				shortDeclMustDecl ++;
 				varDeclIter -> iDoDeclare = 1;
 			}
+		} else {
+			varDeclIter -> iDoDeclare = 1;
 		}
 		
 		varDeclIter = varDeclIter -> nextDecl;

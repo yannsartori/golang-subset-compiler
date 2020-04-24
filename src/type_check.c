@@ -7,32 +7,19 @@
 #include "symbol_table.h"
 
 
-typedef struct Entry{
-	char* id;
-	TTEntry* type;
-}Entry;
 
 
-typedef enum{
-	EntryNode,
-	LabelNode
-}TrieType;
 
-typedef struct Trie{
-	TrieType genre;
-	union{
-		Entry* entry;
-		int label;
-	}variant;
 
-	struct Trie* sibling;
-	struct Trie* child;
-}Trie;
 
+int structVariantCounter = 0;
+
+List* TrieToList(Trie* trie);
 Trie* encodeRoot(RootNode* root);
-extern Trie* trie;
+Trie* trie;
 
 extern TTEntry *builtInTypes;
+
 int isExpListPrintable(ExpList* expList);
 int isValidAssignStmt(ExpList* left, ExpList* right);
 int isExpressionAddressable(Exp* exp);
@@ -76,6 +63,9 @@ char * expKindToString(ExpressionKind e)
 		case expKindBitShiftRight:
 			strcpy(ret, ">>");
 			return ret;
+		case expKindBitShiftLeft:
+			strcpy(ret, ">>");
+			return ret;
 		case expKindBitAndNot:
 			strcpy(ret, "&^");
 			return ret;
@@ -102,6 +92,9 @@ char * expKindToString(ExpressionKind e)
 			return ret;
 		case expKindGEQ:
 			strcpy(ret, ">=");
+			return ret;
+		case expKindLEQ:
+			strcpy(ret, "<=");
 			return ret;
 		case expKindUnaryPlus:
 			strcpy(ret, "+");
@@ -268,9 +261,9 @@ void orderedTypeError(TTEntry *t, ExpressionKind e, int lineno)
 	fprintf(stderr, "Error: (%d) %s is not ordered, incompatiable with %s\n", lineno, typeToString(t), expKindToString(e));
 	exit(1);
 }
-void notExpressionError(TTEntry *t, ExpressionKind e, int lineno)
+void notExpressionError(TTEntry *t, int lineno)
 {
-	fprintf(stderr, "Error: (%d) %s is a type, cannot take part in %s\n", lineno, typeToString(t), expKindToString(e));
+	fprintf(stderr, "Error: (%d) %s is a type, can only take part in typecasts.\n", lineno, typeToString(t));
 	exit(1);
 }
 void notMatchingTypes(TTEntry *t1, TTEntry *t2, ExpressionKind e, int lineno)
@@ -278,14 +271,15 @@ void notMatchingTypes(TTEntry *t1, TTEntry *t2, ExpressionKind e, int lineno)
 	fprintf(stderr, "Error: (%d) Operation %s requires equal types for both arguments (got %s and %s)\n", lineno, expKindToString(e), typeToString(t1), typeToString(t2));
 	exit(1);
 }
-PolymorphicEntry *makeTypeEntry(TTEntry *t)
+PolymorphicEntry *makeTypeEntry(TTEntry *t) //This is weird maybe but I don't know.
 {
 	PolymorphicEntry *p = (PolymorphicEntry *) malloc(sizeof(PolymorphicEntry));
-	p->isSymbol = 0;
-	p->entry.t = t;
+	p->isSymbol = 1;
+	p->entry.s = (STEntry *) malloc(sizeof(STEntry));
+	p->entry.s->type = t;
 	return p; 
 }
-TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any expressions with types as identifiers. I can't think of any instances where allowing them is desirable...
+TTEntry *typeCheckExpression(Exp *e)
 {
 	TTEntry *typeLeft;
 	TTEntry *typeRight;
@@ -301,15 +295,14 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 		case expKindRawStringLit:
 		case expKindInterpretedStringLit: e->contextEntry = makeTypeEntry(getBuiltInType("string")); return getExpressionType(e);
 		case expKindIdentifier:
-			if ( !e->contextEntry->isSymbol ) *wasType = 1;
+			if ( !e->contextEntry->isSymbol ) notExpressionError(e->contextEntry->entry.t, e->lineno);
 			return getExpressionType(e);
 		default:
 			if ( isUnary(e) )
 			{
 				unaryExp = e->val.unary;
-				type = _typeCheckExpression(unaryExp, wasType);
+				type = typeCheckExpression(unaryExp);
 				e->contextEntry = makeTypeEntry(type);
-				if ( *wasType ) notExpressionError(type, e->kind, e->lineno); 
 				switch (e->kind)
 				{
 					case expKindUnaryPlus:
@@ -329,10 +322,8 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 				leftExp = e->val.binary.left;
 				rightExp = e->val.binary.right;
 
-				typeLeft = _typeCheckExpression(leftExp, wasType);
-				if ( *wasType ) notExpressionError(typeLeft, e->val.binary.left->kind, e->lineno); 
-				typeRight = _typeCheckExpression(rightExp, wasType);
-				if ( *wasType ) notExpressionError(typeRight, e->val.binary.right->kind, e->lineno); 
+				typeLeft = typeCheckExpression(leftExp);
+				typeRight = typeCheckExpression(rightExp);
 
 				if ( !typeEquality(typeLeft, typeRight) ) notMatchingTypes(typeLeft, typeRight, e->kind, e->lineno); 
 
@@ -397,9 +388,34 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 			{ //I switch to if statments here so I can declare stuff
 				if ( e->kind == expKindFuncCall )
 				{
-					TTEntry *baseType = _typeCheckExpression(e->val.funcCall.base, wasType);
-					if ( baseType->underlyingType == funcType ) /**FUNCCALL**/
-					{
+					if ( !e->val.funcCall.base->contextEntry->isSymbol )
+					{ //we are trying to do a typecast maybe
+						TTEntry *baseType = e->val.funcCall.base->contextEntry->entry.t;
+						if ( !(e->val.funcCall.arguments != NULL && e->val.funcCall.arguments->next == NULL ) )
+						{
+							fprintf(stderr, "Error: (%d) Typecasts need exactly one argument\n", e->lineno);
+							exit(1);
+						}
+						TTEntry *toCast = typeCheckExpression(e->val.funcCall.arguments->cur);
+						if ( baseType->underlyingType == identifierType && 
+							(toCast->val.nonCompositeType.type == baseType->val.nonCompositeType.type  
+							  || (isNumericType(toCast) && isNumericType(baseType)) 
+							  || (isIntegerType(toCast) && baseType->val.nonCompositeType.type == baseString) 
+							))
+						{
+							e->contextEntry = makeTypeEntry(baseType);
+							return baseType;
+						}
+						fprintf(stderr, "Error: (%d) Typecasts need to occur with either identical underlying types, numeric types, or an integer type to a string. Received types of %s and %s\n", e->lineno, typeToString(baseType), typeToString(toCast)); 
+						exit(1);
+					}
+					else { //we are trying to do a funccall, maybe
+						TTEntry *baseType = typeCheckExpression(e->val.funcCall.base);
+						if ( baseType->underlyingType != funcType )
+						{
+							fprintf(stderr, "Error: (%d) The expression does not refer to a function nor type\n", e->lineno); 
+							exit(1);
+						}
 						ExpList * curArgPassed = e->val.funcCall.arguments;
 						int paramCount = 1;
 						for ( STEntry *curArgSymbolEntry = baseType->val.functionType.args; curArgSymbolEntry; curArgSymbolEntry = curArgSymbolEntry->next, paramCount++ )
@@ -409,8 +425,7 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 								fprintf(stderr, "Error: (%d) %s called with too few arguments\n", e->lineno, e->val.funcCall.base->val.id);
 								exit(1);
 							}
-							TTEntry *curArgPassedType = _typeCheckExpression(curArgPassed->cur, wasType);
-							if ( *wasType ) notExpressionError(curArgPassedType, e->kind, e->lineno);
+							TTEntry *curArgPassedType = typeCheckExpression(curArgPassed->cur);
 							if ( !typeEquality(curArgPassedType, curArgSymbolEntry->type) )
 							{
 								fprintf(stderr, "Error: (%d) The %d argument of %s expects parameter of type %s, received %s\n", e->lineno, paramCount, e->val.funcCall.base->val.id, typeToString(curArgSymbolEntry->type), typeToString(curArgPassedType));
@@ -426,35 +441,11 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 						e->contextEntry = makeTypeEntry(baseType->val.functionType.ret);
 						return baseType->val.functionType.ret;
 					}
-					/**TYPECAST**/
-					else if ( *wasType )
-					{
-						if ( !(e->val.funcCall.arguments != NULL && e->val.funcCall.arguments->next == NULL ) )
-						{
-							fprintf(stderr, "Error: (%d) Typecasts need exactly one argument\n", e->lineno);
-							exit(1);
-						}
-						*wasType = 0;
-						TTEntry *toCast = _typeCheckExpression(e->val.funcCall.arguments->cur, wasType);
-						//TODO check if we can type cast arrays and stuff. Not specified in documentation, but
-						if ( *wasType ) notExpressionError(toCast, e->kind, e->lineno);
-						if ( toCast->val.nonCompositeType.type == baseType->val.nonCompositeType.type  || (isNumericType(toCast) && isNumericType(baseType)) || (isIntegerType(toCast) && baseType->val.nonCompositeType.type == baseString) )
-						{
-							e->contextEntry = makeTypeEntry(baseType);
-							return baseType;
-						}
-						fprintf(stderr, "Error: (%d) Typecasts need to occur with either identical underlying types, numeric types, or an integer type to a string. Received types of %s and %s\n", e->lineno, typeToString(baseType), typeToString(toCast)); 
-						exit(1);
-					}
-					fprintf(stderr, "Error: (%d) The expression does not refer to a function nor type\n", e->lineno); 
-					exit(1);
 				}
 				else if ( e->kind == expKindIndexing )
 				{
-					TTEntry * indexType = _typeCheckExpression(e->val.access.accessor, wasType);
-					if ( *wasType ) notExpressionError(indexType, e->kind, e->lineno);
-					TTEntry * baseType = _typeCheckExpression(e->val.access.base, wasType);
-					if ( *wasType ) notExpressionError(baseType, e->kind, e->lineno);
+					TTEntry * indexType = typeCheckExpression(e->val.access.accessor);
+					TTEntry * baseType = typeCheckExpression(e->val.access.base);
 					if ( !(isNonCompositeType(indexType) && indexType->val.nonCompositeType.type == baseInt) )
 					{
 						fprintf(stderr, "Error: (%d) The type of the index was %s, expecting underlying type int\n", e->lineno, typeToString(indexType));
@@ -475,11 +466,10 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 				}
 				else if ( e->kind == expKindFieldSelect )
 				{
-					TTEntry *baseType = _typeCheckExpression(e->val.access.base, wasType);
-					if ( *wasType ) notExpressionError(baseType, e->kind, e->lineno);
+					TTEntry *baseType = typeCheckExpression(e->val.access.base);
 					if ( !(baseType->underlyingType == structType) )
 					{
-						fprintf(stderr, "Error (%d) Field selection requires a base expression with underlying type struct, received %s\n", e->lineno, typeToString(baseType));
+						fprintf(stderr, "Error: (%d) Field selection requires a base expression with underlying type struct, received %s\n", e->lineno, typeToString(baseType));
 						exit(1);
 					}
 					PolymorphicEntry *structField = getEntry(baseType->val.structType.fields, e->val.access.accessor->val.id);
@@ -493,10 +483,8 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 				}
 				else if ( e->kind == expKindAppend )
 				{
-					TTEntry *listType = _typeCheckExpression(e->val.append.list, wasType);
-					if ( *wasType ) notExpressionError(listType, e->kind, e->lineno);
-					TTEntry *elemType = _typeCheckExpression(e->val.append.elem, wasType);
-					if ( *wasType ) notExpressionError(elemType, e->kind, e->lineno);
+					TTEntry *listType = typeCheckExpression(e->val.append.list);
+					TTEntry *elemType = typeCheckExpression(e->val.append.elem);
 					if ( !(listType->underlyingType == sliceType) )
 					{
 						fprintf(stderr, "Error: (%d) Append requires an expression with underlying type slice, received %s\n", e->lineno, typeToString(listType));
@@ -512,8 +500,7 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 				}
 				else if ( e->kind == expKindLength )
 				{
-					TTEntry *bodyType = _typeCheckExpression(e->val.builtInBody, wasType);
-					if ( *wasType ) notExpressionError(bodyType, e->kind, e->lineno);
+					TTEntry *bodyType = typeCheckExpression(e->val.builtInBody);
 					if ( !(bodyType->underlyingType == sliceType || bodyType->underlyingType == arrayType || (bodyType->underlyingType == identifierType && bodyType->val.nonCompositeType.type == baseString)) )
 					{
 						fprintf(stderr, "Error: (%d) Length requires an expression with underlying type slice or array or string, received %s\n", e->lineno, typeToString(bodyType));
@@ -524,8 +511,7 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 				}
 				else if (e->kind == expKindCapacity )
 				{
-					TTEntry *bodyType = _typeCheckExpression(e->val.builtInBody, wasType);
-					if ( *wasType ) notExpressionError(bodyType, e->kind, e->lineno);
+					TTEntry *bodyType = typeCheckExpression(e->val.builtInBody);
 					if ( !(bodyType->underlyingType == sliceType || bodyType->underlyingType == arrayType) )
 					{
 						fprintf(stderr, "Error: (%d) Capacity requires an expression with underlying type slice or array, received %s\n", e->lineno, typeToString(bodyType));
@@ -540,12 +526,6 @@ TTEntry *_typeCheckExpression(Exp *e, int *wasType) //Note: this rejects any exp
 	}
 }
 
-TTEntry *typeCheckExpression(Exp *e)
-{
-	int *wasType = (int *) malloc(sizeof(int));
-	*wasType = 0;
-	return _typeCheckExpression(e, wasType);
-}
 int statementTypeEquality(TTEntry* t1, TTEntry* t2){
 	if (t1 == NULL && t2 != NULL || t2 != NULL && t1 == NULL){ // I suppose I could use ^, but what would XOR with NULL mean
 		return 0;
@@ -592,7 +572,7 @@ void typeCheckStatement(Stmt* stmt){
 			typeCheckStatement(stmt->val.ifStmt.statement);
 			type = typeCheckExpression(stmt->val.ifStmt.expression);
 			if (!isBool(type)){
-				fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]\n",stmt->val.ifStmt.expression->lineno,typeToString(type));
+				fprintf(stderr,"Error: (line %d) conditon expected bool [received %s]\n",stmt->val.ifStmt.expression->lineno,typeToString(type));
 				exit(1);
 			}
 			typeCheckStatement(stmt->val.ifStmt.block);
@@ -628,7 +608,7 @@ void typeCheckStatement(Stmt* stmt){
 		case StmtKindWhileLoop:
 			type = typeCheckExpression(stmt->val.whileLoop.conditon);
 			if (!isBool(type)){
-				fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]\n",stmt->lineno,typeToString(type));
+				fprintf(stderr,"Error: (line %d) conditon expected bool [received %s]\n",stmt->lineno,typeToString(type));
 				exit(1);
 			}
 			typeCheckStatement(stmt->val.whileLoop.block);
@@ -638,7 +618,7 @@ void typeCheckStatement(Stmt* stmt){
 			if (stmt->val.forLoop.condition != NULL){
 				type = typeCheckExpression(stmt->val.forLoop.condition);
 				if (!isBool(type)){
-					fprintf(stderr,"Error : (line %d) conditon expected bool [received %s]\n",stmt->lineno,typeToString(type));
+					fprintf(stderr,"Error: (line %d) conditon expected bool [received %s]\n",stmt->lineno,typeToString(type));
 					exit(1);
 				}
 			}
@@ -706,6 +686,10 @@ void typeCheckStatement(Stmt* stmt){
 
 }
 
+void printTrie(Trie* trie);
+Trie* reverse(Trie* trie);
+Trie* trie;
+List* globalList;
 
 void typeCheckProgram(RootNode* rootNode) {
 	TopDeclarationNode* topIter = rootNode -> startDecls;
@@ -725,9 +709,60 @@ void typeCheckProgram(RootNode* rootNode) {
 		topIter = topIter -> nextTopDecl;
 	}
 
-	trie = encodeRoot(rootNode);
 }
 
+void setupTrie (RootNode* rootNode) {
+	trie = encodeRoot(rootNode);
+	List* list = TrieToList(trie);
+	for(int i = 0; i < list->size; i++){
+		list->structChain[i] = reverse(list->structChain[i]);
+	}
+	globalList = list;
+	
+}
+
+//Its O(n^2) but it should be fine
+Trie* reverse(Trie* trie){
+	if (trie == NULL){
+		return NULL;
+	}
+	Trie* reversedTail = reverse(trie->child);
+	if (reversedTail == NULL){
+		return trie;
+	}else{
+		Trie* cur = reversedTail;
+		trie->child = NULL;
+		while(cur->child != NULL){
+			cur = cur->child;
+		}
+		cur->child = trie;
+		return reversedTail;
+
+	}
+
+
+
+}
+
+
+void printTrie(Trie* trie){
+	if (trie == NULL){
+		printf("NULL\n");
+		return;
+	}
+
+	switch(trie->genre){
+		case EntryNode:
+			printf("%s->",trie->variant.entry->id);
+			break;
+		case LabelNode:
+			printf("variant %d->",trie->variant.label);
+			break;
+	}
+
+	printTrie(trie->child);
+
+}
 
 
 
@@ -941,8 +976,9 @@ int isPrintable(Exp* exp){
 
 	TTEntry* type = typeCheckExpression(exp);
 
+
 	if (type == NULL){
-		puts("Oh no");
+		puts("Error: (line %d) print, println expects base types, [received void]\n");
 		exit(1);
 	}
 
@@ -982,58 +1018,52 @@ int isExpListPrintable(ExpList* expList){
 
 int isExpressionAddressable(Exp* exp){
 	if (exp == NULL){
-		puts("Oh no");
+		fprintf(stderr,"Error: null expression\n");
 		exit(1);
 	}
 
-	switch(exp->kind){
+	switch (exp->kind){
 		case expKindIdentifier:
 			if (isBlank(exp)){
 				return 1;
 			}
 
-			PolymorphicEntry* polyEntry  = exp->contextEntry;
-			if (polyEntry->isSymbol && (polyEntry->entry.s->isConstant == 0)  ){ //If a symbol and not a $ constant or a functions
+			if(exp->contextEntry->entry.s->isConstant == 0){
 				return 1;
 			}else{
-				return 0; //If its not a symbol, its a type
+				return 0;
 			}
+			break;
 
-
-		case expKindFieldSelect:
-			return 1;
+		case expKindFuncCall:
+			return 0;
+			break;
 		case expKindIndexing:
-			return 1;
+			return isExpressionAddressable(exp->val.access.base);
+		case expKindFieldSelect:
+			return isExpressionAddressable(exp->val.access.base);
+			break;
 		default:
 			return 0;
+			break;
 	}
-
 
 }
 
-int isExpressionConst(Exp* exp){
-	if (exp == NULL){
-		return 0;
-	}
-
-	PolymorphicEntry* polyEntry  = exp->contextEntry;
-	return polyEntry->isSymbol && (polyEntry->entry.s->isConstant == 1) ;
-	
-
-}
-
+ 
 int isExpressionAssignable(Exp* exp){
 	if (exp == NULL){
+		fprintf(stderr,"Error: null expression\n");
+		exit(1);
+	}
+
+
+	TTEntry* type = getExpressionType(exp);
+	if (type == NULL){
 		return 0;
 	}
 
-
-	switch (exp->kind){
-		case expKindIdentifier : 
-			return isExpressionAddressable(exp) || isExpressionConst(exp);
-		default: 
-			return 1;
-	}
+	return (exp->contextEntry->entry.s->isConstant == 0) || (exp->contextEntry->entry.s->isConstant == 1);
 }
 
 int isValidAssignPair(Exp* left,Exp* right){
@@ -1042,7 +1072,7 @@ int isValidAssignPair(Exp* left,Exp* right){
 		if (!isExpressionAssignable(right)){
 			fprintf(stderr,"Error: (line %d) ",right->lineno);
 			prettyExp(right);
-			printf(" cannot be assigned to ");
+			printf(" [type %s] cannot be assigned to ",typeToString(rightType));
 			prettyExp(left);
 			printf("\n");
 
@@ -1063,7 +1093,7 @@ int isValidAssignPair(Exp* left,Exp* right){
 		if (!isExpressionAssignable(right)){
 			fprintf(stderr,"Error: (line %d) ",right->lineno);
 			prettyExp(right);
-			printf(" cannot be assigned to ");
+			printf(" [type %s] cannot be assigned to ",typeToString(rightType));
 			prettyExp(left);
 			printf("\n");
 
@@ -1165,8 +1195,8 @@ void typecheckSwitchStatements(Stmt* stmt){
 
 	}else{
 		type = typeCheckExpression(stmt->val.switchStmt.expression);
-		if (!type->comparable){
-			fprintf(stderr,"Error: (line %d) switch case expression must be of a comparable type\n",stmt->lineno);
+		if (type == NULL || !type->comparable){
+			fprintf(stderr,"Error: (line %d) switch case expression must be of a comparable type [received %s]\n",stmt->lineno,typeToString(type));
 			exit(1);
 		}
 	}
@@ -1208,6 +1238,7 @@ void typeCheckVarDecl(VarDeclNode* decl) {
 	}
 	
 	if (decl -> value == NULL){
+		typeCheckVarDecl(decl -> multiDecl);
 		return;
 	}
 	TTEntry* expType = typeCheckExpression(decl -> value);
@@ -1216,11 +1247,15 @@ void typeCheckVarDecl(VarDeclNode* decl) {
 		exit(1);
 	}
 	if (decl -> typeThing -> kind == inferType) {
+		/*if (strcmp(decl -> identifier, "_") == 0) {
+			
+		} else*/
 		if (decl -> iDoDeclare == 1) {
 			decl -> whoAmI -> type = expType;
 		} else {
 			if (!typeEquality(decl -> whoAmI -> type, expType)) {
 				
+				printf("no, me\n");
 				fprintf(stderr,"Error: (line %d) %s cannot be assigned to %s\n", decl -> lineno, typeToString(expType), typeToString(decl -> whoAmI -> type));
 				exit(1);
 			}
@@ -1247,7 +1282,7 @@ void typeCheckVarDecl(VarDeclNode* decl) {
 
 
 
-int structVariantCounter = 0;
+
 
 
 
@@ -1264,6 +1299,9 @@ Trie* makeTrie(TrieType genre){
 	Trie* ptr = malloc(sizeof(Trie));
 
 	ptr->genre = genre;
+	if (genre == EntryNode){
+		ptr->variant.entry = malloc(sizeof(Entry));
+	}
 	return ptr;
 }
 
@@ -1307,6 +1345,7 @@ Trie* helperEncodeInfo(Trie* trie,TTEntry* structEntry, IdChain* chain){
 		}
 		Trie* temp = makeLabelNode();
 		temp->sibling = trie;
+		temp->type = structEntry;
 
 		return temp;
 		
@@ -1320,6 +1359,7 @@ Trie* helperEncodeInfo(Trie* trie,TTEntry* structEntry, IdChain* chain){
 			ptr->variant.entry->id = chain->identifier;
 
 			ptr->sibling = trie;
+			ptr->child = helperEncodeInfo(NULL,structEntry,chain->next);
 			return ptr;
 		
 	}else{
@@ -1331,7 +1371,33 @@ Trie* helperEncodeInfo(Trie* trie,TTEntry* structEntry, IdChain* chain){
 }
 
 Trie* encodeInfo(Trie* trie, TTEntry* structEntry){
-	return helperEncodeInfo(trie,structEntry,structEntry->val.structType.fieldNames);
+	Trie* updatedTrie = trie;
+	if (structEntry == NULL){
+		return trie;
+	}
+
+	//Explore structure of composite types
+	switch(structEntry->underlyingType){
+		case arrayType:
+			updatedTrie = encodeInfo(updatedTrie,structEntry->val.arrayType.type);
+			break;
+		case structType:
+			for(IdChain* chain =  structEntry->val.structType.fieldNames; chain != NULL; chain = chain->next){
+				updatedTrie = encodeInfo(updatedTrie,getEntry(structEntry->val.structType.fields,chain->identifier)->entry.s->type);
+			}
+			break;
+		case sliceType:
+			updatedTrie = encodeInfo(updatedTrie,structEntry->val.sliceType.type);
+			break;
+	}
+
+	if (structEntry->underlyingType == structType){
+		updatedTrie = helperEncodeInfo(updatedTrie,structEntry,structEntry->val.structType.fieldNames);
+	}
+
+	updatedTrie = encodeInfo(updatedTrie,structEntry->next);
+	return updatedTrie;
+
 }
 
 int helperLookUpLabel(Trie* trie,TTEntry* structEntry,IdChain* chain){
@@ -1357,7 +1423,7 @@ int helperLookUpLabel(Trie* trie,TTEntry* structEntry,IdChain* chain){
 	}
 }
 
-int LookUpLabel(Trie* trie, TTEntry* structEntry){
+int LookUpLabel(TTEntry* structEntry){
 	return helperLookUpLabel(trie,structEntry,structEntry->val.structType.fieldNames);
 }
 
@@ -1366,9 +1432,10 @@ Trie* encodeDeclNode(Trie* trie,TypeDeclNode* node){
 	Trie* updatedTrie = trie;
 	for(TypeDeclNode* cur = node; cur != NULL; cur = cur->nextDecl){
 			TypeHolderNode* actualType = cur->actualType;
-			if (actualType->kind == structType){
-				updatedTrie = encodeInfo(updatedTrie,node->typeEntry);
-			}
+		
+			updatedTrie = encodeInfo(updatedTrie,cur->typeEntry);
+			
+			
 	}
 
 	return updatedTrie;
@@ -1381,11 +1448,11 @@ Trie* encodeVarDecl(Trie* trie, VarDeclNode* node){
 
 	Trie* updatedTrie = trie;
 
-	for(VarDeclNode* cur = node; cur != NULL; node = node->nextDecl){
+	for(VarDeclNode* cur = node; cur != NULL; cur = cur->nextDecl){
 		TTEntry* type = cur->whoAmI->type;
-		if (type->underlyingType == structType){
-			updatedTrie = encodeInfo(updatedTrie,type);
-		}
+		
+		updatedTrie = encodeInfo(updatedTrie,type);
+		
 	}
 
 	return updatedTrie;
@@ -1396,38 +1463,42 @@ Trie* encodeStmtStruct(Stmt* stmt,Trie* trie){
 	if (stmt == NULL){
 		return trie;
 	}
+	
 
 	Trie* updatedTrie = trie;
 
 	switch (stmt->kind){
-		StmtKindBlock:
+		case StmtKindBlock:
 			updatedTrie = encodeStmtStruct(stmt->val.block.stmt,updatedTrie);
 			break;
-		StmtKindIf:
+		case StmtKindIf:
 			updatedTrie = encodeStmtStruct(stmt->val.ifStmt.block,updatedTrie);
 			updatedTrie = encodeStmtStruct(stmt->val.ifStmt.elseBlock,updatedTrie);
 			break;
-		StmtKindElse:
+		case StmtKindElse:
 			updatedTrie = encodeStmtStruct(stmt->val.elseStmt.block,updatedTrie);
 			break;
-		StmtKindSwitch:
+		case StmtKindSwitch:
 			for(switchCaseClause* list = stmt->val.switchStmt.clauseList; list != NULL; list = list->next){
 				updatedTrie = encodeStmtStruct(list->statementList,updatedTrie);
 			}
 			break;
-		StmtKindInfLoop:
+		case StmtKindInfLoop:
 			updatedTrie = encodeStmtStruct(stmt->val.infLoop.block,updatedTrie);
 			break;
-		StmtKindWhileLoop:
+		case StmtKindWhileLoop:
 			updatedTrie = encodeStmtStruct(stmt->val.whileLoop.block,updatedTrie);
 			break;
-		StmtKindThreePartLoop:
+		case StmtKindThreePartLoop:
 			updatedTrie = encodeStmtStruct(stmt->val.forLoop.block,updatedTrie);
 			break;
-		StmtKindTypeDeclaration:
-			updatedTrie = encodeDeclNode(updatedTrie,stmt->val.typeDeclaration);
+		case StmtKindTypeDeclaration:
+
+			for(TypeDeclNode* cur = stmt->val.typeDeclaration; cur != NULL; cur = cur->nextDecl){
+				updatedTrie = encodeInfo(updatedTrie,cur->stmtTypeEntry);
+			}
 			break;
-		StmtKindVarDeclaration:;
+		case StmtKindVarDeclaration:;
 			updatedTrie = encodeVarDecl(updatedTrie,stmt->val.varDeclaration);
 			break;
 	}
@@ -1444,15 +1515,19 @@ Trie* encodeFunctionStruct(Trie* trie,FuncDeclNode* function){
 
 	Trie* updatedTrie = trie;
 
-	updatedTrie = encodeVarDecl(updatedTrie,function->argsDecls);
+	VarDeclNode* args = function->argsDecls;
 
-	TTEntry* returnType = function->symbolEntry->type->val.functionType.ret;
-	if (returnType != NULL && returnType->underlyingType == structType){
-		//Non void type and is a struct
-		updatedTrie = encodeInfo(updatedTrie,returnType);
-	} 
+	for(VarDeclNode* cur = args; cur != NULL; cur = cur->nextDecl){
+		updatedTrie = encodeInfo(updatedTrie,cur->functionArgTypeEntry);
+	}
 
+	TTEntry* returnType  = function->symbolEntry->type->val.functionType.ret;
+
+
+	
+	updatedTrie = encodeInfo(updatedTrie,returnType);
 	updatedTrie = encodeStmtStruct(function->blockStart,updatedTrie);
+
 	return updatedTrie;
 
 }
@@ -1487,5 +1562,65 @@ Trie* encodeRoot(RootNode* root){
 	}
 
 	return encodeTopDeclNode(NULL,root->startDecls);
+
+}
+
+
+
+List* makeList (int n){
+	List* ptr = malloc(sizeof(List));
+	ptr->size = n;
+	ptr->structChain = malloc(sizeof(Trie*)*n);
+	return ptr;
+}
+
+List* ListCons(Trie* x, List* xs){
+	for(int i = 0; i < xs->size ;i++){
+		void* ptr = malloc(sizeof(Trie));
+		memcpy(ptr,x,sizeof(Trie));
+		((Trie*)ptr)->child = xs->structChain[i];
+		((Trie*)ptr)->sibling = NULL;
+		xs->structChain[i] = (Trie*)ptr;
+
+	}
+	return xs;
+}
+
+List* append(List* xs,List* ys){
+	List* ptr = makeList((xs->size) + ys->size);
+	int i;
+	for(i = 0; i < xs->size; i++){
+		ptr->structChain[i] = xs->structChain[i];
+	}
+
+	for(; i < xs->size+ys->size;i++){
+		ptr->structChain[i] = ys->structChain[i-xs->size];
+	}
+
+	free(xs);
+	free(ys);
+	return ptr;
+}
+
+
+
+List* TrieToList(Trie* trie){
+
+	if (trie == NULL){
+		List* temp = makeList(1);
+		temp->structChain[0] = NULL;
+		return temp;
+	}
+
+	List* acc = makeList(0);
+
+	for(Trie* cur = trie; cur != NULL; cur = cur->sibling){
+		List* childList = TrieToList(cur->child);
+		childList = ListCons(cur,childList);
+		acc = append(acc,childList);
+	}
+
+	return acc;
+
 
 }

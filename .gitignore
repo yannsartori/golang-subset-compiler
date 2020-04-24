@@ -2,3 +2,5 @@ src/code.go
 programs/1-scan+parse/valid/permute.go
 .gitignore
 src/.gitignore
+.vscode/launch.json
+src/a.out

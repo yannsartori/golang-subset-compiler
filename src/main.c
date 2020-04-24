@@ -7,6 +7,8 @@
 void symbolCheckProgram(RootNode* root);
 void printSymbolProgram(RootNode* rootNode);
 void typeCheckProgram(RootNode* rootNode);
+void setupTrie(RootNode* rootNode);
+void totalCodeGen(RootNode* root);
 
 void yyparse();
 int yylex();
@@ -49,7 +51,16 @@ int main(int argc, char * argv[])
 		
 		printf("OK\n");
 
-	} else {
+	} else if ( !strcmp(argv[1], "codegen") )
+	{
+		yyparse();
+		symbolCheckProgram(rootNode);
+		typeCheckProgram(rootNode);
+		setupTrie(rootNode);
+		totalCodeGen(rootNode);
+
+	} else 
+	{
 		printf("sorry, I didn't get that\n");
 	}
 	return 0;

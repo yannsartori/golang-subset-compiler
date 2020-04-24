@@ -176,6 +176,7 @@ struct VarDeclNode {
 	STEntry* whoAmI;
 	int iDoDeclare;		/*Used to track whether or not a short var declaration (i.e.  one that uses the ":=" operator) actually declares or just assigns. The symbol table printer  reads this and decides whether or not to print the symbol */
 	int lineno;
+	TTEntry* functionArgTypeEntry;//Only used to give function args a TTEntry
 };
 
 struct TypeDeclNode {
@@ -184,6 +185,7 @@ struct TypeDeclNode {
 	TypeHolderNode* actualType;
 	int lineno;
 	TTEntry* typeEntry;
+	TTEntry* stmtTypeEntry;
 };
 
 struct FuncDeclNode {
