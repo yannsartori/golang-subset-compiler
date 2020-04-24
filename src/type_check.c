@@ -1043,10 +1043,9 @@ int isExpressionAddressable(Exp* exp){
 			TTEntry* type = getExpressionType(base);
 			if (type->underlyingType == arrayType ){
 				return isExpressionAddressable(base);
-			}else {//Must be a struct
+			}else {//Must be a slice
 				return 1;
 			}
-
 			break;
 		case expKindFieldSelect:
 			return isExpressionAddressable(exp->val.access.base);

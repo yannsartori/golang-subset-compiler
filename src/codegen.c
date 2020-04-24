@@ -1934,7 +1934,7 @@ void totalCodeGen(RootNode* root) {
 
 
 
-
+void generateStructEqualityHelper(int indentLevel, FILE* fp);
 void codegenStructDeclaration(int indentLevel,FILE* fp){
     if (globalList->structChain[0] == NULL){
         return; //small quirk but no structs leave a list of length 1
@@ -1983,11 +1983,46 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
         indent(indentLevel,fp);
         fprintf(fp,"};\n\n");
 
-	 generateStructCopy(cur -> type, fp);
-	 generateStructEquality(cur -> type, fp);
+	    generateStructCopy(cur -> type, fp);
+	    generateStructEquality(cur -> type, fp);
 	 
         free(name);
 
         
     }
+
+    generateStructEqualityHelper(indentLevel, fp);
 }
+
+
+
+
+void generateStructEqualityHelper(int indentLevel, FILE* fp){
+    indent(indentLevel,fp);
+    fprintf(fp,"int structEqualityHelper(void* struct1,void* struct2, char* structName){\n");
+
+
+
+    for(int i = 0; i < globalList->size; i++){
+        if (i == 0){
+            Trie* cur = globalList->structChain[i];
+            char* id = idGenJustType(cur->type);
+            indent(indentLevel+1,fp);
+            fprintf(fp,"if(strcmp(structName,\"%s\") == 0)\n",id);
+            indent(indentLevel+2,fp);
+            fprintf(fp,"return %s_equality(struct1,struct2);\n",id);
+
+        }else{
+            Trie* cur = globalList->structChain[i];
+            char* id = idGenJustType(cur->type);
+            indent(indentLevel+1,fp);
+            fprintf(fp,"else if(strcmp(structName,\"%s\") == 0)\n",id);
+            indent(indentLevel+2,fp);
+            fprintf(fp,"return %s_equality(struct1,struct2);\n",id);
+        }
+    }
+
+    indent(indentLevel,fp);
+    fprintf(fp,"}\n");
+}
+
