@@ -1040,11 +1040,17 @@ int isExpressionAddressable(Exp* exp){
 			break;
 		case expKindIndexing:;
 			Exp* base = exp->val.access.base;
-		
-	/*	TTEntry* type = 
+			TTEntry* type = getExpressionType(base);
+			if (type->underlyingType == arrayType ){
+				return isExpressionAddressable(base);
+			}else {//Must be a struct
+				return 1;
+			}
+
+			break;
 		case expKindFieldSelect:
 			return isExpressionAddressable(exp->val.access.base);
-			break;*/
+			break;
 		default:
 			return 0;
 			break;
