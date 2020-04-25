@@ -1038,8 +1038,15 @@ int isExpressionAddressable(Exp* exp){
 		case expKindFuncCall:
 			return 0;
 			break;
-		case expKindIndexing:
-			return isExpressionAddressable(exp->val.access.base);
+		case expKindIndexing:;
+			Exp* base = exp->val.access.base;
+			TTEntry* type = getExpressionType(base);
+			if (type->underlyingType == arrayType ){
+				return isExpressionAddressable(base);
+			}else {//Must be a slice
+				return 1;
+			}
+			break;
 		case expKindFieldSelect:
 			return isExpressionAddressable(exp->val.access.base);
 			break;
@@ -1063,7 +1070,15 @@ int isExpressionAssignable(Exp* exp){
 		return 0;
 	}
 
-	return (exp->contextEntry->entry.s->isConstant == 0) || (exp->contextEntry->entry.s->isConstant == 1);
+	switch (exp->kind){
+		case expKindIdentifier:
+
+			return (exp->contextEntry->entry.s->isConstant == 0) || (exp->contextEntry->entry.s->isConstant == 1);
+		default:
+			return 1;
+
+	}
+
 }
 
 int isValidAssignPair(Exp* left,Exp* right){
@@ -1187,6 +1202,7 @@ void typecheckSwitchStatements(Stmt* stmt){
 	TTEntry* type;
 	if (stmt->val.switchStmt.expression == NULL){ //Empty expression corresponds to boolean
 		// I'm trying to summon the boolean type entry
+		// thy boolean type entry, rise from the fires of Hell and join us mortals
 		Exp* exp = makeExpIntLit(0);
 		Exp* exp1 = makeExpBinary(exp,exp,expKindEQ);
 		stmt->val.switchStmt.expression = exp1;

@@ -6,7 +6,7 @@ if ! [ -f $FILE ]; then
 	exit 1
 fi
 
-if [ "$MODE" = "scan" ] || [ "$MODE" = "tokens" ] || [ "$MODE" = "parse" ] || [ "$MODE" = "pretty" ] || [ "$MODE" = "symbol" ] || [ "$MODE" = "typecheck" ]; then
+if [ "$MODE" = "scan" ] || [ "$MODE" = "tokens" ] || [ "$MODE" = "parse" ] || [ "$MODE" = "pretty" ] || [ "$MODE" = "symbol" ] || [ "$MODE" = "typecheck" ] || [ "$MODE" = "codegen" ]; then
 	./src/golitec "$MODE" < "$FILE"
 else
 	echo "Error: Invalid mode $MODE"

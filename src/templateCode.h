@@ -29,6 +29,9 @@ struct __golite_slice {
     int capacity;
     __golite_poly_entry **arrPointer;
 };
+
+int structEqualityHelper(void* struct1,void* struct2, char* structName);
+void* structCopyHelper(void* struct1, char* structName);
 /*Make sure this works!*/
 __golite_poly_entry createPolyInt(int x)
 {
@@ -61,9 +64,12 @@ __golite_poly_entry createPolyVoid(void * x)
     p.polyVal = x;
     return p;
 }
-__golite_slice *append(__golite_slice *slice, __golite_poly_entry elem)
+__golite_poly_entry *arrCopy(__golite_poly_entry *arr, char *typeChain, int arrLength);
+
+__golite_slice *append(__golite_slice *slice, __golite_poly_entry elem, char *typeChain)
 {
     __golite_slice *newSlice = (__golite_slice *) malloc(sizeof(__golite_slice));
+
     if ( slice == NULL || slice->capacity == 0 )
     {
         newSlice->size = 1;
@@ -85,11 +91,9 @@ __golite_slice *append(__golite_slice *slice, __golite_poly_entry elem)
         newSlice->size = slice->size + 1;
         newSlice->capacity = slice->capacity * 2;
         newSlice->arrPointer = (__golite_poly_entry **) malloc(sizeof(__golite_poly_entry *));
-        *(newSlice->arrPointer) = (__golite_poly_entry *) malloc(sizeof(__golite_poly_entry) * newSlice->capacity);
-        for ( int i = 0; i < slice->capacity; i++ )
-        {
-            *(*(newSlice->arrPointer) + i) = *(*(slice->arrPointer) + i);
-        }
+       // *(newSlice->arrPointer) = (__golite_poly_entry *) malloc(sizeof(__golite_poly_entry) * newSlice->capacity);
+        *(newSlice->arrPointer) = arrCopy(*(slice->arrPointer), typeChain, slice->size);
+        *(newSlice->arrPointer) = realloc(*(newSlice->arrPointer), sizeof(__golite_poly_entry) * newSlice->capacity);
         *(*(newSlice->arrPointer) + slice->capacity) = elem;
     }
     return newSlice;
@@ -98,7 +102,7 @@ __golite_poly_entry arrGet(__golite_poly_entry * arr, int pos, int length, int l
 {
     if ( pos >= length || pos < 0 )
     {
-        fprintf(stderr, "Error: (runtime, %d) index out of range [%d] with length %d", lineno, pos, length);
+        fprintf(stderr, "Error: (runtime, %d) index out of range [%d] with length %d\n", lineno, pos, length);
         exit(1);
     }
     return *(arr + pos);
@@ -107,7 +111,7 @@ __golite_poly_entry sliceGet(__golite_slice *slice, int pos, int lineno)
 {
     if ( pos >= slice->size || pos < 0 )
     {
-        fprintf(stderr, "Error: (runtime, %d) index out of range [%d] with length %d", lineno, pos, slice->size);
+        fprintf(stderr, "Error: (runtime, %d) index out of range [%d] with length %d\n", lineno, pos, slice->size);
         exit(1);
     }
     return *(*(slice->arrPointer) + pos);
@@ -287,4 +291,13 @@ int arrEquality(__golite_poly_entry *arr1, __golite_poly_entry *arr2, char *type
     }
     return 1;
     
+}
+
+
+
+int structEquality(void * struct1, void * struct2, char * structName){
+    return structEqualityHelper(struct1,struct2,structName);
+}
+void * structCopy(void * struct1, char * structName){
+    return structCopyHelper(struct1,structName);
 }

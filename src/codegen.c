@@ -156,8 +156,6 @@ char* idGenJustVar(STEntry* s)
 }
 char *structMemb(char *memb)
 {
-    //caution will have to be expressed when dealing with blank fields...
-    //in particular with equality ( i think tentatively )
     if ( strcmp(memb, "_") == 0 ) return tmpVarGen();
 
     char * retVal = (char *) malloc(sizeof(char) * (50 + strlen(memb)));
@@ -212,12 +210,7 @@ void rawStringCodeGen(char *s, FILE *f)
     fprintf(f, "\"");
 }
 
-//AY->Array, ST->Struct, SG->String, RE->rune, IR->Integer, FT->Float, 
-//I don't think there's a better way to do this...
-//Note: I intentionally don't add slices. This is because the ret val
-//of this function is only used in arrayEquality, which would reject
-//slices in equality in typechecking, and in arrCopy, but that doesn't
-//matter since the reference gets copied.
+//AY->Array, ST->Struct, SG->String, RE->rune, IR->Integer, FT->Float, SE-> Slice
 void generateTypeChain(TTEntry *t, char *typeChain)
 {
     switch (t->underlyingType)
@@ -239,7 +232,7 @@ void generateTypeChain(TTEntry *t, char *typeChain)
                     strcat(typeChain, "SG");
                     return;
             }
-            break; //i know its redundant but they reassure me <3
+            break;
         case arrayType:
             strcat(typeChain, "AY");
             char size[10];
@@ -251,6 +244,9 @@ void generateTypeChain(TTEntry *t, char *typeChain)
             strcat(typeChain, "ST");
             strcat(typeChain, idGenJustType(t));
             break;
+        case sliceType:
+            strcat(typeChain, "SE");
+            return;
     }
     return;
 }
@@ -319,7 +315,7 @@ void generateStructEquality(TTEntry *sType, FILE *f)
     Context *ctx = sType->val.structType.fields;
     while ( cur != NULL )
     {
-        TTEntry *t = getEntry(ctx, cur->identifier)->entry.t; //Gets the type of the id
+        TTEntry *t = getEntry(ctx, cur->identifier)->isSymbol ? getEntry(ctx, cur->identifier)->entry.s->type : getEntry(ctx, cur->identifier)->entry.t; //Gets the type of the id
         char *fieldName = structMemb(cur->identifier);
         if ( strcmp(cur->identifier, "_") == 0 ) //we don't compare blanks
         {
@@ -353,7 +349,7 @@ void generateStructEquality(TTEntry *sType, FILE *f)
                 char * typeChain = (char *) malloc(sizeof(char) * 999);
                 strcpy(typeChain, "");
                 generateTypeChain(t->val.arrayType.type, typeChain);
-                fprintf(f, "arrEquality(x->%s, y->%s, %s, %d) && ", fieldName, fieldName, typeChain, t->val.arrayType.size);
+                fprintf(f, "arrEquality(x->%s, y->%s, \"%s\", %d) && ", fieldName, fieldName, typeChain, t->val.arrayType.size);
                 free(typeChain);
                 break;
         }
@@ -388,7 +384,7 @@ void generateStructCopy(TTEntry *structType_, FILE *f)
     Context *ctx = structType_->val.structType.fields;
     while ( cur != NULL )
     {
-        TTEntry *t = getEntry(ctx, cur->identifier)->entry.t; //Gets the type of the id
+        TTEntry *t = getEntry(ctx, cur->identifier)->isSymbol ? getEntry(ctx, cur->identifier)->entry.s->type : getEntry(ctx, cur->identifier)->entry.t; //Gets the type of the id
         char *fieldName = structMemb(cur->identifier);
         if ( strcmp(cur->identifier, "_") == 0 ) //we don't copy....
         {
@@ -399,7 +395,7 @@ void generateStructCopy(TTEntry *structType_, FILE *f)
         switch (t->underlyingType)
         {
             case identifierType:
-                switch ( t->val.nonCompositeType.type)
+                switch ( t->val.nonCompositeType.type )
                 {
                     case baseInt:
                     case baseBool:
@@ -408,6 +404,7 @@ void generateStructCopy(TTEntry *structType_, FILE *f)
                         fprintf(f, "\ty->%s = x->%s;\n", fieldName, fieldName);
                         break;
                     case baseString:
+                        fprintf(f, "\ty->%s = (char *) malloc(sizeof(char)*strlen(x->%s));\n", fieldName, fieldName);
                         fprintf(f, "\tstrcpy(y->%s, x->%s);\n", fieldName, fieldName);
                         break;
                 }
@@ -423,31 +420,16 @@ void generateStructCopy(TTEntry *structType_, FILE *f)
                 char * typeChain = (char *) malloc(sizeof(char) * 999);
                 strcpy(typeChain, "");
                 generateTypeChain(t->val.arrayType.type, typeChain);
-                fprintf(f, "\ty->%s = arrCopy(x->%s, %s, %d);\n", fieldName, fieldName, typeChain, t->val.arrayType.size);
+                fprintf(f, "\ty->%s = arrCopy(x->%s, \"%s\", %d);\n", fieldName, fieldName, typeChain, t->val.arrayType.size);
                 free(typeChain);
                 break;
         }
         free(fieldName);
         cur = cur->next;
     }
-    fprintf(f, "\t return y;\n}"); 
+    fprintf(f, "\t return y;\n}\n"); 
 }
-/*
-void expListCodeGen(ExpList *list, FILE *f)
-{
-	if ( list == NULL || list->cur == NULL ) return;
-	expCodeGen(list->cur, f);
-	if ( list->next != NULL )
-	{
-		fprintf(f, ", ");
-		//expListCodeGen(list->next, f);
-	}
 
-}
-*/
-// These are pretty much duplicated because I wasn't sure if anyone 
-// else needs a "pure" expression list generation... If noone else 
-// needs it we can just remove it.
 void funcExpListCodeGen(ExpList *list, FILE *f)
 {
     if ( list == NULL || list->cur == NULL ) return;
@@ -457,7 +439,7 @@ void funcExpListCodeGen(ExpList *list, FILE *f)
     
     switch ( type->underlyingType )
     {
-        case identifierType: //normally c call b value
+        case identifierType: //normal c call by value
         case sliceType: //copies the pointer
             expCodeGen(list->cur, f); 
             break;
@@ -466,7 +448,7 @@ void funcExpListCodeGen(ExpList *list, FILE *f)
             char * typeChain = (char *) malloc(sizeof(char) * 999);
             strcpy(typeChain, "");
             generateTypeChain(type->val.arrayType.type, typeChain);
-            fprintf(f, "arrayCopy(");
+            fprintf(f, "arrCopy(");
             expCodeGen(list->cur, f);
             fprintf(f, ", \"%s\", %d)", typeChain, type->val.arrayType.size);
             free(typeChain);
@@ -540,7 +522,7 @@ void expCodeGen(Exp *exp, FILE *f)
             }
         }
         return;
-    }
+    } 
 	else if ( exp->kind == expKindIndexing )
     {
         if ( getExpressionType(exp->val.access.base)->underlyingType == sliceType )
@@ -571,7 +553,6 @@ void expCodeGen(Exp *exp, FILE *f)
 	else if ( exp->kind == expKindFieldSelect )
     {
         fprintf(f, "(");
-        generateCast(getExpressionType(exp->val.access.base), f);
         expCodeGen(exp->val.access.base, f);
         fprintf(f, ")->");
         char * retVal = structMemb(exp->val.access.accessor->val.id);
@@ -579,12 +560,15 @@ void expCodeGen(Exp *exp, FILE *f)
         free(retVal);
         return;
     }
-	else if ( exp->kind == expKindAppend )
+	else if ( exp->kind == expKindAppend ) 
     {
         fprintf(f, "append(");
         expCodeGen(exp->val.append.list, f);
         fprintf(f, ", ");
         type = getExpressionType(exp->val.append.elem);
+        char * typeChain = (char *) malloc(sizeof(char) * 999);
+        strcpy(typeChain, "");
+        generateTypeChain(type, typeChain);
         if ( type->underlyingType == identifierType )
         {
             switch ( type->val.nonCompositeType.type )
@@ -608,10 +592,11 @@ void expCodeGen(Exp *exp, FILE *f)
             fprintf(f, "createPolyVoid(");
         }
         expCodeGen(exp->val.append.elem, f);
-        fprintf(f, "))");
+        fprintf(f, "), \"%s\")", typeChain);
+        free(typeChain);
         return;
     }
-	else if ( exp->kind == expKindLength )
+	else if ( exp->kind == expKindLength ) 
     {
         type = getExpressionType(exp->val.builtInBody);
         switch ( type->underlyingType )
@@ -632,7 +617,7 @@ void expCodeGen(Exp *exp, FILE *f)
         }
         return;
     }
-	else if ( exp->kind == expKindCapacity )
+	else if ( exp->kind == expKindCapacity ) 
     {
         type = getExpressionType(exp->val.builtInBody);
         switch ( type->underlyingType )
@@ -648,7 +633,7 @@ void expCodeGen(Exp *exp, FILE *f)
         }
         return;
     }
-	else if ( exp->kind == expKindLogicNot )
+	else if ( exp->kind == expKindLogicNot ) 
     { 
         fprintf(f, "!");
         fprintf(f, "(");
@@ -656,7 +641,7 @@ void expCodeGen(Exp *exp, FILE *f)
         fprintf(f, ")");
         return;
     }
-	else if ( exp->kind == expKindUnaryMinus )
+	else if ( exp->kind == expKindUnaryMinus ) 
     {
         fprintf(f, "-");
         fprintf(f, "(");
@@ -664,7 +649,7 @@ void expCodeGen(Exp *exp, FILE *f)
         fprintf(f, ")");
         return;
     }
-	else if ( exp->kind == expKindUnaryPlus )
+	else if ( exp->kind == expKindUnaryPlus ) 
     {
         fprintf(f, "+");
         fprintf(f, "(");
@@ -672,7 +657,7 @@ void expCodeGen(Exp *exp, FILE *f)
         fprintf(f, ")");
         return;
     }
-	else if ( exp->kind == expKindBitNotUnary )
+	else if ( exp->kind == expKindBitNotUnary ) 
     {
         fprintf(f, "~");
         fprintf(f, "(");
@@ -683,7 +668,7 @@ void expCodeGen(Exp *exp, FILE *f)
 
 
     fprintf(f, "(");
-    if ( exp->kind == expKindAddition )
+    if ( exp->kind == expKindAddition ) 
     {
         type = getExpressionType(exp->val.binary.left);
         if (type->val.nonCompositeType.type == baseString)
@@ -698,15 +683,15 @@ void expCodeGen(Exp *exp, FILE *f)
             standardBinaryGen(exp, "+", f);
         }
     }
-    else if ( exp->kind == expKindSubtraction )
+    else if ( exp->kind == expKindSubtraction ) 
         standardBinaryGen(exp, "-", f);
-    else if ( exp->kind == expKindMultiplication )
+    else if ( exp->kind == expKindMultiplication ) 
         standardBinaryGen(exp, "*", f);
-    else if ( exp->kind == expKindDivision )
+    else if ( exp->kind == expKindDivision ) 
         standardBinaryGen(exp, "/", f);
-    else if ( exp->kind == expKindLogicOr )
+    else if ( exp->kind == expKindLogicOr ) 
         standardBinaryGen(exp, "||", f);
-    else if ( exp->kind == expKindLogicAnd )
+    else if ( exp->kind == expKindLogicAnd ) 
         standardBinaryGen(exp, "&&", f);
     else if ( exp->kind == expKindNEQ )
     {
@@ -799,27 +784,27 @@ void expCodeGen(Exp *exp, FILE *f)
                 break;
         }
     }
-    else if ( exp->kind == expKindLEQ )
-        orderedBinaryGen(exp, "<=", f);
-    else if ( exp->kind == expKindGEQ )
+    else if ( exp->kind == expKindLEQ ) 
+        orderedBinaryGen(exp, "<=", f); 
+    else if ( exp->kind == expKindGEQ ) 
         orderedBinaryGen(exp, ">=", f);
-    else if ( exp->kind == expKindLess )
+    else if ( exp->kind == expKindLess ) 
         orderedBinaryGen(exp, "<", f);
-    else if ( exp->kind ==  expKindGreater )
+    else if ( exp->kind ==  expKindGreater ) 
         orderedBinaryGen(exp, ">", f);
-    else if ( exp->kind == expKindMod )
-        standardBinaryGen(exp, "%", f);//%% -> % didn't work before
-    else if ( exp->kind == expKindBitAnd )
+    else if ( exp->kind == expKindMod ) 
+        standardBinaryGen(exp, "%", f); 
+    else if ( exp->kind == expKindBitAnd ) 
         standardBinaryGen(exp, "&", f);
-    else if ( exp->kind == expKindBitOr )
+    else if ( exp->kind == expKindBitOr ) 
         standardBinaryGen(exp, "|", f);
     else if ( exp->kind == expKindBitNotBinary ) //lol
         standardBinaryGen(exp, "^", f);
-    else if ( exp->kind == expKindBitShiftLeft )
+    else if ( exp->kind == expKindBitShiftLeft ) 
         standardBinaryGen(exp, "<<", f);
-    else if ( exp->kind == expKindBitShiftRight )
+    else if ( exp->kind == expKindBitShiftRight ) 
         standardBinaryGen(exp, ">>", f);
-    else if ( exp->kind == expKindBitAndNot )
+    else if ( exp->kind == expKindBitAndNot ) 
         standardBinaryGen(exp, "&~", f);
     fprintf(f, ")");
     return;
@@ -850,10 +835,13 @@ void printCodeGen(ExpList* list,int indentLevel,FILE* fp){
             expCodeGen(exp,fp);
             fprintf(fp,");\n");
             break;
-        case baseFloat64:
-            fprintf(fp,"printf(\"%%10e\",");
+        case baseFloat64:;
+            char* temp = tmpVarGen();
+            fprintf(fp,"double %s = ",temp);
             expCodeGen(exp,fp);
-            fprintf(fp,");\n");
+            fprintf(fp,";\n");
+            indent(indentLevel,fp);
+            fprintf(fp,"printf(\"%%s%%10e\",%s >= 0 ? \"+\" : \"\",%s);\n",temp,temp);
             break;
         case baseRune:
             fprintf(fp,"printf(\"%%d\",(int)(");
@@ -893,10 +881,13 @@ void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
             expCodeGen(exp,fp);
             fprintf(fp,");\n");
             break;
-        case baseFloat64:
-            fprintf(fp,"printf(\"%%10e \",");
+        case baseFloat64:;
+            char* temp = tmpVarGen();
+            fprintf(fp,"double %s = ",temp);
             expCodeGen(exp,fp);
-            fprintf(fp,");\n");
+            fprintf(fp,";\n");
+            indent(indentLevel,fp);
+            fprintf(fp,"printf(\"%%s%%10e \",%s >= 0 ? \"+\" : \"\",%s);\n",temp,temp);
             break;
         case baseRune:
             fprintf(fp,"printf(\"%%d \",(int)(");
@@ -1181,7 +1172,6 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             fprintf(fp,";\n");
             break;
         case StmtKindAssignment:
-            //This is broken (need to assign types properly for temp vars,using void* for now)
             assignStmtCodeGen(stmt->val.assignment.lhs,stmt->val.assignment.rhs,indentLevel,fp);
             break;
     
@@ -1494,7 +1484,7 @@ void specialIncDecStatementCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
     indent(indentLevel,fp);
     generateOurTypes(getExpressionType(lhs->val.access.base),fp);
     indent(indentLevel,fp);
-    fprintf(fp,"%s = ",base);
+    fprintf(fp," %s = ",base);
     expCodeGen(lhs->val.access.base,fp);
     fprintf(fp,";\n");
 
@@ -1505,25 +1495,29 @@ void specialIncDecStatementCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
     char* dotAccess;
     TTEntry* type = getExpressionType(lhs);
 
+    char* variant;
     switch (type->val.nonCompositeType.type) {
         case baseInt:
             dotAccess = "intVal";
+            variant = "Int";
             break;
         case baseFloat64:
             dotAccess = "floatVal";
+            variant = "Float";
             break;
         case baseRune:
             dotAccess = "charVal";
+            variant = "Rune";
             break;
     }
 
-    fprintf(fp,"arrSet(%s,%s,%d,%d,arrGet(%s,%s,%d,%d).%s",base,index,arrLength,lineno,base,index,arrLength,lineno,dotAccess);
+    fprintf(fp,"arrSet(%s,%s,%d,%d,createPoly%s(arrGet(%s,%s,%d,%d).%s",base,index,arrLength,lineno,variant,base,index,arrLength,lineno,dotAccess);
     switch(stmt->kind){ 
         case StmtKindInc:   
-            fprintf(fp,"+1);\n");
+            fprintf(fp,"+1));\n");
             break;
         case StmtKindDec:
-            fprintf(fp,"-1);\n");
+            fprintf(fp,"-1));\n");
             break;
     }
 
@@ -1543,7 +1537,7 @@ void specialOpStatementCodeGen(Stmt* stmt, int indentLevel,FILE* fp){
     char* right = tmpVarGen();
     indent(indentLevel,fp);
     generateOurTypes(getExpressionType(rhs),fp);
-    fprintf(fp,"%s = ",right);
+    fprintf(fp," %s = ",right);
     expCodeGen(rhs,fp);
     fprintf(fp,";\n");
 
@@ -1557,7 +1551,7 @@ void specialOpStatementCodeGen(Stmt* stmt, int indentLevel,FILE* fp){
     char* base = tmpVarGen();
     indent(indentLevel,fp);
     generateOurTypes(getExpressionType(lhs->val.access.base),fp);
-    fprintf(fp,"%s = ",base);
+    fprintf(fp," %s = ",base);
     expCodeGen(lhs->val.access.base,fp);
     fprintf(fp,";\n");
 
@@ -1566,22 +1560,28 @@ void specialOpStatementCodeGen(Stmt* stmt, int indentLevel,FILE* fp){
 
 
     char* dotAccess;
+    char* variant;
 
     switch (getExpressionType(lhs)->val.nonCompositeType.type) {
         case baseInt:
             dotAccess = "intVal";
+            variant = "Int";
             break;
         case baseFloat64:
             dotAccess = "floatVal";
+            variant = "Float";
             break;
         case baseRune:
             dotAccess = "charVal";
+            variant = "Rune";
             break;
         case baseString:
             dotAccess = "stringVal";
+            variant = "String";
             break;
         default:
             dotAccess = "intVal";
+            variant = "Void";
             break;
     }
 
@@ -1592,44 +1592,44 @@ void specialOpStatementCodeGen(Stmt* stmt, int indentLevel,FILE* fp){
     sprintf(arrGet,"(arrGet(%s,%s,%d,%d).%s)",base,index,arrLength,lineno,dotAccess);
 
 
-
+    fprintf(fp,"createPoly%s(",variant);
     switch (stmt->val.opAssignment.kind) {
 				case expKindAddition:
                     if (getExpressionType(lhs)->val.nonCompositeType.type == baseString){
-                        fprintf(fp,"concat(%s,%s));\n",arrGet,right);
+                        fprintf(fp,"concat(%s,%s)));\n",arrGet,right);
                     }else{
-                        fprintf(fp,"%s+%s);\n",arrGet,right);
+                        fprintf(fp,"%s+%s));\n",arrGet,right);
                     }
 					break;
 				case expKindSubtraction:
-					fprintf(fp,"%s+%s);\n",arrGet,right);
+					fprintf(fp,"%s+%s));\n",arrGet,right);
 					break;
 				case expKindMultiplication:
-					fprintf(fp,"%s*%s);\n",arrGet,right);
+					fprintf(fp,"%s*%s));\n",arrGet,right);
 					break;
 				case expKindDivision:
-					fprintf(fp,"%s/%s);\n",arrGet,right);
+					fprintf(fp,"%s/%s));\n",arrGet,right);
 					break;
 				case expKindMod:
-					fprintf(fp,"%s%%%s);\n",arrGet,right);
+					fprintf(fp,"%s%%%s));\n",arrGet,right);
 					break;
 				case expKindBitAnd:
-					fprintf(fp,"%s&%s);\n",arrGet,right);
+					fprintf(fp,"%s&%s));\n",arrGet,right);
 					break;
 				case expKindBitOr:
-					fprintf(fp,"%s|%s);\n",arrGet,right);
+					fprintf(fp,"%s|%s));\n",arrGet,right);
 					break;
 				case expKindBitNotBinary:
-					fprintf(fp,"%s^%s);\n",arrGet,right);
+					fprintf(fp,"%s^%s));\n",arrGet,right);
 					break;
 				case expKindBitShiftLeft:
-					fprintf(fp,"%s<<%s);\n",arrGet,right);
+					fprintf(fp,"%s<<%s));\n",arrGet,right);
 					break;
 				case expKindBitShiftRight:
-					fprintf(fp,"%s>>%s);\n",arrGet,right);
+					fprintf(fp,"%s>>%s));\n",arrGet,right);
 					break;
 				case expKindBitAndNot:
-					fprintf(fp,"%s&(~%s));\n",arrGet,right);
+					fprintf(fp,"%s&(~%s)));\n",arrGet,right);
 					break;
 			}
 
@@ -1777,7 +1777,7 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 		fprintf(fp, "for(int golite_iter_%d = 0; golite_iter_%d < %d; golite_iter_%d++) {\n", indentLevel, indentLevel, curType -> val.arrayType.size, indentLevel);
 		IdChain* nextName = copyChain(curName);
 		char arrayPositions[40];
-		sprintf(arrayPositions, "[golite_iter_%d].", indentLevel);
+		sprintf(arrayPositions, ")[golite_iter_%d].", indentLevel);
 		if (curType -> val.arrayType.type -> underlyingType == identifierType) {
 			if (curType -> val.arrayType.type -> val.nonCompositeType.type == baseInt || curType -> val.arrayType.type -> val.nonCompositeType.type == baseBool) {
 				strcat(arrayPositions, "intVal");
@@ -1792,7 +1792,7 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 			strcat(arrayPositions, "polyVal");
 		}
 		appendToChain(arrayPositions, nextName);
-		genInitAndZero(nextName, curType -> val.arrayType.type, indentLevel+1, fp);
+		genInitAndZero(makeIdChain("((__golite_poly_entry*)", nextName), curType -> val.arrayType.type, indentLevel+1, fp);
 		indent(indentLevel, fp);
 		fprintf(fp, "}\n");
 	} else if (curType -> underlyingType == structType) {
@@ -1803,34 +1803,28 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 			s = getEntry(curType -> val.structType.fields, iter->identifier)->entry.s;
 			if (strcmp(s -> id, "_") != 0) {
 				char fieldNameAddition [900];
-				sprintf(fieldNameAddition, " -> %s", structMemb(s -> id));
+				sprintf(fieldNameAddition, ") -> %s", structMemb(s -> id));
 				nextName = copyChain(curName);
+				char castHolder[50];
+				sprintf(castHolder, "((%s*)", idGenJustType(curType));
 				appendToChain(fieldNameAddition, nextName);
-				genInitAndZero(nextName, s -> type, indentLevel, fp);
+				genInitAndZero(makeIdChain(castHolder, nextName), s -> type, indentLevel, fp);
 			}
 		}
 	}
 }
 
 
-
-
-
 void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 	
-	if(decl == NULL) {
-		return;
-	}
+	if(decl == NULL) {return;}
 	
 	char * varName = idGenJustVar(decl -> whoAmI);
-	
 	
 	if (decl -> value == NULL) {
 		genInitAndZero(makeIdChain(varName, NULL), decl -> whoAmI -> type, indentLevel, fp);
 	} else {
-	
 		indent(indentLevel, fp);
-		
 		
 		fprintf(fp,"%s", varName);
 		fprintf(fp, " = ");
@@ -1839,16 +1833,16 @@ void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 			fprintf(fp, ";\n");
 		} else if (decl -> whoAmI -> type -> underlyingType == arrayType) {
 			char * typeChain = (char *) malloc(sizeof(char) * 999);
-            strcpy(typeChain, "");
+			strcpy(typeChain, "");
 			generateTypeChain(decl -> whoAmI -> type -> val.arrayType.type, typeChain);
 			
 			fprintf(fp, "arrCopy(");
 			expCodeGen(decl -> value, fp);
-			fprintf(fp, ", %s, %d);\n", typeChain, decl -> whoAmI -> type -> val.arrayType.size);
+			fprintf(fp, ", \"%s\", %d);\n", typeChain, decl -> whoAmI -> type -> val.arrayType.size);
 			
 		} else if (decl -> whoAmI -> type -> underlyingType == sliceType) {
 			expCodeGen(decl -> value, fp);
-            fprintf(fp,";\n"); //@Denali - Neil added this
+			fprintf(fp,";\n"); //@Denali - Neil added this
 		} else if (decl -> whoAmI -> type -> underlyingType == structType) {
 			
 			fprintf(fp, "%s_copy(", idGenJustType(decl -> whoAmI -> type));
@@ -1872,7 +1866,7 @@ void varJustDeclNoVal(VarDeclNode* varDecl, int indentLevel, FILE* fp) {
 	if (varDecl == NULL) {
 		return;
 	}
-	if (varDecl -> iDoDeclare = 1) {
+	if (varDecl -> iDoDeclare == 1) {
 		indent(indentLevel, fp);
 		generateOurTypes(varDecl -> whoAmI -> type, fp);
 		fprintf(fp, " ");
@@ -1885,17 +1879,6 @@ void varJustDeclNoVal(VarDeclNode* varDecl, int indentLevel, FILE* fp) {
 }
 
 
-/*
-
-void typeDeclCodeGen(TypeDeclNode* decl, FILE* fp) {
-	return;
-	/*
-	char* oldtype, newtype;
-	fprintf(fp, "typedef %s %s;\n\n", oldtype, newtype);
-	
-}*/
-
-
 
 void totalCodeGen(RootNode* root) {
 	/*
@@ -1903,16 +1886,9 @@ void totalCodeGen(RootNode* root) {
 	 */
 	
 	FILE* output = fopen("go.out.c", "w");
-	fprintf(output, "#include \"templateCode.h\"\n");
+	fprintf(output, "#include \"src/templateCode.h\"\n");
 	
 	trie  = encodeRoot(root);
-    /*
-	 * print headers, maybe. Idk
-	 */
-	/*
-	
-	printHeaders(root);
-	*/
 
 	codegenStructDeclaration(0,output);
 	
@@ -1920,29 +1896,14 @@ void totalCodeGen(RootNode* root) {
 	
 	while (mainIter != NULL) {
 		if (mainIter -> declType == funcDeclType) {
-			
 			funcCodeGen(mainIter -> actualRealDeclaration.funcDecl, output);
 		} else if (mainIter -> declType == variDeclType){
 			varJustDeclNoVal(mainIter -> actualRealDeclaration.varDecl, 0, output);
 		} else if (mainIter -> declType == typeDeclType){
-			/*
-			 * Do nothing
-			 * 
-			typeDeclCodeGen(mainIter -> actualRealDeclaration.typeDecl, output);
-			*/
+			/* Do nothing */
 		}
 		mainIter = mainIter -> nextTopDecl;
 	}
-        
-	
-	 
-	/*
-	 * 
-	 * print out main function which also calls inits
-	 * 
-	 */
-	
-	
 	fprintf(output, "int main() {\n");
 	mainIter = root -> startDecls;
 	while (mainIter != NULL) {
@@ -1958,21 +1919,7 @@ void totalCodeGen(RootNode* root) {
 	
 	fprintf(output, "\t__golite_main();\n");
 	
-	/*
-	 * 
-	 * Run the inits
-	 * 
-	 * Then run the golite main
-	 * 
-	 */
-	
-	
-
 	fprintf(output,"}\n");
-
-
-	
-	
 	fclose(output);
 	
 	
@@ -1980,10 +1927,12 @@ void totalCodeGen(RootNode* root) {
 
 
 
-
+void generateStructEqualityHelper(int indentLevel, FILE* fp);
+void generateStructCopyHelper(int indentLevel, FILE* fp);
 void codegenStructDeclaration(int indentLevel,FILE* fp){
     if (globalList->structChain[0] == NULL){
-        return; //small quirk but no structs leave a list of length 1
+        //If the list was actually empty(implementation quirk)
+        goto CAFEBABE;
     }
 
     
@@ -2029,8 +1978,88 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
         indent(indentLevel,fp);
         fprintf(fp,"};\n\n");
 
+	    generateStructCopy(cur -> type, fp);
+	    generateStructEquality(cur -> type, fp);
+	 
         free(name);
 
         
     }
+
+    CAFEBABE:
+    generateStructEqualityHelper(indentLevel, fp);
+    generateStructCopyHelper(indentLevel, fp);
+    
+}
+
+
+
+
+void generateStructEqualityHelper(int indentLevel, FILE* fp){
+    indent(indentLevel,fp);
+    fprintf(fp,"int structEqualityHelper(void* struct1,void* struct2, char* structName){\n");
+
+     if (globalList->structChain[0] != NULL){
+        //If the list was actually empty(implementation quirk)
+
+        for(int i = 0; i < globalList->size; i++){
+            if (i == 0){
+                Trie* cur = globalList->structChain[i];
+                char* id = idGenJustType(cur->type);
+                indent(indentLevel+1,fp);
+                fprintf(fp,"if(strcmp(structName,\"%s\") == 0)\n",id);
+                indent(indentLevel+2,fp);
+                fprintf(fp,"return %s_equality(struct1,struct2);\n",id);
+
+            }else{
+                Trie* cur = globalList->structChain[i];
+                char* id = idGenJustType(cur->type);
+                indent(indentLevel+1,fp);
+                fprintf(fp,"else if(strcmp(structName,\"%s\") == 0)\n",id);
+                indent(indentLevel+2,fp);
+                fprintf(fp,"return %s_equality(struct1,struct2);\n",id);
+            }
+        }
+     }
+
+
+    indent(indentLevel,fp);
+    fprintf(fp,"}\n");
+}
+
+
+void generateStructCopyHelper(int indentLevel, FILE* fp){
+    indent(indentLevel,fp);
+    fprintf(fp,"void* structCopyHelper(void* struct1, char* structName){\n");
+
+
+    if (globalList->structChain[0] != NULL){
+        //If the list was actually empty(implementation quirk)
+
+        for(int i = 0; i < globalList->size; i++){
+            if (i == 0){
+                Trie* cur = globalList->structChain[i];
+                char* id = idGenJustType(cur->type);
+                indent(indentLevel+1,fp);
+                fprintf(fp,"if(strcmp(structName,\"%s\") == 0)\n",id);
+                indent(indentLevel+2,fp);
+                fprintf(fp,"return %s_copy(struct1);\n",id);
+
+            }else{
+                Trie* cur = globalList->structChain[i];
+                char* id = idGenJustType(cur->type);
+                indent(indentLevel+1,fp);
+                fprintf(fp,"else if(strcmp(structName,\"%s\") == 0)\n",id);
+                indent(indentLevel+2,fp);
+                fprintf(fp,"return %s_copy(struct1);\n",id);
+            }
+        }
+    }
+
+    indent(indentLevel+1,fp);
+    fprintf(fp,"return NULL;\n");
+
+    indent(indentLevel,fp);
+    fprintf(fp,"}\n");
+
 }

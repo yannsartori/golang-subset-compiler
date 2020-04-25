@@ -4,3 +4,6 @@ programs/1-scan+parse/valid/permute.go
 src/.gitignore
 .vscode/launch.json
 src/a.out
+.vscode/settings.json
+src/runit.sh
+src/runit.sh
