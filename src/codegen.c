@@ -1886,7 +1886,7 @@ void totalCodeGen(RootNode* root) {
 	 */
 	
 	FILE* output = fopen("go.out.c", "w");
-	fprintf(output, "#include \"templateCode.h\"\n");
+	fprintf(output, "#include \"src/templateCode.h\"\n");
 	
 	trie  = encodeRoot(root);
 
