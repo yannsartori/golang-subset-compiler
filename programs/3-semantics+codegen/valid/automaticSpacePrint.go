@@ -1,4 +1,5 @@
-//~5 4\n54
+//~5 4
+//~54
 package ugni;
 
 func main() {

@@ -1,4 +1,5 @@
-//~255255+1.200000e-001true76hello\nhello\\n
+//~255255+1.200000e-001true76hello
+//~hello\n
 
 package voavanga;
 

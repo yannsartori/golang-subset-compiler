@@ -1,4 +1,6 @@
-//~A\nC\nB
+//~A
+//~C
+//~B
 package apple;
 
 func init() {
