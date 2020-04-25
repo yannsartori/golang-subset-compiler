@@ -21,7 +21,6 @@ while getopts ":lvc" opt; do
 			;;
 	esac
 done
-
 echo -n -e "\033[93m"
 echo "  Building compiler"
 echo "============================="
@@ -75,6 +74,12 @@ do
 			CONF_OUTPUT="Error:"
 		fi
 
+		if [[ $MODE == "codegen" ]]
+		then
+			CONF_STATUS=0
+			CONF_OUTPUT=""
+		fi
+
 		if [ "$(ls -A -I ".gitignore" $DIR_TYPE)" ]
 		then
 			echo -e "\033[93m"
@@ -85,7 +90,7 @@ do
 			COUNT=0
 			COUNT_PASSED=0
 
-			TESTS=`find $DIR_TYPE -type f \( -name "*.min" \)`
+			TESTS=`find $DIR_TYPE -type f \( -name "*.go" \)`
 
 			for TEST in $TESTS
 			do
@@ -124,10 +129,6 @@ do
 					STATUS=${PIPESTATUS[0]}
 					OUTPUT=${OUTPUT#$TEST}
 
-					if [[ $OUTPUT == *"java.lang.NullPointerException"* ]]
-					then
-						STATUS=-1
-					fi
 					if [[ $OUTPUT == $CONF_OUTPUT* && $STATUS == $CONF_STATUS ]]
 					then
 						if [[ $VERBOSE == 1 ]]
@@ -138,8 +139,7 @@ do
 						else
 							STATUS_TEXT=""
 						fi
-
-						if [[ $VERIFY == 1 && -f $DIR_TYPE/verify.sh ]]
+						if [[ -f $DIR_TYPE/verify.sh ]]
 						then
 							VERIFY_OUTPUT=$(./$DIR_TYPE/verify.sh $TEST 2>&1)
 							VERIFY_STATUS=${PIPESTATUS[0]}
