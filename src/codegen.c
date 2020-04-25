@@ -1607,7 +1607,7 @@ void specialOpStatementCodeGen(Stmt* stmt, int indentLevel,FILE* fp){
                     }
 					break;
 				case expKindSubtraction:
-					fprintf(fp,"%s+%s));\n",arrGet,right);
+					fprintf(fp,"%s-%s));\n",arrGet,right);
 					break;
 				case expKindMultiplication:
 					fprintf(fp,"%s*%s));\n",arrGet,right);
