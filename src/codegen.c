@@ -907,7 +907,8 @@ void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
     }
 
     if (list->next != NULL){
-        fprintf(fp," ");
+        indent(indentLevel,fp);
+        fprintf(fp,"printf(\" \");\n");
     }
 
 
