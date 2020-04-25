@@ -877,7 +877,7 @@ void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
     indent(indentLevel,fp);
     switch (type->val.nonCompositeType.type){
         case baseInt:
-            fprintf(fp,"printf(\"%%d \",");
+            fprintf(fp,"printf(\"%%d\",");
             expCodeGen(exp,fp);
             fprintf(fp,");\n");
             break;
@@ -887,23 +887,27 @@ void printlnCodeGen(ExpList* list,int indentLevel,FILE* fp){
             expCodeGen(exp,fp);
             fprintf(fp,";\n");
             indent(indentLevel,fp);
-            fprintf(fp,"printf(\"%%s%%10e \",%s >= 0 ? \"+\" : \"\",%s);\n",temp,temp);
+            fprintf(fp,"printf(\"%%s%%10e\",%s >= 0 ? \"+\" : \"\",%s);\n",temp,temp);
             break;
         case baseRune:
-            fprintf(fp,"printf(\"%%d \",(int)(");
+            fprintf(fp,"printf(\"%%d\",(int)(");
             expCodeGen(exp,fp);
             fprintf(fp,"));\n");
             break;
         case baseString:
-            fprintf(fp,"printf(\"%%s \",");
+            fprintf(fp,"printf(\"%%s\",");
             expCodeGen(exp,fp);
             fprintf(fp,");\n");
             break;
-        case baseBool: //QUITE UNCERTAIN DEPENDS ON REPRESENTATION OF BOOL
-            fprintf(fp,"printf(\"%%s \",(0==");
+        case baseBool: 
+            fprintf(fp,"printf(\"%%s\",(0==");
             expCodeGen(exp,fp);
             fprintf(fp,")?\"false\":\"true\");\n");
             break;
+    }
+
+    if (list->next != NULL){
+        fprintf(fp," ");
     }
 
 
