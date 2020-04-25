@@ -1059,7 +1059,7 @@ void expListToBool( ExpList* list, char* exp1,FILE* fp){
                     char * typeChain = (char *) malloc(sizeof(char) * 999);
                     strcpy(typeChain, "");
                     generateTypeChain(type->val.arrayType.type, typeChain);
-                    fprintf(fp, "%s, %d)", typeChain, type->val.arrayType.size);
+                    fprintf(fp, "\"%s\", %d)", typeChain, type->val.arrayType.size);
                     free(typeChain);
                     break;
             }
