@@ -1856,7 +1856,7 @@ void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 			fprintf(fp, ");\n");
 			
 		} else {
-			fprintf(stderr, "fuck (this is impossible), bad type during var decl");
+			fprintf(stderr, "(this is impossible), bad type during var decl");
 			exit(1);
 		}
 	}
