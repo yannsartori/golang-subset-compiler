@@ -610,9 +610,9 @@ void expCodeGen(Exp *exp, FILE *f)
                 fprintf(f, ")->size");
                 break;
             case identifierType:
-                fprintf(f, "strlen(");
+                fprintf(f, "(int) (strlen(");
                 expCodeGen(exp->val.builtInBody, f);
-                fprintf(f, ")");
+                fprintf(f, "))");
                 break;
         }
         return;
