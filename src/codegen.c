@@ -511,7 +511,8 @@ void expCodeGen(Exp *exp, FILE *f)
             fprintf(f, ")");
         } else //type cast
         {
-            if ( getExpressionType(exp->val.funcCall.base)->val.nonCompositeType.type == baseString )
+            if ( getExpressionType(exp->val.funcCall.base)->val.nonCompositeType.type == baseString 
+            && getExpressionType(exp->val.funcCall.arguments->cur)->val.nonCompositeType.type != baseString ) //if it is basestring, just pass it through
             {
                 fprintf(f, "stringCast("); //helper function in templateCode.h
                 funcExpListCodeGen(exp->val.funcCall.arguments, f); //maybeExpList
