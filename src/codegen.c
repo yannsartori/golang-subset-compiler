@@ -733,7 +733,7 @@ void expCodeGen(Exp *exp, FILE *f)
                 char * typeChain = (char *) malloc(sizeof(char) * 999);
                 strcpy(typeChain, "");
                 generateTypeChain(type->val.arrayType.type, typeChain);
-                fprintf(f, "\"%s\", %d)", typeChain, type->val.arrayType.size);
+                fprintf(f, ", \"%s\", %d)", typeChain, type->val.arrayType.size);
                 free(typeChain);
                 break;
         }
