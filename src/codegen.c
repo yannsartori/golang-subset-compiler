@@ -410,7 +410,7 @@ void generateStructCopy(TTEntry *structType_, FILE *f)
                 }
                 break;
             case structType:
-                fprintf(f, "\ty->%s = %s_copy(x->%s);\n", idGenJustType(t), fieldName, fieldName);
+                fprintf(f, "\ty->%s = %s_copy(x->%s);\n", fieldName, idGenJustType(t), fieldName);
                 break;
             case sliceType:
                 fprintf(f, "\ty->%s = x->%s;\n", fieldName, fieldName);
@@ -1948,6 +1948,8 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
         char* name = idGenJustType(cur->type);
         indent(indentLevel,fp);
         fprintf(fp,"typedef struct %s %s;\n",name,name);
+        fprintf(fp, "int %s_equality(%s *x, %s *y);\n",name,name,name);
+        fprintf(fp, "void* %s_copy(%s *x);",name,name); 
         free(name);
     }
 
@@ -1955,7 +1957,7 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
         Trie* cur = globalList->structChain[i];
         char* name = idGenJustType(cur->type);
 
-        fprintf(fp,"\n");
+        fprintf(fp,"\n\n");
         indent(indentLevel,fp);
         fprintf(fp,"struct %s{\n",name);
 
@@ -1983,12 +1985,15 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
         indent(indentLevel,fp);
         fprintf(fp,"};\n\n");
 
-	    generateStructCopy(cur -> type, fp);
-	    generateStructEquality(cur -> type, fp);
 	 
         free(name);
+    }
 
-        
+
+    for(int i = 0; i < globalList->size; i++){
+        Trie* cur = globalList->structChain[i];
+        generateStructCopy(cur -> type, fp);
+	    generateStructEquality(cur -> type, fp);
     }
 
     CAFEBABE:
