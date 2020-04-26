@@ -1939,7 +1939,6 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
         //If the list was actually empty(implementation quirk)
         goto CAFEBABE;
     }
-
     
     for(int i = 0; i < globalList->size; i++){
         Trie* cur = globalList->structChain[i];
@@ -1962,23 +1961,23 @@ void codegenStructDeclaration(int indentLevel,FILE* fp){
         fprintf(fp,"struct %s{\n",name);
 
         Trie* entry = cur->child;//Skipping first element as the first node is a label
-
-        while(entry != NULL){
-            if (strcmp("_",entry->variant.entry->id) == 0){
-                entry = entry->child;//skip blank identifier
-                continue;
-            }
-
-
+        if (entry == NULL){
             indent(indentLevel+1,fp);
-            generateOurTypes(entry->variant.entry->type,fp);
-            char* temp = structMemb(entry->variant.entry->id);
-            fprintf(fp," %s;\n",temp);
-            free(temp);
+            fprintf(fp,"int IneedThisVariableToCompile;\n");
+        }else{
+            while(entry != NULL){
+        
+                indent(indentLevel+1,fp);
+                
+                generateOurTypes(entry->variant.entry->type,fp);
+                char* temp = structMemb(entry->variant.entry->id);
+                fprintf(fp," %s;\n",temp);
+                free(temp);
 
 
 
-            entry = entry->child;
+                entry = entry->child;
+            }
         }
 
 
