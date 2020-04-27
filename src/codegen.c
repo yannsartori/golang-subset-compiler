@@ -198,13 +198,20 @@ void rawStringCodeGen(char *s, FILE *f)
     fprintf(f, "\"");
     for (int i = 1; i < strlen(s) - 1; i++)
     {
-        fputc(*(s + i), f);
-        if ( *(s + i) == '\\' ) //ugh
+        if ( *(s + i) == '"')
         {
             fputc('\\', f);
-        } else if ( *(s + i) == '\n' )
-        {
-            fputc('\t', f);
+            fputc('"', f);
+        }
+        else {
+            fputc(*(s + i), f);
+            if ( *(s + i) == '\\' ) //ugh
+            {
+                fputc('\\', f);
+            } else if ( *(s + i) == '\n' )
+            {
+                fputc('\t', f);
+            }
         }
     }
     fprintf(f, "\"");
