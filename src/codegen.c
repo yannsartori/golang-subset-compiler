@@ -949,75 +949,105 @@ int expCodeGenSet(Exp *exp, FILE *f)
         return 0;
     }
 }
+
+
+
+int getLen(ExpList* list){
+    if (list == NULL){
+        return 0;
+    }else{
+        return 1 + getLen(list->next);
+    }
+}
+
 void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
     if (left == NULL || right == NULL){
         return;
     }
-	
-    
-    //Broken (replace void* by actual type)
-    //Generate all temp assignments then assign them after temp assignments complete
-    char* temp = tmpVarGen();
-    indent(indentLevel,fp);
-	
-    generateOurTypes(getExpressionType(right->cur),fp);
-    fprintf(fp," %s = ",temp);
-    expCodeGen(right->cur,fp);
-    fprintf(fp,";\n");
 
-	
-    assignStmtCodeGen(left->next,right->next,indentLevel,fp);
-	
-    if (!isBlank(left->cur)){ 
+
+
+    int listLength =  getLen(left);
+    char** idArray = malloc(sizeof(char*)*listLength);
+
+    ExpList* leftCur = left;
+    ExpList* rightCur = right;
+
+    for(int i = 0; i < listLength; i++){
+
+        idArray[i] = tmpVarGen();
+
         indent(indentLevel,fp);
-        int isIndex = expCodeGenSet(left->cur, fp);
-        TTEntry *type = getExpressionType(right->cur);
-        if ( isIndex )
-        {    
-            if ( type->underlyingType == identifierType )
-            {
-                switch ( type->val.nonCompositeType.type )
+        generateOurTypes(getExpressionType(leftCur->cur),fp);
+        fprintf(fp," %s =",idArray[i]);
+        expCodeGen(rightCur->cur,fp);
+        fprintf(fp,";\n");
+
+        leftCur = leftCur->next;
+        rightCur = rightCur->next;
+    }
+	
+    leftCur = left;
+    rightCur = right;
+	
+	for(int i = 0; i < listLength ;i++){
+        if (!isBlank(leftCur->cur)){ 
+            indent(indentLevel,fp);
+            int isIndex = expCodeGenSet(leftCur->cur, fp);
+            TTEntry *type = getExpressionType(rightCur->cur);
+            if ( isIndex )
+            {    
+                if ( type->underlyingType == identifierType )
                 {
-                    case baseBool:
-                    case baseInt:
-                        fprintf(fp, "createPolyInt(");
-                        break;
-                    case baseFloat64:
-                        fprintf(fp, "createPolyFloat(");
-                        break;
-                    case baseRune:
-                        fprintf(fp, "createPolyRune(");
-                        break;
-                    case baseString:
-                        fprintf(fp, "createPolyString(");
-                        break;
+                    switch ( type->val.nonCompositeType.type )
+                    {
+                        case baseBool:
+                        case baseInt:
+                            fprintf(fp, "createPolyInt(");
+                            break;
+                        case baseFloat64:
+                            fprintf(fp, "createPolyFloat(");
+                            break;
+                        case baseRune:
+                            fprintf(fp, "createPolyRune(");
+                            break;
+                        case baseString:
+                            fprintf(fp, "createPolyString(");
+                            break;
+                    }
+                } else
+                {
+                    fprintf(fp, "createPolyVoid(");
                 }
+                fprintf(fp, "%s));\n", idArray[i]);
+                //arr/sliceSet(variable, position, lineNo, polyCreate(itemToSet));
             } else
             {
-                fprintf(fp, "createPolyVoid(");
+                if ( type->underlyingType == arrayType )
+                {
+                    char * typeChain = (char *) malloc(sizeof(char) * 999);
+                    strcpy(typeChain, "");
+                    generateTypeChain(type->val.arrayType.type, typeChain);
+                    fprintf(fp," = arrCopy(%s, \"%s\", %d);\n", idArray[i], typeChain, type->val.arrayType.size);
+                    free(typeChain);
+                }
+                else if ( type->underlyingType == structType )
+                {
+                    fprintf(fp, " = %s_copy(%s);", idGenJustType(type), idArray[i]);
+                }
+                else fprintf(fp," = %s;\n", idArray[i]);
             }
-            fprintf(fp, "%s));\n", temp);
-            //arr/sliceSet(variable, position, lineNo, polyCreate(itemToSet));
-        } else
-        {
-            if ( type->underlyingType == arrayType )
-            {
-                char * typeChain = (char *) malloc(sizeof(char) * 999);
-                strcpy(typeChain, "");
-                generateTypeChain(type->val.arrayType.type, typeChain);
-                fprintf(fp," = arrCopy(%s, \"%s\", %d);\n", temp, typeChain, type->val.arrayType.size);
-                free(typeChain);
-            }
-            else if ( type->underlyingType == structType )
-            {
-                fprintf(fp, " = %s_copy(%s);", idGenJustType(type), temp);
-            }
-            else fprintf(fp," = %s;\n", temp);
         }
+
+        leftCur = leftCur->next;
+        rightCur = rightCur->next;
+
+
     }
 
 
 }
+
 
 
 
@@ -1078,6 +1108,8 @@ void expListToBool( ExpList* list, char* exp1,FILE* fp){
         fprintf(fp, " || ");
         expListToBool(list->next,exp1,fp);
     }
+
+
 }
 
 void switchToIfCodeGen(char* exp,switchCaseClause* list,int indentLevel, FILE* fp){
