@@ -1192,8 +1192,7 @@ void localContinueReplace(Stmt* stmt,char* label){//Replaces or loop continues b
 		localContinueReplace(stmt->next,label);
 }
 
-void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp);
-void varJustDeclNoVal(VarDeclNode* varDecl, int indentLevel, FILE* fp);
+void varDeclFullGen(VarDeclNode* decl, int indentLevel, FILE* fp);
 void specialIncDecStatementCodeGen(Stmt* stmt,int indentLevel, FILE* fp);
 void specialOpStatementCodeGen(Stmt* stmt, int indentLevel,FILE* fp);
 
@@ -1499,8 +1498,11 @@ void stmtCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
 			/* I think I can just copy the other one */
 		case StmtKindShortDeclaration: 
 			/* this might be awful */
+			/*
 			varJustDeclNoVal(stmt -> val.varDeclaration, indentLevel, fp);
 			varDeclAssignCodeGen(stmt -> val.varDeclaration, indentLevel, fp);
+			*/
+			varDeclFullGen(stmt -> val.varDeclaration, indentLevel, fp);
 			break;
         
     }
@@ -1862,11 +1864,11 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 }
 
 
-void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
+void varDeclAssignCodeGen(VarDeclNode* decl, char* codeId, int indentLevel, FILE* fp) {
 	
 	if(decl == NULL) {return;}
 	
-	char * varName = idGenJustVar(decl -> whoAmI);
+	char * varName = codeId;
 	
 	if (decl -> value == NULL) {
 		genInitAndZero(makeIdChain(varName, NULL), decl -> whoAmI -> type, indentLevel, fp);
@@ -1903,28 +1905,69 @@ void varDeclAssignCodeGen(VarDeclNode* decl, int indentLevel, FILE* fp) {
 		}
 	}
 	
-	varDeclAssignCodeGen(decl -> nextDecl, indentLevel, fp);
-	varDeclAssignCodeGen(decl -> multiDecl, indentLevel, fp);
 }
 
 
-void varJustDeclNoVal(VarDeclNode* varDecl, int indentLevel, FILE* fp) {
+void varJustDeclNoVal(VarDeclNode* varDecl, char* codeId, int indentLevel, FILE* fp, int override) {
+	
+	
+	if (varDecl -> iDoDeclare == 1 || override) {
+		indent(indentLevel, fp);
+		generateOurTypes(varDecl -> whoAmI -> type, fp);
+		fprintf(fp, " ");
+		char * varName = codeId;
+		fprintf(fp, "%s;\n", varName);
+	}
+	
+}
+
+void varDeclFullGen(VarDeclNode* varDecl, int indentLevel, FILE* fp) {
 	
 	if (varDecl == NULL) {
 		return;
 	}
-	if (varDecl -> iDoDeclare == 1) {
-		indent(indentLevel, fp);
-		generateOurTypes(varDecl -> whoAmI -> type, fp);
-		fprintf(fp, " ");
-		char * varName = idGenJustVar(varDecl -> whoAmI);
-		fprintf(fp, "%s;\n", varName);
+	
+	VarDeclNode* iter = varDecl;
+	
+	IdChain* chainHead = makeIdChain(idGenJustVar(iter -> whoAmI), NULL);
+	varJustDeclNoVal(iter, chainHead -> identifier, indentLevel, fp, 0);
+	
+	IdChain* chainIter = chainHead;
+	iter = iter -> nextDecl;
+	
+	while (iter != NULL) {
+		chainIter -> next = makeIdChain(idGenJustVar(iter -> whoAmI), NULL);
+		chainIter = chainIter -> next;
+		varJustDeclNoVal(iter, chainIter -> identifier, indentLevel, fp, 0);
+		iter = iter -> nextDecl;
+	}
+	chainIter -> next = NULL;
+	
+	iter = varDecl;
+	chainIter = chainHead;
+	IdChain* tempChainHead = makeIdChain(tmpVarGen(), NULL);
+	IdChain* tempChainIter = tempChainHead;
+	
+	while (iter != NULL) {
+		varJustDeclNoVal(iter, tempChainIter -> identifier, indentLevel, fp, 1);
+		varDeclAssignCodeGen(iter, tempChainIter -> identifier, indentLevel, fp);
+		iter = iter -> nextDecl;
+		tempChainIter -> next = makeIdChain(tmpVarGen(), NULL);
+		tempChainIter = tempChainIter -> next;
 	}
 	
-	varJustDeclNoVal(varDecl -> nextDecl, indentLevel, fp);
-	varJustDeclNoVal(varDecl -> multiDecl, indentLevel, fp);
+	tempChainIter = tempChainHead;
+	
+	while (chainIter != NULL) {
+		indent(indentLevel, fp);
+		fprintf(fp, "%s = %s;\n", chainIter -> identifier, tempChainIter -> identifier);
+		chainIter = chainIter -> next;
+		tempChainIter = tempChainIter -> next;
+	}
+	
+	varDeclFullGen(varDecl -> multiDecl, indentLevel, fp);
+	
 }
-
 
 
 void totalCodeGen(RootNode* root) {
@@ -1941,11 +1984,36 @@ void totalCodeGen(RootNode* root) {
 	
 	TopDeclarationNode* mainIter = root -> startDecls;
 	
+	IdChain* masterIdHolder = NULL;
+	IdChain* masterIdIter = masterIdHolder;
+	
+	VarDeclNode* multiVarIter;
+	VarDeclNode* innerVarIter;
+	
 	while (mainIter != NULL) {
 		if (mainIter -> declType == funcDeclType) {
 			funcCodeGen(mainIter -> actualRealDeclaration.funcDecl, output);
 		} else if (mainIter -> declType == variDeclType){
-			varJustDeclNoVal(mainIter -> actualRealDeclaration.varDecl, 0, output);
+			multiVarIter = mainIter -> actualRealDeclaration.varDecl;
+			innerVarIter = multiVarIter;
+			while (multiVarIter != NULL) {
+				while (innerVarIter != NULL) {
+					if (masterIdIter == NULL) {
+						masterIdHolder = makeIdChain(idGenJustVar(innerVarIter -> whoAmI), NULL);
+						masterIdIter = masterIdHolder;
+					} else {
+						masterIdIter -> next = makeIdChain(idGenJustVar(innerVarIter -> whoAmI), NULL);
+						masterIdIter = masterIdIter -> next;
+					}
+					
+					varJustDeclNoVal(innerVarIter, masterIdIter -> identifier, 0, output, 0);
+					innerVarIter = innerVarIter -> nextDecl;
+				}
+				multiVarIter = multiVarIter -> multiDecl;
+				innerVarIter = multiVarIter;
+			}
+			
+			
 		} else if (mainIter -> declType == typeDeclType){
 			/* Do nothing */
 		}
@@ -1953,9 +2021,22 @@ void totalCodeGen(RootNode* root) {
 	}
 	fprintf(output, "int main() {\n");
 	mainIter = root -> startDecls;
+	masterIdIter = masterIdHolder;
+	
 	while (mainIter != NULL) {
 		if (mainIter -> declType == variDeclType) {
-			varDeclAssignCodeGen(mainIter -> actualRealDeclaration.varDecl, 1, output);
+			multiVarIter = mainIter -> actualRealDeclaration.varDecl;
+			innerVarIter = multiVarIter;
+			while (multiVarIter != NULL) {
+				while (innerVarIter != NULL) {
+					
+					varDeclAssignCodeGen(innerVarIter, masterIdIter -> identifier, 1, output);
+					innerVarIter = innerVarIter -> nextDecl;
+					masterIdIter = masterIdIter -> next;
+				}
+				multiVarIter = multiVarIter -> multiDecl;
+				innerVarIter = multiVarIter;
+			}
 		}
 		mainIter = mainIter -> nextTopDecl;
 	}
