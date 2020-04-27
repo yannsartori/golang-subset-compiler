@@ -1630,11 +1630,13 @@ void specialOpStatementCodeGen(Stmt* stmt, int indentLevel,FILE* fp){
             break;
     }
 
+    char* sliceOrArray = (getExpressionType(lhs->val.access.base)->underlyingType == sliceType) ? "slice" : "arr";
+
     indent(indentLevel,fp);
-    fprintf(fp,"arrSet(%s,%s,%d,%d,",base,index,arrLength,lineno);
+    fprintf(fp,"%sSet(%s,%s,%d,%d,",sliceOrArray,base,index,arrLength,lineno);
 
     char arrGet[500];
-    sprintf(arrGet,"(arrGet(%s,%s,%d,%d).%s)",base,index,arrLength,lineno,dotAccess);
+    sprintf(arrGet,"(%sGet(%s,%s,%d,%d).%s)",sliceOrArray,base,index,arrLength,lineno,dotAccess);
 
 
     fprintf(fp,"createPoly%s(",variant);
