@@ -1023,7 +1023,11 @@ void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
                 {
                     fprintf(fp, "createPolyVoid(");
                 }
-                fprintf(fp, "%s));\n", idArray[i]);
+                char * typeChain = (char *) malloc(sizeof(char) * 999);
+                strcpy(typeChain, "");
+                generateTypeChain(type, typeChain);
+                fprintf(fp, "%s), \"%s\");\n", idArray[i], typeChain);
+                free(typeChain);
                 //arr/sliceSet(variable, position, lineNo, polyCreate(itemToSet));
             } else
             {
@@ -1565,12 +1569,17 @@ void specialIncDecStatementCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
     fprintf(fp,"arrSet(%s,%s,%d,%d,createPoly%s(arrGet(%s,%s,%d,%d).%s",base,index,arrLength,lineno,variant,base,index,arrLength,lineno,dotAccess);
     switch(stmt->kind){ 
         case StmtKindInc:   
-            fprintf(fp,"+1));\n");
+            fprintf(fp,"+1)");
             break;
         case StmtKindDec:
-            fprintf(fp,"-1));\n");
+            fprintf(fp,"-1)");
             break;
     }
+    char * typeChain = (char *) malloc(sizeof(char) * 999);
+	strcpy(typeChain, "");
+    generateTypeChain(getExpressionType(lhs->val.access.base)->val.arrayType.type, typeChain);
+    fprintf(fp, ", \"%s\");\n", typeChain);
+    free(typeChain);
 
 }
 

@@ -69,165 +69,8 @@ __golite_poly_entry createPolyVoid(void * x)
     return p;
 }
 __golite_poly_entry *arrCopy(__golite_poly_entry *arr, char *typeChain, int arrLength);
-
-__golite_slice *append(__golite_slice *slice, __golite_poly_entry elem, char *typeChain)
+__golite_poly_entry generateCopy(__golite_poly_entry elem, char * typeChain)
 {
-    __golite_slice *newSlice = (__golite_slice *) malloc(sizeof(__golite_slice));
-    
-    char code[3];
-    char size[10];
-    char structName[100];
-    code[0] = typeChain[0];
-    code[1] = typeChain[1];
-    code[2] = '\0';
-
-    int comparisonMode = 0;
-    int curPos = 2; 
-    if ( strcmp(code, "AY") == 0 )
-    {
-        do
-        {
-            size[curPos - 2] = *(typeChain + curPos);
-            curPos++;
-        } while ( '0' <= *(typeChain + curPos) && *(typeChain + curPos) <= '9');
-        size[curPos - 2] = '\0';
-        comparisonMode = 1;
-    } else if ( strcmp(code, "ST") == 0 )
-    {
-        do
-        {
-            structName[curPos - 2] = *(typeChain + curPos);
-            curPos++;
-        } while ( *(typeChain + curPos) != '\0');
-        structName[curPos - 2] = '\0';
-        comparisonMode = 2;
-    }
-
-    if ( slice == NULL || slice->capacity == 0 )
-    {
-        newSlice->size = 1;
-        newSlice->capacity = 2;
-        newSlice->arrPointer = (__golite_poly_entry **) malloc(sizeof(__golite_poly_entry *));
-        *(newSlice->arrPointer) = (__golite_poly_entry *) malloc(sizeof(__golite_poly_entry) * newSlice->capacity);
-        *(*(newSlice->arrPointer) + 0) = elem; 
-        if ( comparisonMode == 0 )
-        {
-            *(*(newSlice->arrPointer) + 0) = elem;
-        }
-        else if ( comparisonMode == 1 )
-        {
-            char * newType = malloc(sizeof(char) * (strlen(typeChain) - curPos + 1));
-            strcpy(newType, typeChain + curPos);
-            __golite_poly_entry * retVal = arrCopy((__golite_poly_entry *)elem.polyVal, newType, atoi(size));
-            (*(*(newSlice->arrPointer) + 0)).polyVal = retVal;
-            free(newType); 
-        }
-        else if ( comparisonMode == 2 )
-        {
-            (*(*(newSlice->arrPointer) + 0)).polyVal = structCopy(elem.polyVal, structName);
-        }
-    }
-    else if ( slice->size < slice->capacity )
-    {
-        *(*(slice->arrPointer) + slice->size) = elem;
-
-        if ( comparisonMode == 0 )
-        {
-            *(*(slice->arrPointer) + slice->size) = elem;
-        }
-        else if ( comparisonMode == 1 )
-        {
-            char * newType = malloc(sizeof(char) * (strlen(typeChain) - curPos + 1));
-            strcpy(newType, typeChain + curPos);
-            __golite_poly_entry * retVal = arrCopy((__golite_poly_entry *)elem.polyVal, newType, atoi(size));
-            (*(*(newSlice->arrPointer) + 0)).polyVal = retVal;
-            free(newType); 
-        }
-        else if ( comparisonMode == 2 )
-        {
-            (*(*(slice->arrPointer) + slice->size)).polyVal = structCopy(elem.polyVal, structName);
-        }
-
-        newSlice->size = slice->size + 1;
-        newSlice->capacity = slice->capacity;
-        newSlice->arrPointer = (__golite_poly_entry **) malloc(sizeof(__golite_poly_entry *));
-        *(newSlice->arrPointer) = *(slice->arrPointer);
-    }
-    else 
-    {
-        newSlice->size = slice->size + 1;
-        newSlice->capacity = slice->capacity * 2;
-        newSlice->arrPointer = (__golite_poly_entry **) malloc(sizeof(__golite_poly_entry *));
-       // *(newSlice->arrPointer) = (__golite_poly_entry *) malloc(sizeof(__golite_poly_entry) * newSlice->capacity);
-        *(newSlice->arrPointer) = arrCopy(*(slice->arrPointer), typeChain, slice->size);
-        *(newSlice->arrPointer) = realloc(*(newSlice->arrPointer), sizeof(__golite_poly_entry) * newSlice->capacity);
-        
-        if ( comparisonMode == 0 )
-        {
-            *(*(newSlice->arrPointer) + slice->capacity)  = elem;
-        }
-        else if ( comparisonMode == 1 )
-        {
-            char * newType = malloc(sizeof(char) * (strlen(typeChain) - curPos + 1));
-            strcpy(newType, typeChain + curPos);
-            __golite_poly_entry * retVal = arrCopy((__golite_poly_entry *)elem.polyVal, newType, atoi(size));
-            (*(*(newSlice->arrPointer) + 0)).polyVal  = retVal;
-            free(newType); 
-        }
-        else if ( comparisonMode == 2 )
-        {
-            (*(*(newSlice->arrPointer) + slice->capacity)).polyVal = structCopy(elem.polyVal, structName);
-        }
-    }
-    return newSlice;
-}
-__golite_poly_entry arrGet(__golite_poly_entry * arr, int pos, int length, int lineno)
-{
-    if ( pos >= length || pos < 0 )
-    {
-        fprintf(stderr, "Error: (runtime, %d) index out of range [%d] with length %d\n", lineno, pos, length);
-        exit(1);
-    }
-    return *(arr + pos);
-}
-__golite_poly_entry sliceGet(__golite_slice *slice, int pos, int lineno)
-{
-    if ( pos >= slice->size || pos < 0 )
-    {
-        fprintf(stderr, "Error: (runtime, %d) index out of range [%d] with length %d\n", lineno, pos, slice->size);
-        exit(1);
-    }
-    return *(*(slice->arrPointer) + pos);
-}
-void arrSet(__golite_poly_entry * arr, int pos, int length, int lineno, __golite_poly_entry e)
-{
-    arrGet(arr, pos, length, lineno); //does outofbounds check
-    *(arr + pos) = e;
-}
-void sliceSet(__golite_slice *slice, int pos, int lineno, __golite_poly_entry e)
-{
-    sliceGet(slice, pos, lineno);
-    *(*slice->arrPointer + pos) = e;
-}
-
-char *concat(char *s1, char *s2)
-{
-    char *cat = (char *) malloc(sizeof(char) * (strlen(s1) + strlen(s2) + 1));
-    strcpy(cat, s1);
-    strcat(cat, s2);
-    return cat;
-}
-char *stringCast(char c)
-{
-    char *ret = malloc(sizeof(char) * 2);
-    *ret = c;
-    *(ret + 1) = '\0';
-    return ret;
-}
-__golite_poly_entry *arrCopy(__golite_poly_entry *arr, char *typeChain, int arrLength)
-{
-    //AY->Array, ST->Struct, SG->String, RE->rune, IR->Integer, FT->Float
-    __golite_poly_entry *newArr = (__golite_poly_entry *) malloc(sizeof(__golite_poly_entry) * arrLength);
     char code[3];
     char size[10];
     char structName[100];
@@ -258,25 +101,102 @@ __golite_poly_entry *arrCopy(__golite_poly_entry *arr, char *typeChain, int arrL
     }
     if ( comparisonMode == 0 )
     {
-        for ( int i = 0; i < arrLength; i++ )
-        {
-            newArr[i] = arr[i];
-        }
-    } else if ( comparisonMode == 1 )
+        return elem;
+    }
+    else if ( comparisonMode == 1)
     {
         char * newType = malloc(sizeof(char) * (strlen(typeChain) - curPos + 1));
         strcpy(newType, typeChain + curPos);
-        for ( int i = 0; i < arrLength; i++ )
-        {
-            newArr[i].polyVal = arrCopy((__golite_poly_entry *) arr[i].polyVal, newType, atoi(size)); 
-        }
+        __golite_poly_entry * retVal = arrCopy((__golite_poly_entry *)elem.polyVal, newType, atoi(size));
         free(newType);
-    } else if ( comparisonMode == 2 )
+        return createPolyVoid(retVal);
+    }
+    else if ( comparisonMode == 2 )
     {
-        for ( int i = 0; i < arrLength; i++ )
-        {
-            newArr[i].polyVal = structCopy(arr[i].polyVal, structName); //we can put the header rn.
-        }
+        return createPolyVoid(structCopy(elem.polyVal, structName));
+    }
+}
+__golite_slice *append(__golite_slice *slice, __golite_poly_entry elem, char *typeChain)
+{
+    __golite_slice *newSlice = (__golite_slice *) malloc(sizeof(__golite_slice));
+    if ( slice == NULL || slice->capacity == 0 )
+    {
+        newSlice->size = 1;
+        newSlice->capacity = 2;
+        newSlice->arrPointer = (__golite_poly_entry **) malloc(sizeof(__golite_poly_entry *));
+        *(newSlice->arrPointer) = (__golite_poly_entry *) malloc(sizeof(__golite_poly_entry) * newSlice->capacity);
+        *(*(newSlice->arrPointer) + 0) = generateCopy(elem, typeChain); 
+    }
+    else if ( slice->size < slice->capacity )
+    {
+        *(*(slice->arrPointer) + slice->size) = generateCopy(elem, typeChain);
+        newSlice->size = slice->size + 1;
+        newSlice->capacity = slice->capacity;
+        newSlice->arrPointer = (__golite_poly_entry **) malloc(sizeof(__golite_poly_entry *));
+        *(newSlice->arrPointer) = *(slice->arrPointer);
+    }
+    else 
+    {
+        newSlice->size = slice->size + 1;
+        newSlice->capacity = slice->capacity * 2;
+        newSlice->arrPointer = (__golite_poly_entry **) malloc(sizeof(__golite_poly_entry *));
+       // *(newSlice->arrPointer) = (__golite_poly_entry *) malloc(sizeof(__golite_poly_entry) * newSlice->capacity);
+        *(newSlice->arrPointer) = arrCopy(*(slice->arrPointer), typeChain, slice->size);
+        *(newSlice->arrPointer) = realloc(*(newSlice->arrPointer), sizeof(__golite_poly_entry) * newSlice->capacity);
+        *(*(newSlice->arrPointer) + slice->capacity)  = generateCopy(elem, typeChain);
+    }
+    return newSlice;
+}
+__golite_poly_entry arrGet(__golite_poly_entry * arr, int pos, int length, int lineno)
+{
+    if ( pos >= length || pos < 0 )
+    {
+        fprintf(stderr, "Error: (runtime, %d) index out of range [%d] with length %d\n", lineno, pos, length);
+        exit(1);
+    }
+    return *(arr + pos);
+}
+__golite_poly_entry sliceGet(__golite_slice *slice, int pos, int lineno)
+{
+    if ( pos >= slice->size || pos < 0 )
+    {
+        fprintf(stderr, "Error: (runtime, %d) index out of range [%d] with length %d\n", lineno, pos, slice->size);
+        exit(1);
+    }
+    return *(*(slice->arrPointer) + pos);
+}
+void arrSet(__golite_poly_entry * arr, int pos, int length, int lineno, __golite_poly_entry e, char * typeChain)
+{
+    arrGet(arr, pos, length, lineno); //does outofbounds check
+    *(arr + pos) = generateCopy(e, typeChain);
+}
+void sliceSet(__golite_slice *slice, int pos, int lineno, __golite_poly_entry e, char * typeChain)
+{
+    sliceGet(slice, pos, lineno);
+    *(*slice->arrPointer + pos) = generateCopy(e, typeChain);
+}
+
+char *concat(char *s1, char *s2)
+{
+    char *cat = (char *) malloc(sizeof(char) * (strlen(s1) + strlen(s2) + 1));
+    strcpy(cat, s1);
+    strcat(cat, s2);
+    return cat;
+}
+char *stringCast(char c)
+{
+    char *ret = malloc(sizeof(char) * 2);
+    *ret = c;
+    *(ret + 1) = '\0';
+    return ret;
+}
+__golite_poly_entry *arrCopy(__golite_poly_entry *arr, char *typeChain, int arrLength)
+{
+    //AY->Array, ST->Struct, SG->String, RE->rune, IR->Integer, FT->Float
+    __golite_poly_entry *newArr = (__golite_poly_entry *) malloc(sizeof(__golite_poly_entry) * arrLength);
+    for ( int i = 0; i < arrLength; i++ )
+    {
+        newArr[i] = generateCopy(arr[i], typeChain);
     }
     return newArr;
 }
