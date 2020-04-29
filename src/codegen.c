@@ -221,6 +221,12 @@ void rawStringCodeGen(char *s, FILE *f)
     fprintf(f, "\"");
 }
 
+void generateTypeChain(TTEntry *t, char *typeChain);
+void generatePolyEntryConversion(TTEntry *t, FILE *f);
+void generateCast(TTEntry *t, FILE *f);
+void funcExpListCodeGen(ExpList *list, FILE *f);
+
+
 //AY->Array, ST->Struct, SG->String, RE->rune, IR->Integer, FT->Float, SE-> Slice
 void generateTypeChain(TTEntry *t, char *typeChain)
 {
@@ -260,6 +266,31 @@ void generateTypeChain(TTEntry *t, char *typeChain)
             return;
     }
     return;
+}
+void generatePolyEntryConversion(TTEntry *t, FILE *f)
+{
+    if ( t->underlyingType == identifierType )
+        {
+            switch ( t->val.nonCompositeType.type )
+            {
+                case baseBool:
+                case baseInt:
+                    fprintf(f, "createPolyInt(");
+                    break;
+                case baseFloat64:
+                    fprintf(f, "createPolyFloat(");
+                    break;
+                case baseRune:
+                    fprintf(f, "createPolyRune(");
+                    break;
+                case baseString:
+                    fprintf(f, "createPolyString(");
+                    break;
+            }
+        } else
+        {
+            fprintf(f, "createPolyVoid(");
+        }
 }
 void generateCast(TTEntry *t, FILE *f)
 {
@@ -447,28 +478,19 @@ void funcExpListCodeGen(ExpList *list, FILE *f)
     TTEntry *type = getExpressionType(list->cur);
 
     //If you have var x [5][][5]int, we can stop copying at the slice
-    
-    switch ( type->underlyingType )
-    {
-        case identifierType: //normal c call by value
-        case sliceType: //copies the pointer
-            expCodeGen(list->cur, f); 
-            break;
-        case arrayType:
-            if ( 0 ) break;
-            char * typeChain = (char *) malloc(sizeof(char) * 999);
-            strcpy(typeChain, "");
-            generateTypeChain(type->val.arrayType.type, typeChain);
-            fprintf(f, "arrCopy(");
-            expCodeGen(list->cur, f);
-            fprintf(f, ", \"%s\", %d)", typeChain, type->val.arrayType.size);
-            free(typeChain);
-            break;
-        case structType:
-            fprintf(f, "structCopy(");
-            expCodeGen(list->cur, f); 
-            fprintf(f, ", \"%s\")", idGenJustType(type));
-    }
+    fprintf(f, "(");
+    generateCast(type, f);
+    fprintf(f, "(generateCopy(");
+    generatePolyEntryConversion(type, f);
+    expCodeGen(list->cur, f);
+    fprintf(f, "), ");
+    char * typeChain = (char *) malloc(sizeof(char) * 999);
+    strcpy(typeChain, "");
+    generateTypeChain(type, typeChain);
+    fprintf(f, "\"%s\"))", typeChain);
+    generateUnionAccess(type, f);
+    fprintf(f, ")");
+    free(typeChain);
 	if ( list->next != NULL )
 	{
 		fprintf(f, ", ");
@@ -581,28 +603,7 @@ void expCodeGen(Exp *exp, FILE *f)
         char * typeChain = (char *) malloc(sizeof(char) * 999);
         strcpy(typeChain, "");
         generateTypeChain(type, typeChain);
-        if ( type->underlyingType == identifierType )
-        {
-            switch ( type->val.nonCompositeType.type )
-            {
-                case baseBool:
-                case baseInt:
-                    fprintf(f, "createPolyInt(");
-                    break;
-                case baseFloat64:
-                    fprintf(f, "createPolyFloat(");
-                    break;
-                case baseRune:
-                    fprintf(f, "createPolyRune(");
-                    break;
-                case baseString:
-                    fprintf(f, "createPolyString(");
-                    break;
-            }
-        } else
-        {
-            fprintf(f, "createPolyVoid(");
-        }
+        generatePolyEntryConversion(type, f);
         expCodeGen(exp->val.append.elem, f);
         fprintf(f, "), \"%s\")", typeChain);
         free(typeChain);
