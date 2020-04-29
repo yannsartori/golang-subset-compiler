@@ -203,15 +203,19 @@ void rawStringCodeGen(char *s, FILE *f)
             fputc('\\', f);
             fputc('"', f);
         }
+        else if ( *(s + i) == '\n')
+        {
+            fputc('\\', f);
+            fputc('n', f);
+            fputc('\\', f);
+            fputc('t', f);
+        }
         else {
             fputc(*(s + i), f);
             if ( *(s + i) == '\\' ) //ugh
             {
                 fputc('\\', f);
-            } else if ( *(s + i) == '\n' )
-            {
-                fputc('\t', f);
-            }
+            } 
         }
     }
     fprintf(f, "\"");
