@@ -1566,8 +1566,18 @@ void specialIncDecStatementCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             variant = "Rune";
             break;
     }
-
-    fprintf(fp,"arrSet(%s,%s,%d,%d,createPoly%s(arrGet(%s,%s,%d,%d).%s",base,index,arrLength,lineno,variant,base,index,arrLength,lineno,dotAccess);
+    char * typeChain = (char *) malloc(sizeof(char) * 999);
+	strcpy(typeChain, "");
+	if ( getExpressionType(lhs->val.access.base)->underlyingType == arrayType )
+	{
+		fprintf(fp,"arrSet(%s,%s,%d,%d,createPoly%s(arrGet(%s,%s,%d,%d).%s",base,index,arrLength,lineno,variant,base,index,arrLength,lineno,dotAccess);
+		generateTypeChain(getExpressionType(lhs->val.access.base)->val.arrayType.type, typeChain);
+	}
+	else
+	{
+		fprintf(fp,"sliceSet(%s,%s,%d,createPoly%s(sliceGet(%s,%s,%d).%s",base,index,lineno,variant,base,index,lineno,dotAccess);
+		generateTypeChain(getExpressionType(lhs->val.access.base)->val.sliceType.type, typeChain);
+	}
     switch(stmt->kind){ 
         case StmtKindInc:   
             fprintf(fp,"+1)");
@@ -1576,9 +1586,6 @@ void specialIncDecStatementCodeGen(Stmt* stmt,int indentLevel, FILE* fp){
             fprintf(fp,"-1)");
             break;
     }
-    char * typeChain = (char *) malloc(sizeof(char) * 999);
-	strcpy(typeChain, "");
-    generateTypeChain(getExpressionType(lhs->val.access.base)->val.arrayType.type, typeChain);
     fprintf(fp, ", \"%s\");\n", typeChain);
     free(typeChain);
 
