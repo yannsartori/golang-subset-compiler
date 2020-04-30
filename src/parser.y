@@ -451,16 +451,17 @@ simpleStatement:
 ;
 
 assignmentStatement : 	
-							expressionList '=' expressionList {int left = expListLength($1); int right = expListLength($3);
-																if (left == right){
-																	if (containsBlank($3)){
-																		blankAssignmentError();
-																	}
-																	$$ = makeAssignmentStmt(reverseList($1),reverseList($3));
-
-
-																 }
-																else {lengthError(left,right);}    }
+			expressionList '=' expressionList {
+				int left = expListLength($1); int right = expListLength($3);
+				if (left == right){
+					if (containsBlank($3)){
+						blankAssignmentError();
+					}
+					$$ = makeAssignmentStmt(reverseList($1),reverseList($3));
+				} else {
+					lengthError(left,right);
+				}    
+	}
 							/*2.8.4 Parser needs to check that length(LHS) == length(RHS), 
 													weeder probably needs to check that we can assign into LHS 
 													Blank identifier RHS*/

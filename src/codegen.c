@@ -984,6 +984,7 @@ void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
 
         indent(indentLevel,fp);
         generateOurTypes(getExpressionType(leftCur->cur),fp);
+	
         fprintf(fp," %s =",idArray[i]);
         expCodeGen(rightCur->cur,fp);
         fprintf(fp,";\n");
@@ -1832,14 +1833,18 @@ void genInitAndZero(IdChain* curName, TTEntry* curType, int indentLevel, FILE* f
 	} else if (curType -> underlyingType == sliceType) {
 		fprintf(fp, "malloc(sizeof(__golite_slice));\n");
 		indent(indentLevel, fp);
+		fprintf(fp, "((__golite_slice*) ");
 		for (iter = curName; iter != NULL; iter = iter -> next) {
 			fprintf(fp,"%s", iter -> identifier);
 		}
+		fprintf(fp, ")");
 		fprintf(fp, " -> size = 0;\n");
 		indent(indentLevel, fp);
+		fprintf(fp, "((__golite_slice*) ");
 		for (iter = curName; iter != NULL; iter = iter -> next) {
 			fprintf(fp, "%s",iter -> identifier);
 		}
+		fprintf(fp, ")");
 		fprintf(fp, " -> capacity = 0;\n");
 	} else if (curType -> underlyingType == arrayType) {
 		fprintf(fp, "malloc(%d * sizeof(__golite_poly_entry));\n", curType -> val.arrayType.size);

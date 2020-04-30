@@ -1093,6 +1093,9 @@ int isValidAssignPair(Exp* left,Exp* right){
 
 			exit(1);
 		}
+		left -> contextEntry = malloc(sizeof(PolymorphicEntry));
+		left -> contextEntry -> isSymbol = 0;
+		left -> contextEntry -> entry.t = rightType;
 
 	}else{
 		TTEntry* leftType = typeCheckExpression(left);
