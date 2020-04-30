@@ -58,6 +58,7 @@ int main(int argc, char * argv[])
 		typeCheckProgram(rootNode);
 		setupTrie(rootNode);
 		totalCodeGen(rootNode);
+		printf("OK\n");
 	} else 
 	{
 		printf("sorry, I didn't get that\n");

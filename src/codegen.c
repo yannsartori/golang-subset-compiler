@@ -984,6 +984,7 @@ void assignStmtCodeGen(ExpList* left, ExpList* right,int indentLevel,FILE* fp){
 
         indent(indentLevel,fp);
         generateOurTypes(getExpressionType(leftCur->cur),fp);
+	
         fprintf(fp," %s =",idArray[i]);
         expCodeGen(rightCur->cur,fp);
         fprintf(fp,";\n");
